@@ -1,0 +1,76 @@
+# =============================================================================
+# docker-compose.yml — local development stack for the memory bus reference
+# implementation.
+#
+# The stack is intentionally small:
+#   * `memory-bus`   — the FastAPI service exposing write/read/subscribe/audit.
+#   * `ollama`       — an inference sidecar for ≤13B models. Optional. Disabled
+#                      by default (profile: inference) because the M4 Pro host
+#                      typically runs Ollama natively and we do not want two
+#                      copies fighting for the GPU.
+#   * `otel-collector` — optional OpenTelemetry collector for the distributed-
+#                      tracing dry-run promised by the doctoral phase.
+#
+# To bring up just the bus:           docker compose up memory-bus
+# To bring up the bus + Ollama:       docker compose --profile inference up
+# To bring up everything with tracing: docker compose --profile inference --profile tracing up
+# =============================================================================
+name: m6-thesis
+
+services:
+  memory-bus:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: m6-thesis:dev
+    container_name: m6-memory-bus
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      M6_LOG_LEVEL: INFO
+      M6_DB_PATH: /app/data/audit.sqlite
+      M6_FAISS_PATH: /app/data/index.faiss
+      M6_ENV: dev
+      # Don't enable OTel by default — endpoint is empty.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+    volumes:
+      - bus_data:/app/data
+      - ../configs:/app/configs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsSL", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: m6-ollama
+    profiles: ["inference"]
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "30m"
+      OLLAMA_NUM_PARALLEL: "1"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: m6-otel
+    profiles: ["tracing"]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ../configs/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+
+volumes:
+  bus_data:
+    name: m6_bus_data
+  ollama_models:
+    name: m6_ollama_models

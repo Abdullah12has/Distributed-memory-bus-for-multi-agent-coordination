@@ -1,0 +1,49 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: ["--config-file", "pyproject.toml"]
+        additional_dependencies:
+          - pydantic>=2.9
+          - types-pyyaml
+          - types-requests
+        files: ^src/m6/
+
+  - repo: local
+    hooks:
+      - id: forbid-pdb
+        name: forbid pdb breakpoints
+        entry: 'import pdb|pdb\.set_trace|breakpoint\(\)'
+        language: pygrep
+        types: [python]
+        exclude: ^tests/
+
+      - id: forbid-print-in-src
+        name: forbid bare print() in src/
+        entry: '^\s*print\('
+        language: pygrep
+        types: [python]
+        files: ^src/m6/
+        exclude: ^src/m6/(cli|.*/cli)\.py$

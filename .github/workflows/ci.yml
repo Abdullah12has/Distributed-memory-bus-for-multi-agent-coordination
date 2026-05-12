@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: lint + type + unit tests
+    # The thesis runtime lives on a macOS-arm64 host (M4 Pro) but our CI runners
+    # are Linux. We skip MLX-tagged tests and pin to the CPU torch wheels.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements*.txt
+
+      - name: Install (CPU-only deps)
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          # MLX is mac-only — env markers in pyproject already exclude it on
+          # Linux, but we still skip the mlx extra explicitly.
+          pip install -e ".[torch,rag,external,eval,dev]"
+
+      - name: Ruff lint
+        run: ruff check src tests
+
+      - name: Ruff format check
+        run: ruff format --check src tests
+
+      - name: mypy
+        run: mypy src/m6
+
+      - name: pytest (unit only — fast)
+        env:
+          M6_ENV: test
+        run: pytest -n auto --no-cov -m "not gpu and not external_api and not integration" tests/unit
+
+      - name: pytest (integration — bus + benchmark)
+        env:
+          M6_ENV: test
+        run: pytest -m "integration and not gpu and not external_api" tests

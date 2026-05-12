@@ -1,0 +1,100 @@
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+develop-eggs/
+.installed.cfg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test + coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.cache/
+nosetests.xml
+
+# Type checkers + linters
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# Virtual envs
+.venv/
+venv/
+env/
+.python-version
+.envrc
+
+# Local config (must never be committed)
+.env
+.env.local
+
+# =============================================================================
+# Jupyter / IPython
+# =============================================================================
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# =============================================================================
+# Project — data, models, results
+# =============================================================================
+# Generated benchmarks live in data/processed and are reproduced from configs;
+# raw corpus (M0/M1/M2 PII-redacted exports) is tracked via DVC or LFS in a
+# separate repo and never lives in the main tree.
+data/raw/**
+data/processed/**
+data/hf-cache/**
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/hf-cache/.gitkeep
+
+# Model checkpoints (LoRA adapters, GGUF, MLX npz) are huge — never commit.
+checkpoints/**
+!checkpoints/.gitkeep
+
+# Experiment results CSVs + plots: tracked separately via the results/ index.
+results/**
+!results/.gitkeep
+!results/INDEX.md
+
+# Generated SQLite + FAISS indices.
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.faiss
+*.faiss.idx
+
+# Trace logs from AutoGen runs.
+traces/**
+!traces/.gitkeep
+
+# Hugging Face local cache.
+.cache/huggingface/
+
+# =============================================================================
+# OS / editor cruft
+# =============================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-workspace

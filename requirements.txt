@@ -1,0 +1,91 @@
+# --------------------------------------------------------------------------- #
+# requirements.txt — base runtime pin file for the m6-thesis project.
+#
+# Convention:
+#   * Hard runtime deps are pinned to a minor range (~=) so reproductions on the
+#     M4 Pro workstation are stable across the 10-month thesis window.
+#   * Platform-specific deps (MLX, llama-cpp-python) live in this file but use
+#     PEP 508 environment markers so a Linux Docker build does not try to install
+#     MLX (which is mac-arm64-only).
+#   * The `m6-thesis[<extra>]` model in pyproject.toml is the authoritative list;
+#     this file is kept in sync via `make requirements-lock`.
+# --------------------------------------------------------------------------- #
+
+# ----- web service / schemas ------------------------------------------------
+fastapi~=0.115.0
+uvicorn[standard]~=0.32.0
+pydantic~=2.9.0
+pydantic-settings~=2.6.0
+
+# ----- data / numerics ------------------------------------------------------
+numpy~=1.26.4
+pandas~=2.2.3
+pyarrow~=17.0.0
+scipy~=1.13.1
+scikit-learn~=1.5.2
+
+# ----- storage --------------------------------------------------------------
+sqlalchemy~=2.0.36
+aiosqlite~=0.20.0
+faiss-cpu~=1.8.0.post1
+
+# ----- logging / observability ----------------------------------------------
+structlog~=24.4.0
+rich~=13.9.4
+opentelemetry-api~=1.27.0
+opentelemetry-sdk~=1.27.0
+opentelemetry-instrumentation-fastapi~=0.48b0
+
+# ----- config / CLI ---------------------------------------------------------
+click~=8.1.7
+typer~=0.13.1
+pyyaml~=6.0.2
+python-dotenv~=1.0.1
+
+# ----- http clients ---------------------------------------------------------
+httpx~=0.27.2
+tenacity~=9.0.0
+
+# ----- compressor + training stack (CPU/MPS path) ---------------------------
+torch~=2.5.1
+transformers~=4.46.3
+tokenizers~=0.20.3
+accelerate~=1.1.1
+peft~=0.13.2
+datasets~=3.1.0
+sentence-transformers~=3.3.1
+llmlingua~=0.2.2
+
+# ----- MLX (Apple-Silicon native) -------------------------------------------
+mlx~=0.21.0 ; sys_platform == "darwin" and platform_machine == "arm64"
+mlx-lm~=0.20.0 ; sys_platform == "darwin" and platform_machine == "arm64"
+
+# ----- llama.cpp / Ollama ---------------------------------------------------
+llama-cpp-python~=0.3.2 ; sys_platform != "win32"
+ollama~=0.3.3
+
+# ----- agent runtime --------------------------------------------------------
+autogen-agentchat>=0.4,<0.5
+autogen-core>=0.4,<0.5
+autogen-ext[openai]>=0.4,<0.5
+
+# ----- RAG stack ------------------------------------------------------------
+llama-index-core~=0.12.5
+llama-index-vector-stores-faiss~=0.3.0
+llama-index-embeddings-huggingface~=0.4.0
+llama-index-llms-openai~=0.3.0
+llama-index-postprocessor-sbert-rerank~=0.3.0
+
+# ----- external model APIs --------------------------------------------------
+openai~=1.54.4
+anthropic~=0.39.0
+
+# ----- evaluation -----------------------------------------------------------
+ragas~=0.2.6
+deepeval~=1.5.7
+bert-score~=0.3.13
+rouge-score~=0.1.2
+evaluate~=0.4.3
+nltk~=3.9.1
+matplotlib~=3.9.2
+seaborn~=0.13.2

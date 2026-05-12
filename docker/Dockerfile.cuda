@@ -1,0 +1,60 @@
+# syntax=docker/dockerfile:1.7
+#
+# Optional CUDA-enabled image for the doctoral phase or for Linux/NVIDIA boxes
+# where Faisal/Vu want to run inference outside the M4 Pro envelope. This image
+# is NOT part of the thesis evaluation path — every headline number is generated
+# on the M4 Pro per §4.2 of the plan — but is kept in the repo so the deliverable
+# is operable on commodity hardware.
+
+ARG CUDA_VERSION=12.4.1
+FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu22.04 AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PYTHON_VERSION=3.11
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        curl \
+        ca-certificates \
+        git \
+        build-essential \
+        libgomp1 \
+        libsqlite3-0 \
+        sqlite3 \
+        tini \
+ && add-apt-repository -y ppa:deadsnakes/ppa \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-venv \
+        python${PYTHON_VERSION}-dev \
+        python3-pip \
+ && update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 1 \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt pyproject.toml README.md ./
+COPY src/ ./src/
+
+# Replace torch with the CUDA build.
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && sed -e '/^mlx/d' -e '/^mlx-lm/d' requirements.txt > requirements.cuda.txt \
+ && pip install --extra-index-url https://download.pytorch.org/whl/cu124 -r requirements.cuda.txt \
+ && pip install --no-deps -e .
+
+ARG UID=1001
+ARG GID=1001
+RUN groupadd -g ${GID} m6 && useradd -u ${UID} -g ${GID} -ms /bin/bash m6 \
+ && mkdir -p /app/data && chown -R m6:m6 /app
+
+USER m6
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -fsSL http://localhost:8080/healthz || exit 1
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["uvicorn", "m6.memory_bus.api:app", "--host", "0.0.0.0", "--port", "8080"]

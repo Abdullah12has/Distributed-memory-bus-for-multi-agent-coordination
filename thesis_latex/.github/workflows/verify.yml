@@ -1,0 +1,53 @@
+name: Verify PDF/A-1B compatibility
+
+on:
+  push:
+    branches:
+      - main
+      - devel
+      - legacy
+  pull_request:
+    branches:
+      - main
+      - devel
+      - legacy
+
+jobs:
+  build_latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install TexLive and dependencies
+        uses: zauguin/install-texlive@v4
+        with:
+          package_file: texlive-basic-packages.txt
+      - name: Compile LaTeX document (1st pass)
+        run: pdflatex -halt-on-error main.tex
+      - name: Run bibliography tool
+        run: |
+          case "${GITHUB_REF##*/}" in
+            legacy)
+              echo "Running bibtex..."
+              bibtex main
+              ;;
+            *)
+              echo "Running biber..."
+              biber --validate-datamodel main
+              ;;
+          esac
+      - name: Compile LaTeX document (2nd pass)
+        run:
+          pdflatex -halt-on-error main.tex
+      - name: Verify PDF
+        run: |
+          if [ "$ACT" = "true" ]; then
+            echo "No docker in ACT"
+          else
+            docker run --rm -t -v "$(pwd):/data" docker.io/verapdf/cli:v1.28.2 -f 1b main.pdf
+          fi
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf
+          path: main.pdf

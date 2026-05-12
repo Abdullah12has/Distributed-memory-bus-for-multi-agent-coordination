@@ -1,0 +1,289 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# -----------------------------------------------------------------------------
+# Project metadata
+# -----------------------------------------------------------------------------
+[project]
+name = "m6-thesis"
+version = "0.1.0"
+description = "Distributed Memory Bus for Multi-Agent Campus Systems: context compression, coordination quality, and policy-aware sharing."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Proprietary - University of Oulu / TalentAdore - All Rights Reserved" }
+authors = [
+    { name = "Syed Abdullah Hassan", email = "bilal@theroboticscompany.com" },
+]
+keywords = [
+    "context-compression",
+    "multi-agent",
+    "memory-bus",
+    "rag",
+    "icae",
+    "llmlingua",
+    "autogen",
+    "thesis",
+]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime dependencies are split across requirements/*.txt files so we can
+# install platform-specific extras (MLX on Apple Silicon, llama.cpp anywhere,
+# CUDA optionally) without bloating the base wheel. The minimal install lists
+# below are what is needed to import `m6` and run the FastAPI service and the
+# benchmark generator without any model code.
+dependencies = [
+    # Web service + schemas
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    # Data + numerics
+    "numpy>=1.26,<2.2",
+    "pandas>=2.2",
+    "pyarrow>=17.0",
+    "scipy>=1.13",
+    "scikit-learn>=1.5",
+    # Storage
+    "sqlalchemy>=2.0",
+    "aiosqlite>=0.20",
+    "faiss-cpu>=1.8",
+    # Logging + observability
+    "structlog>=24.4",
+    "rich>=13.9",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    # Config + CLI
+    "click>=8.1",
+    "typer>=0.13",
+    "pyyaml>=6.0",
+    "tomli>=2.0; python_version < '3.11'",
+    "python-dotenv>=1.0",
+    # HTTP clients
+    "httpx>=0.27",
+    "tenacity>=9.0",
+]
+
+[project.optional-dependencies]
+# Compressor + training stack (PyTorch path; MLX is its own extra below).
+torch = [
+    "torch>=2.5",
+    "transformers>=4.46",
+    "tokenizers>=0.20",
+    "accelerate>=1.1",
+    "peft>=0.13",
+    "datasets>=3.1",
+    "sentence-transformers>=3.3",
+    "bitsandbytes>=0.44 ; sys_platform == 'linux'",
+    # LLMLingua-2 reference implementation
+    "llmlingua>=0.2.2",
+]
+
+# Apple-Silicon-native fast path (MLX). Installs only on macOS arm64.
+mlx = [
+    "mlx>=0.21 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "mlx-lm>=0.20 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+
+# Inference backends used outside MLX.
+inference = [
+    "llama-cpp-python>=0.3 ; sys_platform != 'win32'",
+    "ollama>=0.3",
+]
+
+# Agent runtime. AutoGen v0.4 is the major rewrite; we pin to v0.4.x because the
+# 0.2 -> 0.4 API change is breaking and our scratchpad bridge targets 0.4.
+agents = [
+    "autogen-agentchat>=0.4,<0.5",
+    "autogen-core>=0.4,<0.5",
+    "autogen-ext[openai]>=0.4,<0.5",
+]
+
+# RAG stack (FAISS + LlamaIndex).
+rag = [
+    "llama-index-core>=0.12",
+    "llama-index-vector-stores-faiss>=0.3",
+    "llama-index-embeddings-huggingface>=0.4",
+    "llama-index-llms-openai>=0.3",
+    "llama-index-postprocessor-sbert-rerank>=0.3",
+]
+
+# External model APIs (paid). Cost-tracked via m6.inference.api_backend.
+external = [
+    "openai>=1.54",
+    "anthropic>=0.39",
+]
+
+# Evaluation: hallucination, faithfulness, semantic similarity.
+eval = [
+    "ragas>=0.2",
+    "deepeval>=1.5",
+    "bert-score>=0.3.13",
+    "rouge-score>=0.1.2",
+    "evaluate>=0.4",
+    "nltk>=3.9",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+]
+
+# Developer tooling (lint, type-check, test, format).
+dev = [
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "pytest-xdist>=3.6",
+    "hypothesis>=6.119",
+    "pre-commit>=4.0",
+    "types-pyyaml",
+    "types-requests",
+]
+
+# Aggregate convenience extras.
+all = [
+    "m6-thesis[torch,inference,agents,rag,external,eval,dev]",
+]
+
+[project.scripts]
+m6 = "m6.cli:app"
+m6-bus = "m6.memory_bus.cli:main"
+m6-benchmark = "m6.benchmark.cli:main"
+m6-experiment = "m6.experiments.cli:main"
+
+# -----------------------------------------------------------------------------
+# Setuptools src/ layout
+# -----------------------------------------------------------------------------
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["m6*"]
+
+[tool.setuptools.package-data]
+m6 = ["py.typed", "**/*.yaml", "**/*.sql"]
+
+# -----------------------------------------------------------------------------
+# Ruff (lint + format)
+# -----------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",       # pycodestyle
+    "F",            # pyflakes
+    "I",            # isort
+    "B",            # bugbear
+    "C4",           # comprehensions
+    "UP",           # pyupgrade
+    "SIM",          # simplify
+    "PT",           # pytest-style
+    "RUF",          # ruff-specific
+    "N",            # pep8-naming
+    "TID",          # tidy imports
+    "ARG",          # unused arguments
+    "PL",           # pylint subset
+]
+ignore = [
+    "E501",         # line length handled by formatter
+    "PLR0913",      # ML configs naturally take many kwargs
+    "PLR2004",      # magic numbers are unavoidable in research code
+    "B008",         # function calls in argument defaults (FastAPI Depends)
+    "N812",         # lowercase imports as uppercase (e.g. `import torch.nn.functional as F`)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["PLR2004", "ARG001", "ARG002", "B011"]
+"src/m6/experiments/**/*.py" = ["PLR0915"]  # experiment scripts get long
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# -----------------------------------------------------------------------------
+# mypy
+# -----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+exclude = ["build/", "dist/", "data/", "checkpoints/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "mlx.*",
+    "mlx_lm.*",
+    "llama_cpp.*",
+    "faiss.*",
+    "autogen_agentchat.*",
+    "autogen_core.*",
+    "autogen_ext.*",
+    "llmlingua.*",
+    "ragas.*",
+    "deepeval.*",
+    "ollama.*",
+    "bert_score.*",
+    "rouge_score.*",
+]
+ignore_missing_imports = true
+
+# -----------------------------------------------------------------------------
+# pytest
+# -----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+    "--tb=short",
+    "--cov=src/m6",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+markers = [
+    "slow: tests that take >10s",
+    "gpu: tests requiring a GPU/MLX device",
+    "external_api: tests that hit a paid external API (skipped by default)",
+    "integration: cross-module integration tests",
+]
+asyncio_mode = "auto"
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:llama_index.*",
+    "ignore::DeprecationWarning:autogen.*",
+    "ignore::UserWarning:torch.*",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/m6"]
+omit = [
+    "src/m6/experiments/h*.py",  # one-shot scripts excluded from coverage
+    "src/m6/inference/*_backend.py",  # device-dependent, exercised in integration
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
