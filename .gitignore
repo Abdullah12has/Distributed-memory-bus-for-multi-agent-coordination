@@ -98,3 +98,5 @@ desktop.ini
 .idea/
 .vscode/
 *.sublime-workspace
+
+.claude/worktrees/
