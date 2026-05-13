@@ -1,0 +1,13 @@
+# H1 — Spearman ρ(Δ_qa, Δ_coord) < 0.6 on ≥2 of 3 compressors at 7B.
+# See docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md (H1).
+hypothesis: h1
+benchmark_path: data/processed/c1-v0.1
+compressors: ["lingua2", "filter", "icae"]
+ratios: [1.0, 2.0, 4.0, 8.0, 16.0]
+seeds: [0, 1, 2, 3, 4]
+workload_families: ["a", "b", "c"]
+model_size: "7b"
+backend: "mlx"
+out_dir: "results"
+include_no_compression_control: true
+notes: "Plan §3 H1; expects ρ < 0.6 for at least 2 of 3 compressors."

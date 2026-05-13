@@ -1,0 +1,29 @@
+# C4 — tag-preserving variant. Enable the tag head with lambda_tag > 0.
+run_name: icae-7b-tags
+base_model: meta-llama/Llama-3.1-8B-Instruct
+dataset: qa
+dataset_path: data/processed/training/qa.jsonl
+num_slots: 128
+max_input_tokens: 512
+
+epochs: 3
+batch_size: 4
+grad_accum: 8
+learning_rate: 3.0e-4
+weight_decay: 0.0
+warmup_steps: 200
+seed: 0
+
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+
+lambda_nce: 0.3
+lambda_tag: 1.0       # swept in {0.1, 0.3, 1.0, 3.0}
+nce_temperature: 0.07
+
+out_dir: checkpoints/icae-7b-tags
+log_every: 25
+save_every: 500
+max_wallclock_hours: 72.0
+backend: auto

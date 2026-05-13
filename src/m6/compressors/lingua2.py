@@ -26,12 +26,15 @@ class LLMLingua2Compressor:
     compressor_id: str = "lingua2"
     tokenizer_id: str = "xlm-roberta-base"
 
+    DEFAULT_FORCE_TOKENS: tuple[str, ...] = ("\n", ".", "!", "?")
+
     def __init__(
         self,
         *,
         model_name: str = "microsoft/llmlingua-2-xlm-roberta-large-meetingbank",
         target_ratio: float = 4.0,
         device: str = "auto",
+        force_tokens: tuple[str, ...] | None = None,
         **_extra: Any,
     ) -> None:
         from llmlingua import PromptCompressor  # type: ignore[import-not-found]
@@ -44,7 +47,32 @@ class LLMLingua2Compressor:
         if device != "auto":
             kwargs["device_map"] = device
         self._inner = PromptCompressor(**kwargs)
-        log.info("compressor.lingua2.init", model=model_name, target_ratio=target_ratio)
+
+        # Validate force_tokens against the wrapped tokenizer's vocab. The
+        # default ("\n", ".", "!", "?") are not guaranteed to be in every
+        # XLM-RoBERTa variant's vocab; passing an unknown force-token to
+        # llmlingua silently degrades compression. Drop missing ones, warn.
+        requested = tuple(force_tokens or self.DEFAULT_FORCE_TOKENS)
+        self._force_tokens = self._filter_force_tokens(requested)
+        log.info(
+            "compressor.lingua2.init",
+            model=model_name, target_ratio=target_ratio,
+            force_tokens=self._force_tokens, dropped=tuple(set(requested) - set(self._force_tokens)),
+        )
+
+    def _filter_force_tokens(self, requested: tuple[str, ...]) -> tuple[str, ...]:
+        """Return only those force-tokens present in the wrapped tokenizer's vocab.
+
+        We try the upstream object's ``tokenizer`` attribute first (the standard
+        ``llmlingua`` field name); fall back to returning the request unchanged
+        if the attribute is missing — better to over-include than to silently
+        drop everything.
+        """
+        tok = getattr(self._inner, "tokenizer", None)
+        if tok is None or not hasattr(tok, "get_vocab"):
+            return requested
+        vocab = tok.get_vocab()
+        return tuple(t for t in requested if t in vocab)
 
     def compress(
         self,
@@ -59,7 +87,7 @@ class LLMLingua2Compressor:
             instruction=fragment.task_hint or "",
             question=fragment.task_hint or "",
             rate=rate,
-            force_tokens=["\n", ".", "!", "?"],
+            force_tokens=list(self._force_tokens),
         )
         compressed_text: str = out["compressed_prompt"]
         slot_id = _digest(f"{fragment.fragment_id}|{ratio}|{compressed_text}")

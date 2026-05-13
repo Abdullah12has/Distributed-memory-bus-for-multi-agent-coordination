@@ -1,0 +1,12 @@
+# H5 — tag preservation.
+hypothesis: h5
+benchmark_path: data/processed/c1-v0.1
+compressors: ["icae", "icae-tag"]
+ratios: [2.0, 4.0, 8.0]
+seeds: [0]
+workload_families: ["a", "b", "c"]
+model_size: "7b"
+backend: "mlx"
+out_dir: "results"
+include_no_compression_control: false
+notes: "Plan §3 H5; ≥85% preservation at 4×, ≤5pp accuracy drop."

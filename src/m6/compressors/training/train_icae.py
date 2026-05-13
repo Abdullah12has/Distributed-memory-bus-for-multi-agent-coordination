@@ -126,13 +126,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 # Backend selection
 # --------------------------------------------------------------------------- #
 def _select_backend(requested: str) -> str:
+    """Resolve a training backend.
+
+    Note: ``auto`` always returns ``torch`` until the MLX trainer ships. We
+    keep the MLX probe call in place so a future opt-in still benefits from
+    fail-fast detection; setting ``backend: mlx`` explicitly is the way to
+    request it once implemented.
+    """
     if requested in {"torch", "mlx"}:
         return requested
-    # auto: prefer mlx on Apple Silicon if probe passes.
     if sys.platform == "darwin" and os.uname().machine == "arm64":
-        if _probe_mlx_nce():
-            return "mlx"
-        log.warning("trainer.mlx_nce_probe_failed", action="falling back to torch")
+        # Surface MLX-runtime probe outcome in the logs so future maintainers
+        # know when the primitive lands. The probe does not change the choice.
+        if not _probe_mlx_nce():
+            log.warning("trainer.mlx_nce_probe_failed", note="MLX trainer not enabled regardless.")
     return "torch"
 
 
@@ -413,19 +420,22 @@ def _write_manifest(out_dir: Path, cfg: TrainerConfig, run_id: str) -> None:
 # MLX backend
 # --------------------------------------------------------------------------- #
 def _run_mlx(_cfg: TrainerConfig) -> int:
-    """MLX path is structurally identical to the torch path; we share the loss
-    primitives via :mod:`m6.compressors.training.loss`.
+    """MLX path is the documented primary fast path (plan §6.2).
 
-    For the thesis-window we ship the torch path as the *correctness baseline*
-    and let MLX be a performance optimisation. If MLX work blocks the schedule
-    (plan risk register, row 2), the torch-MPS fallback is the safety net.
+    The MLX trainer is not yet implemented. We refuse rather than silently
+    falling back to the torch path, because a silent fallback turns a ~3-day
+    training (MLX) into a ~10-day one (torch-MPS) without the operator
+    noticing. To opt into the torch path explicitly, set ``backend: torch`` in
+    the training YAML — that is the supported safety net (plan risk-register
+    row 2).
     """
-    log.warning(
-        "trainer.mlx_path_stubbed",
-        action="falling back to torch path",
-        rationale="MLX path is an optimisation, not on the critical path (plan §4.1).",
+    msg = (
+        "MLX trainer path is not yet implemented. To proceed, set "
+        "`backend: torch` in the training YAML, which is the explicit "
+        "PyTorch-MPS fallback path (plan risk-register row 2). Do not invoke "
+        "_run_mlx programmatically — pick the backend in config."
     )
-    return _run_torch(_cfg)
+    raise NotImplementedError(msg)
 
 
 if __name__ == "__main__":

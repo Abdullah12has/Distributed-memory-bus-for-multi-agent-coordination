@@ -1,0 +1,23 @@
+# H8 gating file. Mohammad / Faisal / Vu update this when their agents are ready.
+# `ready: true` AND `connector_path` present unlocks H8 for that source.
+
+m0:
+  ready: false
+  owner: Mohammad Abaeiani
+  scope: Publication DB agent (use-case vignette 3.5)
+  connector_path: null
+  expected_by: 2026-07-01
+
+m1:
+  ready: false
+  owner: Faisal Khan
+  scope: Contract DB agent (use-case vignette 3.3)
+  connector_path: null
+  expected_by: 2026-07-01
+
+m2:
+  ready: false
+  owner: Vu Truong
+  scope: Platform comparison harness (Moodle/Patio)
+  connector_path: null
+  expected_by: 2026-07-01

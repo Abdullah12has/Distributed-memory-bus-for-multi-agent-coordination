@@ -1,0 +1,13 @@
+# H7 — model-size scaling. One YAML per size — this is the umbrella default.
+# Use h7-13b.yaml, h7-34b-int4.yaml, h7-70b-int4.yaml for size-specific runs.
+hypothesis: h7
+benchmark_path: data/processed/c1-v0.1
+compressors: ["lingua2", "filter", "icae"]
+ratios: [1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0]
+seeds: [0, 1, 2, 3, 4]
+workload_families: ["a", "b", "c"]
+model_size: "7b"
+backend: "mlx"
+out_dir: "results"
+include_no_compression_control: true
+notes: "Plan §3 H7; τ* monotonic with model size on ≥2 of 3 families."

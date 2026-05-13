@@ -1,0 +1,8 @@
+# C1 benchmark v0.1 — canonical generator config.
+# Reproduced by `make bench-generate`. Plan §4.2.
+version: c1-v0.1
+seed: 0
+n_per_family: 50            # 50 × 3 families = 150 instances
+families: ["a", "b", "c"]
+tag_distribution: skewed    # uniform | skewed | hierarchical
+out_dir: data/processed/c1-v0.1

@@ -1,0 +1,13 @@
+# H3 — training-distribution ablation.
+# Requires two ICAE checkpoints registered by name: "icae-qa" and "icae-dialogue".
+hypothesis: h3
+benchmark_path: data/processed/c1-v0.1
+compressors: ["icae-qa", "icae-dialogue"]
+ratios: [1.0, 2.0, 4.0, 8.0]
+seeds: [0, 1, 2, 3, 4]
+workload_families: ["a"]
+model_size: "7b"
+backend: "mlx"
+out_dir: "results"
+include_no_compression_control: true
+notes: "Plan §3 H3; matched single-agent QA accuracy ±1pp."

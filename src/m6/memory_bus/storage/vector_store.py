@@ -99,6 +99,14 @@ class FaissVectorStore:
 
 
 def _normalise(v: np.ndarray) -> np.ndarray:
-    """L2-normalise; safe against zero vectors."""
+    """L2-normalise; safe against zero vectors.
+
+    Accepts 1-D ``(dim,)`` or 2-D ``(batch, dim)`` arrays. Higher-rank inputs
+    are rejected — FAISS expects 1-D or 2-D float32 buffers, and silently
+    flattening anything else would mask shape bugs upstream.
+    """
+    if v.ndim not in (1, 2):
+        msg = f"vector_store: expected 1-D or 2-D array, got {v.ndim}-D shape={v.shape}"
+        raise ValueError(msg)
     norm = np.linalg.norm(v, axis=-1, keepdims=True)
     return v / np.where(norm == 0, 1.0, norm)

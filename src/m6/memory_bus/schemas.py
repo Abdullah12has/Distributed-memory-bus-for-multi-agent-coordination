@@ -10,7 +10,7 @@ Reference: ``docs/TECHNICAL_REFERENCE.md`` §3 (Data Model).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Annotated, Any, Literal
 
 import numpy as np
@@ -41,8 +41,13 @@ class Classification(IntEnum):
     SECRET = 4
 
 
-class EventType(str):
-    """Event taxonomy mirrored from ``software-architecture.pdf`` §4."""
+class EventType(StrEnum):
+    """Event taxonomy mirrored from ``software-architecture.pdf`` §4.
+
+    StrEnum (3.11+) gives us string-compatible values *and* an iterable enum, so
+    callers can iterate ``EventType`` to populate UI dropdowns or DB CHECK
+    constraints without listing names twice.
+    """
 
     WRITE = "WRITE"
     READ = "READ"

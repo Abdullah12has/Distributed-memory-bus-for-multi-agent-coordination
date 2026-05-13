@@ -10,8 +10,10 @@ Reference: ``docs/ARCHITECTURE.md`` §2 (data flow) and ``docs/TECHNICAL_REFEREN
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
+from collections import OrderedDict
 from typing import Protocol
 
 from m6.config.logging import get_logger
@@ -27,6 +29,13 @@ from m6.memory_bus.schemas import (
 from m6.memory_bus.storage.protocols import AuditLog, Scratchpad, VectorStore
 
 log = get_logger(__name__)
+
+# Cap the number of distinct (subject, slot_id) pairs we keep for read-miss
+# deduplication. Adversarial readers cannot exceed this regardless of request
+# rate. The TTL window is 60 s — within that window, repeat misses for the same
+# (subject, slot_id) collapse to one audit row.
+_READ_MISS_DEDUPE_CAP = 4096
+_READ_MISS_DEDUPE_TTL_S = 60.0
 
 
 class CompressorAPI(Protocol):
@@ -64,6 +73,10 @@ class MemoryBusService:
         self.scratchpad = scratchpad
         self.vector_store = vector_store
         self.compressor = compressor
+        # Per-(subject, slot_id) dedupe window for read-misses so a noisy reader
+        # cannot append unbounded ERROR rows to the audit log.
+        self._read_miss_seen: OrderedDict[tuple[str, str], float] = OrderedDict()
+        self._read_miss_lock = threading.Lock()
 
     # ------------------------------------------------------------------ #
     # write
@@ -133,12 +146,20 @@ class MemoryBusService:
     # read
     # ------------------------------------------------------------------ #
     def read(self, principal: Principal, slot_id: SlotId) -> tuple[CompressedSlot, AuditRow]:
-        """Read a slot. Append READ/DENY to the audit log."""
+        """Read a slot. Append READ/DENY to the audit log.
+
+        Read-misses are deduplicated per ``(subject, slot_id)`` within a
+        60-second window so a noisy reader cannot inflate the audit log; the
+        first miss in a window always audits, subsequent ones short-circuit
+        with a synthetic :class:`SlotNotFound`.
+        """
         slot = self.scratchpad.get(slot_id)
         if slot is None:
             # No rehydration from FAISS yet — the embedding is lossy and we do
             # not want to silently substitute a near-neighbour. Future work
             # (D7) will use the audit log's payload to rehydrate.
+            if not self._should_log_read_miss(principal.subject, slot_id):
+                raise SlotNotFound(f"Slot {slot_id} not in scratchpad (deduped)")
             payload_bytes = f"READ|MISS|{slot_id}".encode()
             row = self.audit.append(
                 slot_id=slot_id,
@@ -188,6 +209,30 @@ class MemoryBusService:
 
     def chain_tip(self) -> bytes | None:
         return self.audit.chain_tip()
+
+    # ------------------------------------------------------------------ #
+    # Internals
+    # ------------------------------------------------------------------ #
+    def _should_log_read_miss(self, subject: str, slot_id: str) -> bool:
+        """Per-(subject, slot_id) dedupe: True iff this miss should be audited.
+
+        First miss in the TTL window → True (and we record the timestamp).
+        Subsequent misses within the window → False.
+        After the cap is hit, the oldest entry is evicted FIFO.
+        """
+        key = (subject, slot_id)
+        now = time.time()
+        with self._read_miss_lock:
+            ts = self._read_miss_seen.get(key)
+            if ts is not None and now - ts < _READ_MISS_DEDUPE_TTL_S:
+                # Refresh the position so frequent offenders age out together.
+                self._read_miss_seen.move_to_end(key)
+                return False
+            self._read_miss_seen[key] = now
+            self._read_miss_seen.move_to_end(key)
+            while len(self._read_miss_seen) > _READ_MISS_DEDUPE_CAP:
+                self._read_miss_seen.popitem(last=False)
+            return True
 
 
 # --------------------------------------------------------------------------- #

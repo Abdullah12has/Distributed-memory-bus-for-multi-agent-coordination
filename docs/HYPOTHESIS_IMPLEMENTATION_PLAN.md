@@ -85,7 +85,7 @@ Plus `spearman.json` with `{compressor → {rho, p_value, ci_low, ci_high}}`.
 1. For each `(c, w, s)`: sweep `r ∈ {1, 2, 3, 4, 5, 6, 8, 10, 12, 16}` (denser around the suspected cliff).
 2. Average across seeds → `(r, coord_success)` curve.
 3. **Fit `m6.evaluation.cliff_fitting.fit_piecewise(...)`** → `(τ, slope_left, slope_right, drop_rel)`.
-4. Wilcoxon signed-rank `coord(r < τ)` vs `coord(r ≥ τ)` across seeds.
+4. **Mann-Whitney U** `coord(r < τ)` vs `coord(r ≥ τ)`. These two samples are **independent** — they are drawn across different `(workload, seed, ratio)` cells, not paired — so the signed-rank test is inappropriate; a rank-sum test is the right one.
 5. Across `c ∈ compressors`, compare τ within each `w`. Effect size = `max_τ − min_τ` as a fraction of mean.
 
 **Decision.**

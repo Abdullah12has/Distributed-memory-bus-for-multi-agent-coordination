@@ -1,0 +1,12 @@
+# H6 — summary-level inference disclosure. Reads OPENAI_API_KEY from env.
+hypothesis: h6
+benchmark_path: data/processed/c1-v0.1
+compressors: ["icae", "icae-tag"]
+ratios: [4.0]
+seeds: [0]
+workload_families: ["a"]
+model_size: "7b"
+backend: "openai"
+out_dir: "results"
+include_no_compression_control: false
+notes: "Plan §3 H6; reader=gpt-4o-mini; budget ~EUR 30."

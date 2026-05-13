@@ -1,0 +1,12 @@
+# H4 — RAG pipeline placement.
+hypothesis: h4
+benchmark_path: data/processed/c1-v0.1
+compressors: ["lingua2", "filter", "icae"]
+ratios: [4.0]
+seeds: [0, 1, 2, 3, 4]
+workload_families: ["a"]
+model_size: "7b"
+backend: "mlx"
+out_dir: "results"
+include_no_compression_control: true
+notes: "Plan §3 H4; storage-bounded vs accuracy-bounded; effect size ≥5pp F1."

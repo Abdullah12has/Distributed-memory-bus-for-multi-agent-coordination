@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections import OrderedDict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Request, status
 from fastapi.responses import StreamingResponse
+from starlette.datastructures import State
 
 from m6 import __version__
 from m6.config.logging import configure_logging, get_logger
@@ -117,10 +119,17 @@ def create_app(
 # Middlewares
 # --------------------------------------------------------------------------- #
 class PolicyMiddleware:
-    """Resolve the requester ``Principal`` from headers, attach to request.state.
+    """Resolve the requester ``Principal`` from headers, attach to ``request.state``.
 
     In production this is replaced with an OAuth/JWT verifier; the dev-mode
     header parser is documented in :class:`m6.memory_bus.policy.Principal`.
+
+    ASGI note: ``request.state`` is backed by ``scope["state"]`` which must be a
+    :class:`starlette.datastructures.State` instance (so attribute access works
+    in downstream handlers). We construct one if missing, then set
+    ``state.principal`` via attribute assignment. Setting ``scope["state"]`` to
+    a plain ``dict`` here would silently break every dependency-injected
+    ``Principal`` lookup downstream.
     """
 
     def __init__(self, app: "ASGIApp") -> None:
@@ -133,9 +142,15 @@ class PolicyMiddleware:
         headers = dict(scope.get("headers", []))  # type: ignore[arg-type]
         header_val = headers.get(b"x-m6-principal", b"").decode()
         principal = Principal.from_header(header_val or None)
-        # Starlette stuffs request.state into scope["state"] when using FastAPI.
-        scope.setdefault("state", {})
-        scope["state"]["principal"] = principal  # type: ignore[index]
+
+        # Get or initialise the Starlette State() container. Using setdefault
+        # is safe — Starlette itself does exactly this in Request.state.
+        existing = scope.get("state")
+        if not isinstance(existing, State):
+            existing = State()
+            scope["state"] = existing
+        existing.principal = principal
+
         await self.app(scope, receive, send)  # type: ignore[arg-type]
 
 
@@ -197,7 +212,13 @@ def _register_routes(app: FastAPI) -> None:
         service: MemoryBusService = request.app.state.service
 
         async def event_source() -> AsyncIterator[bytes]:
-            seen: set[str] = set()
+            # Bound the seen-set so a long-lived subscription cannot pin every
+            # slot id in memory. The cap is 8× the requested top-k — well above
+            # what any reasonable subscriber would re-receive in a single TTL,
+            # while keeping memory bounded for adversarial subscribers.
+            seen: "OrderedDict[str, None]" = OrderedDict()
+            seen_cap = max(body.k * 8, 256)
+
             for _ in range(body.ttl_seconds):
                 # The embed step requires a Compressor that supports text
                 # embedding. We delegate that to the underlying compressor's
@@ -211,14 +232,16 @@ def _register_routes(app: FastAPI) -> None:
                 for slot_id, score in hits:
                     if slot_id in seen:
                         continue
-                    # Re-check the policy at emit time — tags could have
-                    # changed between indexing and now.
                     slot = service.scratchpad.get(slot_id)
                     if slot is None or not slot.tags.grants_to(
                         principal.acl_mask, principal.classification
                     ):
                         continue
-                    seen.add(slot_id)
+                    seen[slot_id] = None
+                    # Evict in FIFO order once we exceed the cap. The cap is
+                    # large enough that this never fires in normal use.
+                    while len(seen) > seen_cap:
+                        seen.popitem(last=False)
                     payload = json.dumps({"slot_id": slot_id, "score": score})
                     yield f"data: {payload}\n\n".encode("utf-8")
                 await asyncio.sleep(1.0)
