@@ -10,3 +10,7 @@ backend: "mlx"
 out_dir: "results"
 include_no_compression_control: true
 notes: "Plan §3 H2; effect size threshold drop_rel ≥ 0.30."
+
+# Headline run: refuse to start if any ICAE-family compressor is in stub mode.
+# Flip to false to deliberately run with deterministic-hash stubs (dev only).
+require_trained_compressors: true

@@ -59,22 +59,46 @@ def _build_instance(
     loads = rng.integers(low=1, high=3, size=n_tasks)
 
     # Greedy feasible assignment (by capacity-remaining).
+    #
+    # We use an explicit while loop because the previous for-loop version
+    # mutated the loop variable on infeasibility, which has no effect under
+    # ``range()`` — the loop body would just fall through to the next ``t``
+    # and leave ``assignment[t]`` unset, producing malformed workloads.
+    #
+    # A hard safety cap prevents pathological inputs (e.g. load > max possible
+    # capacity) from looping forever. The cap is generous (10 × n_tasks)
+    # because feasibility is restored after at most n_tasks capacity bumps.
     assignment: dict[int, int] = {}
     remaining = capacities.copy()
-    for t in range(n_tasks):
-        # pick the agent with the most remaining capacity.
+    t = 0
+    max_iters = n_tasks * 10
+    iters = 0
+    while t < n_tasks:
+        iters += 1
+        if iters > max_iters:  # pragma: no cover - defensive
+            msg = (
+                f"constraint_satisfaction generator failed to converge for "
+                f"instance {instance_id}: capacities={capacities.tolist()}, "
+                f"loads={loads.tolist()}"
+            )
+            raise RuntimeError(msg)
         order = np.argsort(-remaining)
+        placed = False
         for a in order:
             if remaining[a] >= loads[t]:
                 assignment[t] = int(a)
                 remaining[a] -= loads[t]
+                placed = True
                 break
-        else:
-            # Infeasible — bump the most-loaded agent's capacity by 1 and retry.
-            a_max = int(np.argmax(capacities))
-            capacities[a_max] += 1
-            remaining[a_max] += 1
-            t -= 1  # noqa: PLW2901 — intentional retry
+        if placed:
+            t += 1
+            continue
+        # Infeasible at the current capacity. Bump the most-loaded agent's
+        # capacity by 1, restore its remaining slack, and retry the same task
+        # by NOT incrementing ``t``.
+        a_max = int(np.argmax(capacities))
+        capacities[a_max] += 1
+        remaining[a_max] += 1
 
     fragments: list[Fragment] = [
         Fragment(
@@ -104,9 +128,7 @@ def _build_instance(
         f"Assign {n_tasks} sub-tasks across {n_agents} agents with respective "
         f"capacities {capacities.tolist()}, respecting task loads {loads.tolist()}."
     )
-    expected_answer = ";".join(
-        f"sub-{t}=worker-{assignment[t]}" for t in range(n_tasks)
-    )
+    expected_answer = ";".join(f"sub-{t}=worker-{assignment[t]}" for t in range(n_tasks))
 
     return Workload(
         workload_id=instance_id,

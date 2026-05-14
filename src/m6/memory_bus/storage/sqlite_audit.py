@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from m6.config.logging import get_logger
@@ -133,7 +133,7 @@ class SQLiteAuditLog:
                     prev,
                     payload_hash,
                     chain_hash,
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
             rowid = cur.lastrowid
@@ -172,8 +172,7 @@ class SQLiteAuditLog:
         """Walk every row, recompute chain_hash, compare to the stored value."""
         with self._lock:
             rows = self._conn.execute(
-                "SELECT prev_hash, payload_hash, chain_hash "
-                "FROM audit_log ORDER BY rowid ASC"
+                "SELECT prev_hash, payload_hash, chain_hash " "FROM audit_log ORDER BY rowid ASC"
             ).fetchall()
         prev = GENESIS_HASH
         for i, r in enumerate(rows):
@@ -229,7 +228,7 @@ class SQLiteAuditLog:
                     output_tokens,
                     eur_cost,
                     wallclock_ms,
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
         return int(cur.lastrowid or 0)

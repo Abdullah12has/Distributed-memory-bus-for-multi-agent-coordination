@@ -18,7 +18,7 @@ import dataclasses
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -48,7 +48,7 @@ class BenchmarkConfig:
     seed: int = 0
     n_per_family: int = 50
     families: tuple[str, ...] = ("a", "b", "c")
-    tag_distribution: str = "skewed"           # uniform | skewed | hierarchical
+    tag_distribution: str = "skewed"  # uniform | skewed | hierarchical
     out_dir: str = "data/processed/c1-v0.1"
 
     @classmethod
@@ -79,7 +79,7 @@ def generate(cfg: BenchmarkConfig) -> Path:
 
     manifest = WorkloadManifest(
         version=cfg.version,
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         config_hash=hash_dict(dataclasses.asdict(cfg)),
         families=families_counts,
         total=sum(families_counts.values()),

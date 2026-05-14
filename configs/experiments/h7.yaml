@@ -11,3 +11,7 @@ backend: "mlx"
 out_dir: "results"
 include_no_compression_control: true
 notes: "Plan §3 H7; τ* monotonic with model size on ≥2 of 3 families."
+
+# Headline run: refuse to start if any ICAE-family compressor is in stub mode.
+# Flip to false to deliberately run with deterministic-hash stubs (dev only).
+require_trained_compressors: true

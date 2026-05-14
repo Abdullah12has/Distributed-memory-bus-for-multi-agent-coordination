@@ -24,7 +24,7 @@ from typing import Any
 from m6.compressors.base import Compressor, ModelCard
 from m6.memory_bus.schemas import CompressedSlot
 
-__all__ = ["Compressor", "CompressedSlot", "ModelCard", "make_compressor"]
+__all__ = ["CompressedSlot", "Compressor", "ModelCard", "make_compressor"]
 
 
 def make_compressor(name: str, **kwargs: Any) -> Compressor:
@@ -71,7 +71,7 @@ class _IdentityCompressor:
 
     def compress(
         self,
-        fragment: "Any",  # noqa: ARG002 — protocol arg
+        fragment: Any,
         target_ratio: float | None = None,  # noqa: ARG002
     ) -> CompressedSlot:
         from m6.memory_bus.schemas import TextSummary

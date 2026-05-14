@@ -1,708 +1,638 @@
-A Master’s thesis in engineering usually consists of an
-implementation part (literature survey, hardware development,
-software development, measurements, etc.), and a written part (the
-text body). How the implementation part is carried out depends on the
-topic, so no general guidelines can be issued. However, each type of
-publication has its distinct layout and structure to be followed. The
-following set of instructions will explain in detail the writing and
-layout style for the master’s theses published in the engineering
-degree programmes at the Faculty of ITEE. Typography affects the
-readability of the text greatly, so the instructions should be
-followed strictly. By following these instructions, the thesis
-authors can properly learn a proper way of expressing themselves
-formally in writing. After having learned one way of formal writing,
-it is easier to get used to the formalism used at your future
-workplace. Presentation and layout style have an effect on the grade
-of the thesis.
+This chapter presents the system design and the implementation of the
+reference memory bus, the compressor framework, the C1 benchmark, the RAG
+pipeline catalogue, and the agent runtime. The intent is to give a reader
+enough detail to reproduce the system from the open-source repository
+without needing to refer back to the code, and to make the design choices
+explicit so that the experimental results in Chapter~\charef{experiments}
+can be interpreted against the constraints those choices imposed. The
+chapter closes with a section on the inference-backend stack, the
+single-machine compute envelope, and the reproducibility package that
+accompanies the manuscript.
 
-Before starting to write your thesis, it is a good idea to mind-map
-or chart out the various issues that will be included in a thesis.
-After that, you should divide them into themes, actual chapters with
-actual title, and estimated numbers of pages to be included in each
-chapter. The contents should be discussed in detail with your
-principal supervisor. Pay attention on the weighting and focus of
-different topics. You should reserve enough time for writing your
-thesis, so that its content and structure will be as good as
-possible. It should be remembered that the archived thesis book is
-usually the only document through which your whole thesis work will
-later be assessed.
+\section{System Architecture}
+\label{sec:architecture}
 
-\section{Linguistic style}
-\label{sec:linguistic_style}
+\subsection{Three-layer memory bus}
 
-As a general rule, students who have completed their matriculation
-exam in Finland write their Master’s thesis in Finnish or Swedish.
-Foreign students who are not fluent in Finnish write their thesis in
-English. The thesis can be also written in English if it is
-well-justified, for example, when the supervisor or the project team
-does not understand Finnish well enough.
+The reference implementation organises the memory bus into three layers
+that match the access pattern of a multi-agent workflow:
 
-The language of a thesis written in English has to be flawless. If
-the thesis does not meet this requirement, or the principal
-supervisor feels that she/he is not capable of checking the language
-well enough, the supervisor can demand the thesis to be checked by a
-proofreading company, a person qualified to edit technological
-vocabulary in English, a native English speaker, or a person holding
-the degree of M.A. in English Philology. One should notice that the
-correctness of the language affect the grading of the thesis.
+\begin{enumerate}
+\setlength\itemsep{2pt}
+\item An \textbf{access layer}, exposing read, write, subscribe, and audit
+endpoints via FastAPI, and enforcing per-request access-control checks
+through a policy middleware.
+\item A \textbf{compression layer}, providing a pluggable
+\texttt{Compressor} protocol behind which four concrete variants live:
+the identity (no-compression) control condition, the LLMLingua-2
+hard-prompt baseline, the instruction-aware heuristic filter, the
+ICAE-style soft-prompt compressor, and the C4 tag-preserving variant.
+\item A \textbf{storage layer}, providing three protocols ---
+\texttt{AuditLog}, \texttt{Scratchpad}, and \texttt{VectorStore} ---
+implemented for the master's-scale evaluation by SQLite in WAL mode, an
+in-memory time-to-live dictionary, and FAISS-CPU with an HNSW index.
+\end{enumerate}
 
-The thesis should have an abstract and a title in both English and
-Finnish. The only exceptions are the international master’s degree
-students who do not need to have the Finnish abstract or title. If
-the language of the thesis is English, the abstract in English comes
-before the abstract (tiivistelmä) in Finnish.
+The three layers are summarised in
+Figure~\ref{fig:architecture}. Every component dependency in the source
+tree is one-directional: the compression layer does not import from the
+access layer, and the storage layer does not import from either. This is
+not stylistic; the goal is to allow the doctoral phase to swap the
+storage layer for Postgres, Redis Cluster, and Qdrant without touching
+the compression or access layers.
 
-A Master’s thesis is written for an engineering audience. The author
-should therefore avoid presenting issues and topics that go beyond
-this scope. You should apply professional terminology when available.
-This rule also applies to all figures and tables.
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    layer/.style={draw, rounded corners=2pt, minimum width=11cm,
+                  minimum height=1.6cm, align=center, font=\small},
+    cmp/.style={draw, rounded corners=1pt, minimum width=2.3cm,
+                minimum height=0.6cm, font=\footnotesize},
+    arrow/.style={-{Latex[length=2mm]}, thick},
+    label/.style={font=\footnotesize\itshape}
+]
+% Access layer
+\node[layer, fill=black!4] (access) at (0,4)
+  {\textbf{Access layer (FastAPI)} \\[1pt]
+   \footnotesize POST /v1/write \quad GET /v1/read \quad POST /v1/subscribe
+   \quad GET /v1/audit \\
+   \footnotesize PolicyMiddleware \quad StructLogMiddleware \quad OtelMiddleware};
 
-The aim is a clear and well-structured thesis, \textbf{without
-unnecessary excessive use of words}---a thesis usually has 50--80
-pages. The language (English/Finnish/ Swedish) should be fluent and
-readable, and it should adhere to the conventions and recommendations
-applied in a particular language. Advice on such issues can be
-obtained from various language guides (in Finnish,
-e.g.,~\cite{maamies}). There are also several excellent sources on
-the internet, e.g.,~\cite{korpela, kielitoimisto} in Finnish
-and~\cite{reportwriting, englishlanguage} in English.
+% Compression layer
+\node[layer, fill=black!4, minimum height=2.0cm] (compress) at (0,1.8)
+  {\textbf{Compression layer} \\[2pt]
+   \texttt{Compressor} protocol \\[2pt]};
+\node[cmp] (id)     at (-4.0, 1.5) {identity};
+\node[cmp] (lingua) at (-1.7, 1.5) {LLMLingua-2};
+\node[cmp] (filter) at ( 0.7, 1.5) {filter};
+\node[cmp] (icae)   at ( 3.0, 1.5) {ICAE};
+\node[cmp] (tag)    at ( 5.3, 1.5) {ICAE+tag (C4)};
 
-\section{Typography}
+% Storage layer
+\node[layer, fill=black!4, minimum height=2.0cm] (storage) at (0,-1.0)
+  {\textbf{Storage layer} \\[2pt]};
+\node[cmp, minimum width=3cm] (audit) at (-3.7, -1.3) {SQLite AuditLog};
+\node[cmp, minimum width=3cm] (scr)   at ( 0.0, -1.3) {InMemory Scratchpad};
+\node[cmp, minimum width=3cm] (vs)    at ( 3.7, -1.3) {FAISS VectorStore};
 
-In the text typography, you need to use the following guidelines and rules:
+% Arrows between layers
+\draw[arrow] (access) -- (compress);
+\draw[arrow] (compress) -- (storage);
 
-\begin{itemize}
-    \setlength\itemsep{0pt}
-    \setlength\parskip{0pt}
-  \item Font: Times New Roman
-  \item Page margin settings (exception: physical, bound copies use different settings; see Section~\ref{boundversion}):
-    \begin{itemize}[wide=0pt]
-        \setlength\itemsep{0pt}
-        \setlength\parskip{0pt}
-      \item Left margin: 2,5 cm
-      \item Right margin: 2,5 cm
-      \item Top margin: 2,5 cm
-      \item Bottom margin: 3,0 cm
-    \end{itemize}
-  \item Spacing:
-    \begin{itemize}[wide=0pt]
-        \setlength\itemsep{0pt}
-        \setlength\parskip{0pt}
-      \item Before a heading: 2 empty rows
-      \item After a heading: 1 empty row
-      \item Between two headings: 1 empty row
-      \item Line spacing: the default value for each font size, which
-        is usually the font size 2 pts.
-      \item The space between two paragraphs is a normal line spacing
-      \item There is no indent in the first paragraph following a
-        heading, but the following
-        paragraphs are indented by 0.5 cm
-      \item A single empty line is added between table and figure
-        captions and the basic text
-    \end{itemize}
-\end{itemize}
+% Side annotations
+\node[label] at (7.2,  4.0) {ACL-checked};
+\node[label] at (7.2,  1.8) {pluggable};
+\node[label] at (7.2, -1.0) {append-only};
+\end{tikzpicture}
+\caption{Three-layer architecture of the memory-bus reference
+implementation. Each layer depends only on the layer below it, and
+each storage component is hidden behind a \texttt{Protocol} so that
+the doctoral phase can swap SQLite for Postgres, the in-memory
+scratchpad for Redis Cluster, and FAISS for Qdrant without touching
+the access or compression layers.}
+\label{fig:architecture}
+\end{figure}
 
-\subsection{Figures and tables}
-The thesis should include figures and tables to support the text.
-They should be placed in the following manner as is automatically
-done when following the model of this \LaTeX\ template:
+The three-layer structure is a direct extension of
+MemIndex~\cite{saleh2025memindex}, the FCG group's baseline architecture
+for distributed agent memory. The two material differences are that
+compression is promoted to a first-class layer rather than treated as a
+downstream optimisation, and that per-slot tags are part of the data
+model rather than out-of-band metadata.
 
-\begin{itemize}
-    \setlength\itemsep{0pt}
-    \setlength\parskip{0pt}
-  \item Table structure and the different fonts used in different
-    instances are explained in \tabref{tab:sample_table}.
-  \item In tables, the heading has to be placed above the table. The
-    table heading should not end in a full stop. The permission to
-    publish a table copied from another source has to be mentioned as
-    part of the table heading. Many publishers inform the correct
-    form to write this permission when such a permission has been
-    granted. The table must be in text format – not an image.
-  \item If necessary, the caption should be separated from the figure
-    with a single line spacing for reasons of clarity. A figure and a
-    short caption are centered. However, a caption spanning multiple
-    lines is justified at both ends. The necessary references are
-    included in the figure captions. Copyright information is also
-    added to the end of the caption. The permission to publish a
-    figure copied form another source has to be mentioned as part of
-    the figure text. Many publishers inform the correct form to write
-    this permission when such a permission has been granted.  The
-    copyright issues and citation practices of images are further
-    discussed in~\secref{copyright}.
-  \item Do not start a chapter with a figure, but embed it in the
-    text content. A figure is supposed to always appear in the text
-    after its reference. If there is not enough space for the figure
-    directly after the first reference, the word processor moves the
-    figure automatically to the next page. In such case, the figure
-    can be moved forward so that text originally after the figure
-    fills the empty space. However, a figure should always be placed
-    in the same chapter---hence sometimes empty space at the bottom
-    of some chapters cannot be avoided (the same rules applies for the tables).
-\end{itemize}
+\subsection{Data flow for a write}
 
-\begin{table}[!ht]
-  % Add some padding to the table cells:
-  \def\arraystretch{1.1}%
-  \begin{center}
-    \caption{The font types used in a Master’s thesis}
-    \label{tab:sample_table}
-    \begin{tabular}{| c | l | l | l | l |}
-      \hline
-      \multicolumn{1}{|l|}{Font}  & \multicolumn{4}{l|}{Layout}
-      \\\cline{2-5} \multicolumn{1}{|l|}{size} & Regular &
-      \textbf{Bold} & \textit{Italic} & \textbf{\textit{Bold}} \\(pt)
-      &  &  &  & \textbf{\textit{Italic}}\\
-      \hline
-      10 &  {\fontsize{10}{12pt}\selectfont Table and figure} &  &  &  \\
-      &  {\fontsize{10}{12pt}\selectfont contents, footnotes,} &  &  &  \\
-      &  {\fontsize{10}{12pt}\selectfont and endnotes} &  &  &  \\
-      \hline
-      12 & Standard text &  \textbf{1\textsuperscript{st} level} &
-      \textit{3\textsuperscript{rd} level} &
-      \textbf{\textit{2\textsuperscript{nd} level}}\\
-      &  equations, &  \textbf{subheadings,} &  \textit{subheadings}
-      &  \textbf{\textit{sub-}} \\
-      & references, tables, & \textbf{abstract, abstract} &  &
-      \textbf{\textit{headings}} \\
-      & captions, table & \textbf{in Finnish} &  &  \\
-      & headings & \textbf{(tiivistelmä)} &  &  \\
-      \hline
-      \rule{0pt}{0.8\normalbaselineskip}
-      14 &  & {\fontsize{14}{17pt}\selectfont \textbf{CHAPTER}} &  &  \\
-      &  & {\fontsize{14}{17pt}\selectfont
-      \textbf{TITLE\textsuperscript{1}}} &  &  \\
-      \hline
-      \rule{0pt}{1.0\normalbaselineskip}
-      16 &  & {\fontsize{16}{19pt}\selectfont \textbf{Author}} &  &  \\
-      &  & {\fontsize{16}{19pt}\selectfont \textbf{name}} &  &  \\
-      \hline
-      \rule{0pt}{1.1\normalbaselineskip}
-      {\fontsize{16}{19pt}\selectfont 18} &  &
-      {\fontsize{18}{22pt}\selectfont \textbf{THESIS}} &  &  \\
-      &  & {\fontsize{18}{22pt}\selectfont \textbf{TITLE}} &  &  \\
-      \hline
-    \end{tabular}
-    \vspace{6pt}
+A single write request flows through the bus in the following order. The
+client sends \texttt{POST /v1/write} with a JSON body containing the
+fragment text, its tag vector, and an optional task hint. The policy
+middleware parses the requester principal from the
+\texttt{X-M6-Principal} header and writes it to
+\texttt{request.state.principal} as a Starlette \texttt{State()}
+attribute. The service receives the request, checks that the principal's
+access-control mask is a superset of the fragment tag's mask and that
+the principal's classification is at least the fragment's
+classification, calls the active compressor's \texttt{compress(fragment,
+target\_ratio)} method to produce a \texttt{CompressedSlot}, places that
+slot in the in-memory scratchpad keyed on the slot identifier, computes
+an embedding for the slot if the compressor exposes one and adds it to
+the FAISS index, and finally appends a row to the audit log whose
+\texttt{event\_type} is \texttt{WRITE}, \texttt{result} is \texttt{OK},
+\texttt{prev\_hash} is the previous row's chain hash, and
+\texttt{chain\_hash} is $\textsc{SHA-256}(\texttt{prev\_hash} \mathbin\Vert
+\texttt{payload\_hash})$. The response carries the slot identifier, the
+chain hash hex-encoded, and the audit row identifier.
 
-  \raggedright \ \space \textsuperscript{1} Each full chapter should
-  start on a new page.
-\end{center}
+If the policy check fails, the bus appends a \texttt{DENY} row with the
+synthesised slot identifier \texttt{deny-<uuid8>}, with a $60$-second
+per-\textit{(subject, fragment-id)} deduplication so that an adversarial
+client hammering denied writes cannot inflate the audit log.
+
+\subsection{Data flow for a read}
+
+A read request flows symmetrically. The client sends \texttt{GET
+/v1/read/\{slot\_id\}}, the policy middleware attaches the principal,
+the service looks up the slot in the scratchpad, checks the
+principal--tag relationship, and either returns the slot together with
+the audit row identifier or raises a policy-denied or slot-not-found
+error. The slot-not-found path is itself audited with a 60-second
+per-\textit{(subject, slot-id)} deduplication: the first read miss for a
+given subject and slot is appended to the audit log as a
+\texttt{READ}/\texttt{ERROR} row, and subsequent misses within the
+window short-circuit silently so that an adversarial reader cannot
+inflate the audit log either.
+
+\subsection{Boundary with the FCG platform}
+
+The FCG software architecture~\cite{fcgsoftwarearch2026} specifies a
+dual messaging topology: NATS for the real-time path with a 1--5~ms
+broadcast budget, and Kafka for the durable path as the source of truth
+and audit trail. The thesis collapses these into SQLite, an in-memory
+dictionary, and an HTTP API for two reasons. First, the compute envelope
+is one machine: running NATS and Kafka on the same M4 Pro adds
+operational complexity without adding empirical signal. Second, the FCG
+architecture document budgets the total synchronous epoch path at
+$150$--$200$~ms end-to-end (pre-epoch $10$~ms, mechanism execution
+$50$--$100$~ms, commitment $20$~ms, procurement $50$~ms, settlement
+$20$~ms)~\cite{fcgsoftwarearch2026}, which SQLite and FastAPI sit
+comfortably under on a single host. The contract that
+FCG adopts is the FastAPI surface; whether the wire is NATS, Kafka, or
+HTTP is a layer-2 decision that the doctoral phase makes.
+
+What is preserved structurally from the FCG architecture so that
+doctoral-phase substitution is straightforward: the event-type taxonomy
+(\texttt{SliceRegistered}, \texttt{BidSubmitted},
+\texttt{EpochResult}, \texttt{TranscriptCommit},
+\texttt{AuditSignal}) is mirrored as a set of Pydantic models in the
+schema module; the audit-log table schema mirrors the
+\texttt{audit\_transcript} table from \cite{fcgsoftwarearch2026} with
+the auction-specific columns collapsed into a single
+\texttt{payload\_hash}; and the transcript hash chain
+$H_t = \textsc{SHA-256}(\texttt{epoch\_id} \mathbin\Vert
+\texttt{bids\_hash} \mathbin\Vert \texttt{alloc\_hash} \mathbin\Vert
+\texttt{payments\_hash} \mathbin\Vert H_{t-1})$ is implemented in the
+audit-log module with a tamper-detection unit test.
+
+\section{Data Model}
+\label{sec:datamodel}
+
+\subsection{Tags, classifications, and access control}
+
+Every fragment and every compressed slot carries a tag vector that
+records its provenance and access-control state. The tag vector has
+four fields: a \texttt{uint64} access-control mask, a 5-tier
+classification level (\textsc{public} $<$ \textsc{internal} $<$
+\textsc{confidential} $<$ \textsc{restricted} $<$
+\textsc{secret}) drawn from the NIST AI Risk Management
+Framework~\cite{nistairmf}, a tuple of source identifiers
+recording provenance, and a tuple of parent-slot identifiers
+recording which previously-compressed slots this slot inherits from.
+
+Tag aggregation respects the lattice: when slots are merged or when a
+new slot inherits from several parents, its access-control mask is the
+bitwise OR of the parents' masks and its classification is the maximum.
+The lattice rules are encoded in the
+\texttt{TagVector.union(\ldots)} classmethod and unit-tested. The
+policy predicate is symmetric for reads and writes: a requester
+satisfies a tag if and only if every required bit is in the requester's
+mask and the requester's classification is at least the tag's
+classification.
+
+\subsection{Compressed slot payload variants}
+
+The compressed slot carries a tagged-union payload because the three
+compressor families produce three different representations: a literal
+text summary for the LLMLingua-2 and instruction-aware filter
+families, a soft embedding tensor of shape $(M, d_\text{model})$ for the
+ICAE family, and an integer token-identifier tuple for the
+AutoCompressor-style variant. Storage and access layers never branch on
+the payload kind; the embedding interface exposed by the compressor is
+the only place where the kind matters.
+
+\subsection{Audit log}
+
+The audit log is an append-only SQLite table with the columns shown
+in Table~\ref{tab:audit_columns}. An \texttt{INSTEAD OF UPDATE} and an
+\texttt{INSTEAD OF DELETE} trigger refuse any mutation of an existing
+row. The chain-hash trigger is verified by a dedicated unit test that
+drops the trigger to simulate a file-level tamper, edits a single
+\texttt{payload\_hash}, and confirms that the
+\texttt{verify()} chain-walker reports failure.
+
+\begin{table}[h]
+\centering
+\caption{Schema of the SQLite \texttt{audit\_log} table. Triggers
+prevent UPDATE and DELETE on this table at the database level.}
+\label{tab:audit_columns}
+\small
+\begin{tabular}{p{2.6cm}p{3.1cm}p{8cm}}
+\hline
+Column & Type & Notes \\
+\hline
+\texttt{rowid} & INTEGER PK & monotonic, auto-increment \\
+\texttt{slot\_id} & TEXT NOT NULL & matches the slot identifier \\
+\texttt{event\_type} & TEXT CHECK & one of WRITE / READ / SUBSCRIBE / DENY / COMPRESS / EVICT \\
+\texttt{requester\_acl} & INTEGER & 64-bit ACL mask, stored signed \\
+\texttt{requester\_class} & INTEGER & classification level $0$--$4$ \\
+\texttt{result} & TEXT CHECK & OK / DENIED / ERROR \\
+\texttt{prev\_hash} & BLOB(32) & SHA-256 of the previous row's chain\_hash \\
+\texttt{payload\_hash} & BLOB(32) & SHA-256 of the event's payload bytes \\
+\texttt{chain\_hash} & BLOB(32) & SHA-256(prev\_hash $\Vert$ payload\_hash) \\
+\texttt{created\_at} & TEXT NOT NULL & ISO-8601 UTC timestamp \\
+\hline
+\end{tabular}
 \end{table}
 
-You should not use single subsections---for example, Section 2.1
-needs to be accompanied by Section 2.2. Also, please do not number
-sections beyond the 3\textsuperscript{rd}  grade (e.g., 1.2.1.1
-should not be used). Should the need arise for further decimalization
-the following method below (a \textbf{bolded}, unnumbered heading
-that does not appear in the table of contents) should be applied:
+\subsection{Cost ledger}
 
-\subsubsection{Formatting the figure captions}
-Figures, tables and appendices are a part of the written
-presentation. All these need to be referenced to in the text body,
-preferably before the figure is placed in the text---i.e., first the
-referring text, then the figure or table. Figures and tables have a
-running number through the document---or chapter wise, if there are
-plenty of figures. \figref{fig:work_packages} serves as an example of a figure and a
-text referring to it. Figure captions are below the figure, and the
-caption text ends with a full stop. A short caption is centered,
-while a long caption extending to a several lines is justified on both sides.
+A second SQLite table records every paid model call: provider, model,
+input tokens, output tokens, EUR cost, and wallclock. The cost ledger
+shares the audit-log database for transactional consistency but is
+queried separately. The pricing table is a single Python module
+(\texttt{m6.pipelines.cost\_model}) whose constants are grounded in
+the financial analysis~\cite{fcgfinancial2026}: the frontier-cloud
+reference price is USD~3 per million input tokens and USD~15 per
+million output tokens, which corresponds to approximately
+EUR~2.76 and EUR~13.80 respectively; the on-premises ConfidentialMind
+amortised marginal cost is EUR~0.05 per million tokens. The
+GPT-4o-mini and Claude Haiku 4.5 prices are drawn from TalentAdore
+production accounts as of the writing of this thesis.
 
-% Pictures in .pdf, .png or .jpg. No need to specify the extension.
-% Transparent images are not allowed with PDF/A.
-% With ImageMagick transparency can be removed with
-% convert image.png -background white -alpha remove -alpha off image_nobg.png
-% This restriction also affects PDF images, as a first step try to make the PDF
-% image PDF/A:
-% gs -dPDFA -dBATCH -dNOPAUSE
-% -sColorConversionStrategy=UseDeviceIndependentColor
-% -sDEVICE=pdfwrite -dPDFACompatibilityPolicy=2
-% -sOutputFile=output.pdf input.pdf
-\begin{figure}[ht]
-\begin{center}
-  \includegraphics*[width=0.7\textwidth]{WP}
-\end{center}
-\caption{Connections between work packages (WP).
-  \copyrightstring\ \href{https://creativecommons.org/licenses/by/4.0/}{CC
-BY 4.0}.}
-\alt{Diagram showing interactions between work packages WP1 to WP5,
-  all inside WP6, which is itself inside WP7. WP3 (left) sends
-  outputs to WP1, WP2, and WP4. WP1 and WP2 are bidirectionally
-  linked. WP1, WP2, and WP4 send outputs to WP5 (right). A curved
-arrow shows WP3 also directly feeding into WP5.}
-\label{fig:work_packages}
-\end{figure}
+\section{Compressor Framework}
+\label{sec:compressors}
 
-If no external source is mentioned in the caption, it is assumed that
-the thesis author is also the creator and copyright holder of the
-figure (noting that authorship and copyright ownership are not always
-the same). In such cases, the figure is licensed under the same terms
-as the document itself (default: “All rights reserved”). This is
-further discussed in \secref{copyright}. For figures that constitute
-significant contributions — and may therefore be of interest for
-reuse — it is advisable to explicitly state the copyright and
-licensing information, even if it has already been included on a separate
-copyright page.
+\subsection{The \texttt{Compressor} protocol}
 
-Figures and tables should be given an alternative text that summarises
-the information they contain for the reader. This is discussed further
-in~\secref{accessibility}. Unfortunately support for this in
-\LaTeX\ is still work in progress, and the alternative text will
-currently not end up in the final PDF, so including them is not a requirement.
-A suitable alternative text for~\figref{fig:work_packages} could be:
+Every compressor variant conforms to a Python \texttt{Protocol} with
+four methods --- \texttt{compress(fragment, target\_ratio)} returning a
+\texttt{CompressedSlot}; \texttt{decompress(slot)} returning a
+best-effort text reconstruction; \texttt{embed(slot)} returning an
+optional embedding for vector-store indexing; and \texttt{model\_card()}
+returning a structured card containing the compressor identifier,
+family, base model, training-loss formula, default target ratio, and
+provenance hashes. The thesis ships five concrete implementations: the
+identity (no-compression) control condition, LLMLingua-2, the
+instruction-aware filter, the ICAE-style soft-prompt compressor, and the
+tag-preserving variant that subclasses ICAE.
 
-\begin{quote}
-Diagram showing interactions between work packages WP1 to WP5, all
-inside WP6, which is itself inside WP7. WP3 (left) sends outputs to
-WP1, WP2, and WP4. WP1 and WP2 are bidirectionally linked. WP1,
-WP2, and WP4 send outputs to WP5 (right). A curved arrow shows WP3
-also directly feeding into WP5.
-\end{quote}
+The identity compressor is the no-compression control condition
+required by every experiment as a mitigation against runtime-bug
+confounds. The experimental
+protocol in Chapter~\charef{experiments} flags an experiment as
+\texttt{invalid} whenever the variance of the control condition is
+comparable to or exceeds the variance of the treatment of interest.
 
-The final thesis will be published as a PDF/A file, and this LaTeX
-template produces files in that format directly. Be sure to remove all
-transparency in your source images to ensure the end result is also
-compliant. This affects figures in PDF and PNG formats. Instructions
-on doing this are included with the thesis template.  If you have done
-this for all of your images, there is no need to use Muuntaja.
+\subsection{LLMLingua-2 wrapper}
 
-\subsection{Algorithms}
-Algorithms can be implemented simply using \LaTeX. An example of an
-algorithm is given in Algorithm~\ref{alg:examplealg}. An input and an
-output for the algorithm should be assigned at the start. Equations
-or discussed methods can be referenced in the algorithm. Depending on
-one's needs the algorithm may be implemented in a higher level of
-pseudocode compared to one in Algorithm~\ref{alg:examplealg}.
+The LLMLingua-2 wrapper is a thin adapter around the
+\texttt{llmlingua}~package~\cite{pan2024llmlingua2}. Construction takes a
+target compression ratio; the package is asked to retain $1/r$ of the
+tokens. The force-tokens list (sentence boundary marks) is validated
+against the wrapped tokenizer's vocabulary at initialisation and unknown
+tokens are dropped with an explicit log line; this avoids silent
+compression-quality degradation when the wrapped model's tokenizer does
+not include a punctuation mark on the default list.
 
-%For more documentation and examples of creating algorithms, see:
-% http://ftp.acc.umu.se/mirror/CTAN/macros/latex/contrib/algorithm2e/doc/algorithm2e.pdf
-\vspace{7mm}
-\begin{algorithm}[H]
-\SetAlgoLined
-\DontPrintSemicolon
-\SetKwData{min}{min}
-\SetKwFunction{swap}{swap}
-\SetKwInOut{Input}{Input}
-\SetKwInOut{Output}{Output}
-\Input{An unsorted list $\textbf{a}$  of size $n$}
-\Output{A sorted list $\textbf{a}$  of size $n$}
-\For{$i \leftarrow 0$ \KwTo $n - 1$}{
-  \min $\leftarrow i$ \;
-  \For{$j \leftarrow i + 1$ \KwTo $n$}{
-    \If{$\textbf{a}[j] < \textbf{a}[\min]$}{
-      \min $\leftarrow j$\;
-    }
-  }
-  \If{\min $\neq i$}{
-    \swap $( \textbf{a}[i], \textbf{a}[\min])$\;
-  }
-}
-\caption{Selection Sort}
-\label{alg:examplealg}
-\end{algorithm}
+Calibration target: NarrativeQA F1 within $2$~pp of the reported
+numbers~\cite{kocisky2018narrativeqa} and HotpotQA F1 within $3$~pp of
+the reported numbers~\cite{yang2018hotpotqa}; failure to meet these
+targets triggers a stop-the-line review.
 
-\section{Clarifying contributions and using AI}
-\label{AI}
-Since a thesis is an independent work, it is important to clarify how
-much of the work was done by the author, how much by potential
-collaborators, and how much was Artificial Intelligence used in the
-process, if applicable.
+\subsection{Instruction-aware filter}
 
-Generative AI is useful for various tasks, and its use is expected to
-increase. Therefore, we are generally positive about exploring the
-use of AI. However, the responsible and ethical use of AI is
-critically important. Always discuss AI use with your supervisor
-prior to writing the thesis, and familiarise yourself with the
-university's AI policies
-(https://www.oulu.fi/en/students/general-information-about-studying-at-the-university/guidelines-on-the-use-of-ai-in-education).
+The instruction-aware filter is a pure-Python heuristic baseline that
+serves as the floor against which the trained ICAE compressor must
+demonstrate a benefit. It operates in two stages: first a sentence-level
+filter that ranks sentences by their relevance to the task hint using
+either a cross-encoder reranker
+(\texttt{BAAI/bge-reranker-base}) when available or a lexical-overlap
+fallback when not; second a token-level trim that drops stop-words and
+short tokens until the target compression ratio is reached. The filter
+is deterministic given the task hint, the fragment, and the target
+ratio. It carries no training cost and is therefore the most economical
+baseline; the trained ICAE compressor must beat it by at least $3$~pp
+F1 to justify its training cost.
 
-As a general rule, do not generate parts of your thesis; presenting
-content not produced by you as your own is considered fraud (in most
-cases, plagiarism) and is a serious ethical violation subject to
-appropriate consequences. You alone are responsible for the accuracy,
-correctness, and originality of your thesis and its parts. AI cannot
-be cited as a source of scientific facts and should not be used as a
-reference. With your supervisor's approval, AI can be used to assist
-in tasks such as brainstorming, planning, aiding information
-retrieval, creating or editing visuals (or other modalities), and
-language proofreading. Any other use cases also require approval from
-your supervisor. In all cases, it is your responsibility to ensure
-that the tools you use (including their licenses, terms, and
-conditions) permit the output to be utilized in your thesis as intended.
+\subsection{ICAE-style soft-prompt compressor}
 
-The thesis must include a disclaimer at the end of the introduction
-in a subsection titled ``\textit{Author's Contributions and the Role
-of Artificial Intelligence}.'' This subsection serves two purposes.
-First, you should clarify your own contributions to the thesis, which
-is necessary in cases when the thesis is completed, for example, in a
-project with multiple contributors. Second, the section must detail
-the specific AI tools that were used, the purposes for which they
-were used, and in which parts of the thesis. For example: \textit{The
-author of this thesis designed the artifact, conducted all the
-research, and prepared the thesis. In preparing the thesis, ChatGPT
-(GPT-4) was used to correct grammar in all chapters. Additionally,
-Claude 3.5 Sonnet was used to help implement the evaluated artifacts
-and to describe the code functionality in Chapter 3.}
+The trainable arm of the thesis follows the ICAE
+construction~\cite{ge2024icae} with the
+training objective extended to a dual-objective loss following
+AutoCompressor~\cite{chevalier2023autocompressor}:
+\begin{equation}
+L = L_\text{recon} + \lambda \cdot L_\text{NCE}
+\label{eq:dual_objective}
+\end{equation}
 
-\section{Practical advice}
+The architecture (Section~\ref{sec:training}) uses
+Llama-3.1-8B-Instruct~\cite{llama31modelcard} as both encoder and
+decoder. The encoder is LoRA-adapted~\cite{hu2022lora} with rank $16$,
+alpha $32$, and dropout $0.05$ on the seven canonical target modules
+(\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj},
+\texttt{o\_proj}, \texttt{gate\_proj}, \texttt{up\_proj},
+\texttt{down\_proj}). The decoder is frozen. The memory consists of
+$M = 128$ learnable special tokens appended to the encoder input;
+their last-layer hidden states are the compressed representation. The
+reconstruction loss $L_\text{recon}$ is the standard token-level
+cross-entropy of the source fragment given the compressed memory slots,
+computed on the frozen decoder.
 
-On average, it takes between two to three months of full-time work to
-write a Master’s thesis---around one finalized page per day. You
-might be able to write a thesis in a shorter time, but you should
-understand that \textbf{it takes much longer than you think to edit
-and re-edit a thesis, considering both structure and presentation
-style.} In the following we have listed some practical advice, which
-serves the purpose of making it easier to start the writing phase.
+The contrastive loss $L_\text{NCE}$ is an InfoNCE
+loss~\cite{oord2018cpc} over positive and negative source-fragment
+pairs. Positive pairs are drawn from fragments of the same source
+document or from fragments observed during the same
+planner-worker-critic dialogue trace (the latter is the H3 dialogue
+variant). Negative pairs are other fragments in the same batch
+(in-batch negatives), and the temperature is $0.07$ following
+SimCLR~\cite{chen2020simclr}. The weight $\lambda$ is searched in
+$\{0.1, 0.3, 1.0\}$ on a validation split.
 
-\subsection{Do not leave the writing to the end}
+The InfoNCE primitive in MLX is not available as of version $0.21$, so
+the trainer probes for it at startup and falls back to a PyTorch-MPS
+implementation if the probe fails; this is the documented mitigation
+for the second risk-register row of the implementation plan. The
+\texttt{infonce\_loss} function is unit-tested against a numpy reference
+implementation to confirm numerical equivalence.
 
-Working on the implementation and written thesis in parallel will
-force the author to clarify and reformulate ideas, which might often
-lead to new ideas and save time on editing, re-editing and
-restructuring later. At the least, you should start gathering and
-getting acquainted with your literature and charting out your written
-part into clearly defined units and chapters at an early stage. Once
-you have done this and you know where you are going, you will have a
-much more secure feeling of the scope of your thesis.
+\subsection{Tag-preserving variant (C4)}
+\label{sec:c4_design}
 
-\subsection{Discuss in detail with your supervisor before you start writing and design a body for your thesis}
+The C4 variant is a subclass of the ICAE compressor that adds a per-slot
+tag-prediction head. The tag head is a two-output MLP that emits, from
+each pooled memory-slot embedding, a 64-dimensional logit vector for the
+access-control mask and a 5-dimensional logit vector for the
+classification level. The training loss extends
+Equation~\ref{eq:dual_objective} with a tag-prediction term:
+\begin{equation}
+L = L_\text{recon} + \lambda_\text{NCE} \cdot L_\text{NCE}
+       + \lambda_\text{tag} \cdot L_\text{tag},
+\label{eq:c4_loss}
+\end{equation}
 
-It is in the best interest of the supervisor that the student
-graduates as fast as possible and is left without wider difficulties.
-She/he therefore has an excellent motive to give help in time. A
-typical problem at the beginning stage that can be fixed easily is a
-content structure, in which theory and practice have been clearly
-divided into two separate parts. If left unfixed, this may often lead
-to repetition and problems in combining the parts.
+where $L_\text{tag}$ is binary cross-entropy on the ACL output and
+cross-entropy on the classification output. The weight
+$\lambda_\text{tag}$ is searched in $\{0.1, 0.3, 1.0, 3.0\}$. Tag
+recovery at inference time is performed slot by slot: ACL bits are
+recovered via a 0.5 sigmoid threshold and aggregated across slots by
+bitwise OR; the classification is recovered as the argmax of the
+softmax and aggregated by taking the maximum across slots. The
+aggregation is lattice-respecting by construction.
 
-Hence, start your writing by planning a content structure, (table of
-contents), which will function as your backbone all throughout your
-work. Usually it is a good idea to construct your chapters so that
-you first give each heading and subheading a working name even if you
-do not have a final idea of the exact title at this stage. Each
-structural unit (heading) should have a few code words that act as
-the key to each heading. You can also look at it this way: code words
-convey a message to the reader, a message you as the author want to
-tell them. Later when you have started doing the actual writing, you
-should look at these code words and crystallize the message in each
-section to correspond to these code words. Thinking ahead like this
-will reduce the pain of creation, give you confidence and help you
-feel that your thesis is solid.
+The H5 evaluation defines a fragment's tag as \emph{preserved} when
+either the recovered ACL is a superset of the source ACL or
+$|\text{recovered} \cap \text{source}| / |\text{source}| \geq 0.9$,
+and the recovered classification is at least the source classification.
+The threshold of $0.9$ is the H5 falsification target.
 
-\subsection{Write things in the right order}
+\subsection{Training configuration}
+\label{sec:training}
 
-Most people find it convenient to write their thesis in the order of
-their table of contents. It is usually a good idea to start by
-writing the introduction, because the introduction spells out and
-defines the aims and scope of the thesis. The other chapters in the
-opening part of the thesis usually lay out the parameters and working
-environment, the needed theoretical basis of the thesis etc.; they
-can also be written fairly early on in the process. The opening part
-of the thesis also includes the literature review. It is highly
-recommended that you keep track of your references and document them
-while you are writing, because you might forget or lose track of your
-sources later.
+Optimiser AdamW with learning rate $3 \times 10^{-4}$, weight decay
+$0$, $\beta_1 = 0.9$, $\beta_2 = 0.95$, cosine schedule with 200-step
+linear warmup. Batch size 4, gradient accumulation 8, sequence length
+512 (fragment) plus 128 (memory). Wallclock budget at most three days
+on the M4 Pro 48~GB for a 7B-parameter encoder at rank 16. A
+13B-parameter encoder at rank 8 is the upper limit and is treated as a
+stretch goal; the H7 (model-size scaling) results rely on
+inference-only scaling beyond 7B if the 13B fine-tune does not fit in
+memory.
 
-\subsection{Write simply}
+Training data for the H3 distribution-matters comparison consists of
+two datasets of approximately 5\,000 examples each: a question-answering
+distribution drawn from public NarrativeQA and HotpotQA-style data, and
+a multi-agent dialogue distribution synthesised by running the C1
+generator with the identity (no-compression) compressor and capturing
+clean planner-worker-critic traces. The two datasets are
+training-budget-matched so that the H3 comparison isolates the
+distribution variable.
 
-The first sentence of a paragraph should define its contents. The
-following sentences clarify the issue. This method results in a clear
-and easily understandable way of presenting, since each paragraph
-should contain information only on one or two separate issues.
-Paragraphs structured like that will be easy to cut and paste
-elsewhere, if structural rearrangements are later required. To avoid
-fragmentation, it is important to not present the same things again
-in different chapters. It will be easier for the reader to follow the
-idea when your thesis structure is logical and its linguistic style
-is systematic throughout the thesis. Hence, do not go “over the top”
-and try to impress the reader with too extravagant ways of presenting
-your ideas. Instead, present your case as you would like others to
-present their thesis.
+\section{The C1 Benchmark}
+\label{sec:c1}
 
-\subsection{Ask your technical supervisor to go through what you have written}
+\subsection{Workload families}
 
-Sometimes the principal supervisor and a technical supervisor are two
-separate persons, especially in the case where the thesis work is
-done in a company. In this case you should first have your work read
-by your technical supervisor. After that edit your work according to
-his/her advice before you bring it for revision to your principal
-supervisor. The technical supervisor has a better impression of your
-work as he/she interacts with you on a regular basis, and can
-therefore go through your work much faster. Your principal
-supervisor, however, can form a better view of your work when you
-bring him/her a more finished document. You should make good use of
-the expertise provided by your technical supervisor at all stages of
-your research and write-up phases. However, do not feel intimidated
-to show your work to your principal supervisor at the beginning of
-your writing phase (see \charef{relatedwork} above). It is your
-official supervisor who makes the final evaluation together with the
-second examiner. It is therefore important to listen to his/her
-comments at an early stage to ensure that you are not surprised or
-disappointed when seeing the completed evaluation form.
+The C1 benchmark generator produces three workload families:
 
-It is very usual to get blind to typos in one’s own text, and one
-also easily assumes some topics to be so self-evident that a reader
-has difficulties to follow the text. This is most easily found by a
-colleague who is not so familiar with the topic. Alternatively, you
-can take a break of a few days to look your text with fresh eyes---or
-just concentrate very carefully on what you are really saying and
-what you just know without writing it.
+\begin{description}
+\item[Family (a) --- cross-document fact aggregation.] Eight source
+documents per instance, each representing one institutional system in
+the Vignette~3.7 inventory (Publication~DB, Contract~DB, Moodle, Patio,
+Peppi, CRM, Tatu~SAP, SAP~Travel~\cite{fcgusecase2026}); the planner is
+asked to aggregate hours and budget across the
+eight sources. The aggregation is deterministic by construction so that
+the ground truth is reproducible from the seed; the critic checks the
+planner's answer against the aggregate.
 
-\subsection{Do not get stuck}
+\item[Family (b) --- constraint-satisfaction planning.] $N$ sub-tasks
+must be assigned to $K$ capacity-bounded workers under
+load-cum-capacity constraints; the workload generator produces a
+feasible solution via a greedy capacity-respecting algorithm that bumps
+capacities only when strictly necessary and retries the same sub-task,
+guaranteeing that every workload has at least one feasible assignment.
 
-\figref{fig:unto_uneksija} shows how difficult the writing can be
-sometimes. If you feel you are not advancing with your writing,
-although you feel like you know your topic, there might be something
-wrong in the way you work. In this case, do not waste time in
-wondering and fretting; instead seek advice in the instructions
-above. If this does not help, then usually your supervisor(s) can
-help you in solving your problem. At the most difficult time it is
-good to remember that every engineer you see out there has once been
-in the same situation as you are now, and yet they were still able to graduate.
+\item[Family (c) --- multi-step retrieval.] A linear chain of fragments
+where each fragment points to the next and the leaf carries the answer;
+chain lengths range from $2$ to $4$ and each fragment is padded with
+$4$ to $8$ distractor sentences so that the retrieval step is non-
+trivial.
+\end{description}
 
-%Pictures in .eps if you use latex, .pdf or .png if you use pdflatex.
-% Don't specify the extension so you can use both!
-\begin{figure}[ht]
-\begin{center}
-  \includegraphics*[width=0.9\textwidth]{unto_uneksija}
-\end{center}
-\caption{Writing angst and the pain of creation. “Writing your thesis
-  can sometimes
-  make you run outside and howl at the moon. --- It’s already the
-  fourth week and I
-haven’t been able to write anything else besides my name down.”}
-\label{fig:unto_uneksija}
-\end{figure}
+Each family produces approximately $50$ instances per generation seed
+for a total of $150$ instances per release. The release is reproducible
+from a single command and the configuration hash is recorded in the
+manifest for forensic comparability.
 
-\subsection{Hints for editing}
+\subsection{Synthetic tag distributions}
 
-A well-prepared document template like the current one with
-pre-defined paragraph formats speeds up writing. The use of automatic
-numbering helps to minimize manual corrections, when the order of
-figures, for example, is changed.
+The thesis uses synthetic tags because real ACL data was not
+available on the master's-scale schedule. The generator supports three
+tag distributions: \emph{uniform}, in which each ACL bit is set
+independently with probability $0.5$; \emph{skewed}, in which a handful
+of bits dominate via an exponential family chosen to mimic typical
+production ACL skews; and \emph{hierarchical}, in which higher
+classification levels imply strict supersets of the bits at lower
+classification levels. The H5 and H6 evaluations vary the distribution
+to probe the governance-stringency dimension explicitly.
 
-Most word processors, \LaTeX\ included, have a spelling checker
-feature that is recommended to be used. This way your supervisor does
-not need to spend time on spotting and correcting typos, but can
-concentrate on the actual contents of the thesis.
+\subsection{Coordination-quality metrics}
 
-\section{Electronic version}
+The coordination scorer is a pure function of the workload and the
+trace; it does not call the model. It returns four numbers:
+\emph{final task success} (boolean, family-specific predicate),
+\emph{sub-task assignment accuracy} (the fraction of sub-tasks
+assigned to the worker the workload's ground truth expects),
+\emph{rounds to completion} (the number of planner-worker-critic
+cycles before the planner declares \texttt{DONE}), and
+\emph{critic-flagged error rate} (the fraction of rounds in which the
+critic returned \texttt{REVISE}). The summary-level inference disclosure
+proxy is computed by a separate path in
+Section~\ref{sec:h6_design} of Chapter~\charef{experiments} and
+involves a held-out reader model.
 
-University of Oulu started archiving electronic versions of M.Sc.
-theses in January 2013. All theses will be uploaded to the Laturi
-system and transferred from there to the university archive once
-accepted. The theses will also be published in the university
-repository, but each student can her/himself decide the level of
-publicity (see \secref{sec:publicity}, “Publicity”). It should be
-noted that the repository provides a short link to a published
-thesis. Hence, the student can include the link, for example, in
-her/his CV, and generally use a publicly available thesis in
-advertising her/his skills and experience.
+The success predicate for family (a) is an exact match on the
+aggregate, for family (b) is a constraint-satisfaction check against
+the workload's advertised capacities, and for family (c) is an exact
+match on the leaf answer. The constraint-satisfaction predicate fails
+closed when the workload's metadata is missing the capacities field,
+which would otherwise be an opportunity for the planner to pass
+trivially under a generator bug.
 
-As part of the new archiving process, each student has to guarantee
-that she/he has the necessary rights and permissions to the content
-included in the thesis. Specifically, a student needs to ask a
-permissions for each figure and table not created by the student
-her/himself but copied from another source.
+\section{RAG Pipeline Catalogue}
+\label{sec:rag_pipelines}
 
-All theses in the University of Oulu that are to be approved are
-analyzed with a program called Turnitin. This program checks the
-amount of similar text in the thesis and already published documents
-(i.e., theses delivered earlier and documents in various databases and
-in the Internet). The role of Turnitin is twofold: First, it checks
-whether a student has copied text from others’ documents. Copying of
-few sentences is acceptable when the copied text is referenced and
-quoted properly; otherwise such copying is not permitted and causes
-official consequences---the thesis can even be rejected. Second, when
-the thesis is in Turnitin’s databases, it checks whether others have
-copied text from this thesis.
+The C3 catalogue consists of three pipelines, each implemented on top
+of FAISS-CPU and LlamaIndex~\cite{faiss, llamaindex}.
 
-The student can choose whether their thesis is stored as comparison material
-in Turnitin. We recommend doing this, as then
-the thesis is protected against incorrect copying by others. However,
-once delivered to Turnitin the thesis cannot be deleted from its
-databases. Text copied from others’ documents must be referenced
-and quoted properly in the first version delivered to Turnitin.
-Hence, a student must \textbf{always} check correct referencing and
-quoting with the supervisor before delivering the work to Turnitin!
-ITEE professors have additional tools for performing this check. The
-rights and permissions for thesis content can be checked at the same time.
+\subsection{P1: compress, then retrieve}
 
-The University of Oulu offers a free tool, Turnitin Draft Coach, to
-all students as part of Microsoft Office 365 Word Online. With this
-tool, you will receive feedback and can check the originality of your
-text and the correctness of the references already during the writing
-process.  More information about the tool and its activation on the
-website of the University of Oulu at
-\url{https://www.oulu.fi/en/news/want-improve-your-academic-writing-and-achieve-better-results}.
+The corpus is compressed up-front; the FAISS index stores the
+compressed text or, for soft-prompt compressors, the mean-pooled
+memory-slot embeddings. Retrieval and synthesis operate on the
+compressed representation. P1 trades quality for storage efficiency:
+information dropped at compression time is gone, but the index is small.
+The pre-processing baseline against which P1 is informally compared is
+Anthropic's contextual-retrieval~\cite{anthropic2024contextualretrieval},
+which prepends an LLM-generated chunk-level context summary before
+embedding.
 
-Students can utilize the Turnitin similarity checking independently.
-The tool can be found in Moodle \url{https://moodle.oulu.fi/enrol/index.php?id=31794} (Link valid for 2026). The thesis is checked individually, so the originality of the text can be confirmed.
+\subsection{P2: retrieve, then compress}
 
-More information can be found from the degree programme web pages
-~\cite{mscstudies} and from Laturi’s web pages: \url{http://laturi.oulu.fi}.
+The corpus is indexed in full; the compressor runs as a post-retrieval
+node-processor over the top-$k$ retrieved fragments before they are
+synthesised. This is the classical LongLLMLingua
+configuration~\cite{jiang2024longllmlingua}. P2 trades storage cost for
+retrieval recall: the index is the full corpus, but the synthesis
+context can be compressed aggressively because the retriever has already
+identified the relevant chunks.
 
-\section{Optional bound versions}
-\label{boundversion}
-It is not mandatory to bind the thesis at a printing house. However, a
-student is free to bind the thesis when she/he wants to have a
-high-quality copy for relatives, for example.
+\subsection{P3: joint, conditional on relevance}
 
-For bound theses, select the \textit{print} option in the thesis
-template, which adjusts the page margins to the following: left 4,5
-cm, right 2,0 cm, top 2,5 cm, and bottom 3,0 cm. Verify that figures
-and tables are correctly positioned and that page numbers and page
-number references in the text are accurate, as these may differ from
-the online PDF version. 
+The corpus is indexed in full. At query time, each retrieved fragment is
+routed into one of three branches based on its retrieval relevance score
+$s$: fragments with $s \geq \theta_\text{high}$ are passed verbatim,
+fragments with $\theta_\text{low} \leq s < \theta_\text{high}$ are
+compressed, and fragments with $s < \theta_\text{low}$ are discarded.
+The thresholds $\theta_\text{high}$ and $\theta_\text{low}$ are
+swept over a small grid; the default values $0.75$ and $0.45$ on
+\texttt{BAAI/bge-large-en-v1.5}-cosine similarities are the analytical
+starting points. P3 follows the structural design of
+\cite{guo2025dynamic}.
 
-To ensure a high-quality thesis that is consistent with previous
-theses, the following rules apply: The words MASTER’S THESIS should be
-printed in the center of the front cover. The NAME OF THE AUTHOR
-should be printed in the lower right-hand corner of the front
-cover. The NAME OF THE AUTHOR and the year of publication should be
-printed on the spine of the thesis. Your thesis must be bound at a
-printing house specialized in printing theses. The printing house will
-also produce and attach the cover to the printout that you
-provide. The cover must be black, and the text must be printed
-directly on it; stickers are not allowed.
+\subsection{Cost model}
 
-\section{Copyright, licenses and the use of images}
-\label{copyright}
-Intellectual property rights (IPR) protect works, i.e., the authors
-and rights-holders of literary or artistic works that exceed the
-threshold of originality. These works include, for instance, texts,
-images, music, and computer software code. This section explains the
-related issues, especially concerning images, and provides guidelines
-for dealing with copyright matters in your thesis.
+The pipeline cost model is a single Python module whose pricing
+constants are grounded in the financial-analysis
+document~\cite{fcgfinancial2026}: the frontier-cloud reference price is
+USD 3 per million input tokens and USD 15 per million output tokens, or
+approximately EUR 2.76 and EUR 13.80. The on-premises amortised
+marginal cost is EUR 0.05 per million tokens. The
+GPT-4o-mini and Claude Haiku 4.5 prices reflect TalentAdore production
+accounts as of the writing of this thesis. The headline cost metric in
+the C3 evaluation is EUR per workflow, with a corollary headline
+of EUR per period-end report against the
+Vignette~3.7 target of approximately EUR~2.15~\cite{fcgusecase2026}.
 
-Your thesis is also a copyrighted work. If no license is explicitly
-stated, the license is \enquote{All rights reserved,} meaning it can only be
-used in limited ways under copyright law. The Federation of Finnish
-Open Science Coordination in Finland and the University of Oulu
-recommend publishing theses as open access and under a CC-BY 4.0 license,
-or if warranted, another CC license~\cite{coordination_open_2024}.
-CC-BY 4.0 allows reuse, including commercial use, of your work as long as
-the author is credited.
+\section{Agent Runtime}
+\label{sec:agents}
 
-Among the various types of works protected by copyright, images
-present particular challenges and considerations. Images are
-frequently used to illustrate concepts, present data, or enhance the
-visual appeal of academic texts. However, their use is subject to
-specific copyright restrictions, and improper use can lead to legal
-and ethical issues.  For this reason, figures found on the Internet,
-for example, may not be freely used in theses without proper
-permission or licensing.
+The agent runtime uses AutoGen v0.4 pinned in the
+\texttt{requirements.txt}~\cite{wu2023autogen}. The planner-worker-
+critic loop is built as a \texttt{RoundRobinGroupChat} over a planner,
+a configurable number of workers, and a critic that emits a structured
+\texttt{DONE} or \texttt{REVISE} verdict. The scratchpad is the memory
+bus: every agent write goes through \texttt{POST /v1/write} and every
+agent read goes through \texttt{GET /v1/read/\{slot\_id\}}, so the
+compressor is on the critical path and the experimental knob is what
+the experiment manipulates rather than a hidden detail of the runtime.
 
-According to the copyright enactments, you must always have
-permission from the copyright holder, which is not necessarily the
-author, to use their figure in your work. To summarize:
-\textbf{Copyright infringement may lead to legal actions and
-penalties, and in those cases the author is responsible.} The writer
-should grow towards to mainly using figures of his own in the
-thesis. Often it is necessary to redraw the figure and cite the
-original source.
+A second backend, \texttt{determ}, is a deterministic family-specific
+solver that reads the (optionally compressed) fragments and produces a
+trace directly. Its purpose is not to replace AutoGen as the production
+runtime; it is the \emph{upper bound} on coordination success that
+isolates compression-quality variance from runtime variance. If the
+AutoGen runner fails to match the deterministic runner on the
+no-compression control condition, the experiment is flagged invalid in
+the manifest.
 
-It is good practice to explicitly state the copyright owners and
-license for all images in your thesis. This can be done via a blanket
-statement on a separate copyright page that explicitly mentions
-images, or for every image separately in the caption. All exceptions
-to the main license of your thesis (e.g., \enquote{All rights reserved} or
-\enquote{CC-BY 4.0}) should \textbf{always} be included in the image
-captions.
+The orchestrator caches the constructed compressor by
+$(\text{name}, \text{ratio})$ so that a trained ICAE compressor is
+instantiated once per cell rather than once per workload--seed pair;
+without this cache the model would re-load on every inner-loop
+iteration of H2 (approximately twenty-two thousand iterations per
+run).
 
-If your use of external images is extensive and is a central part of
-your thesis, it is good to also explicitly list them on the copyright
-page or in an appendix, e.g., ``Figure 5 is reproduced from [x] under
-the provisions of copyright law allowing use with appropriate
-citation.'' and also discuss their use with your thesis supervisor at
-an early stage and acquire the necessary permissions.
+\section{Inference Backends}
+\label{sec:inference}
 
-The starting point is that the figures must be related to the text,
-i.e, the text must explain why the figure has been presented. The text
-must contain a reference to the figure. Use self-made figures
-(drawings, schematics, simulation or measurement result figures,
-photographs), if possible.
+The unified \texttt{InferenceBackend} protocol exposes a single
+\texttt{complete(prompt, max\_tokens, temperature, stop)} method,
+together with an optional \texttt{embed(text)} method and a cost
+predicate that consults the pricing table. Five concrete backends ship:
+MLX-LM for $7$B and $13$B inference on Apple
+Silicon~\cite{mlxframework}; llama.cpp with GGUF Q4\_K\_M for $34$B
+and $70$B inference~\cite{llamacpp}; Ollama wrapping a localhost HTTP
+endpoint for developer-iteration speed~\cite{ollama}; OpenAI for
+GPT-4o-mini as the H6 judge and as the cost-arm comparator; and
+Anthropic for Claude Haiku 4.5 as the cost-arm comparator and Claude
+Sonnet 4.6 as the cross-check on the 10\% sample. A sixth backend,
+\texttt{echo}, is a deterministic mock used in unit tests.
 
-It is a good practice to mark the photographer in the photos
-(e.g. “Photographer first name last name year.”) If you are not the
-photographer, ask permission and keep the permission (e.g., email
-correspondence) safe. In addition, keep any other licenses you have
-received, including those under the CC license, safe. Often
-publications under a CC license mention the CC license on the front
-page and the figure is on page z. Save at least the page explaining
-the CC license from the publication from which you have taken the
-photo. For this reason, we recommend mentioning the license explicitly
-for your own significant contributions, even if it is the same as
-the main license.
+The OpenAI backend dispatches between \texttt{max\_tokens}
+(GPT-4o-mini and other non-o-series models) and
+\texttt{max\_completion\_tokens} (o-series) on the model name; passing
+the wrong parameter is rejected by the API in some SDK versions.
 
-As mentioned, in case the figure has been taken from elsewhere, the
-author needs to have a permission from the copyright holder. Usually
-this is based on a license that gives permission to use the work with
-some conditions. The most common example would be a CC-BY license,
-such as the one used in \figref{fig:ccbypic}. If the figure is from a
-publication you are citing, ``Under/Reprinted/Adapted CC BY 4.0 license
-picture from [x] \textcopyright 20xx Author.'' would be
-appropriate. In Finnish, use ``[Muokattu] CC BY 4.0 lisenssin alainen
-kuva lähteestä [x]. \textcopyright Vuosi Tekijä.''
+The llama.cpp backend runs a five-prompt NarrativeQA-shaped sanity
+check at construction and refuses to serve traffic if F1 drops by more
+than $5$~pp from a recorded baseline; the baseline lives in
+\texttt{results/sanity/llamacpp\_baseline.json}, must be populated by a
+Month-1 run, and the backend refuses to start if it is missing. This
+realises the kill-switch documented in the implementation plan's risk
+register as the mitigation for the 70B int4-output-quality risk.
 
-\begin{figure}[H]
-\begin{center}
-  \includegraphics[width=12cm]{Figures/ccby.jpg}
-\end{center}
-\caption{``\href{https://openverse.org/image/110032f8-1a7a-421f-86b1-88fdfde2e44f
-  }{Stephen Crane, Author, Red Badge of Courage}''
-  by~\href{https://www.flickr.com/photos/tonythemisfit/}{Tony Fischer
-  Photography} is licensed under
-\href{https://creativecommons.org/licenses/by/2.0/}{CC BY 2.0}.}
-\label{fig:ccbypic}
-\end{figure}
+\section{Compute Envelope and Reproducibility}
+\label{sec:envelope}
 
-The permission can also come from the publisher or, if applicable, your employer (in cases where they hold the copyright). For instance, IEEE and many other publishers have an automated system for granting permission for theses. Mark the permission in the caption as requested by the right holder, e.g., “\textcopyright 2022 IEEE. Reprinted, with
-permission, from [x].''
+All training and evaluation is run on a single Apple M4 Pro 48~GB
+workstation. The breakdown of expected wallclocks is given in
+Table~\ref{tab:wallclock}. The 70B int4 evaluation is delivered as a
+\emph{single-point characterisation} at the suspected coordination
+cliff identified at 13B and 34B, not a full ratio sweep; the M4 Pro's
+$3$--$5$ tokens-per-second throughput at 70B int4 makes anything more
+infeasible within the 10-month schedule.
 
-Not all figures exceed the threshold of originality. These include,
-for example, scientific diagrams and flowcharts. Good research
-practices require that even in this case, the source is cited in the
-caption (\enquote{Figure from [x].}). However, it would be best to ask
-for permission or at least redraw the image. Images with a CC license
-are free to use, so long as the terms of use are
-followed~\cite{about_cc_licenses}. Even then, the caption must mention
-the source (article, website, etc.) and that the image is CC-licensed.
+\begin{table}[h]
+\centering
+\caption{Expected wallclock for each experimental arm on the M4 Pro
+48~GB workstation. Numbers in parentheses indicate stretch goals that
+will be dropped if mid-thesis review at Month 5 reveals schedule
+slippage. From the implementation plan.}
+\label{tab:wallclock}
+\small
+\begin{tabular}{p{6.5cm}p{3.5cm}p{3.5cm}}
+\hline
+Experiment & Approach & Wallclock \\
+\hline
+NarrativeQA/HotpotQA 7B baseline reproduction & MLX/PyTorch-MPS & 1--2 days \\
+C1 baseline at 7B: 3 compressors $\times$ 5 ratios $\times$ 5 seeds $\times$ 150 workflows & MLX, AutoGen & 5--10 days \\
+ICAE-style trainer, 7B LoRA rank 16 & MLX & $\leq 3$ days \\
+C1 at 13B fp16 inference & MLX-LM & 10--20 days \\
+13B LoRA rank 8 fine-tune (stretch) & MLX, aggressive mem mgmt & tight \\
+34B int4 focused partial sweep at suspected $\tau^{*}$ & llama.cpp + GGUF & 3--5 days \\
+70B int4 single-point at suspected $\tau^{*}$ & llama.cpp + GGUF, 3--5 t/s & 7--14 days \\
+Adversarial-robustness sweep (S2, stretch) & 7B & 1 week \\
+AgentBench OS/DB/LTP envs at 7B & off-the-shelf & 1 week \\
+Real-trace arm (H8) & gated on connector readiness & --- \\
+\hline
+\end{tabular}
+\end{table}
 
-Based on the right to quote, it is possible to take a photocopy,
-screenshot or photograph of a work (not the original file) and publish
-it, citing the original source in the caption. A critical aspect of
-the right to quote is that the use of the image is relevant to the
-work, i.e., the image must be related to the subject, and it must be
-explained in the text (this applies to all images). Similarly, the
-source must be cited in text citations.
-
-Sometimes you may want to use someone else's original image idea as a
-basis for your own work. Permission is not required provided that your
-work clearly an amply edited version of the original. However, in
-accordance with good research practices the type of modification and
-source (``Modified/Adapted/Redrawn/Based on/Created using data from
-[x]'') and must be declared in the caption. Should you only make minor
-edits to the original, separate permission is required. The University
-of Oulu Acta Oulu publishing guide~\cite{ronkainen_copyright} has more
-details on this topic, and also the proper wordings in
-Finnish~\cite{ronkainen_tekijanoikeus}.
-
-When searching for images through an internet image search, it is not
-always easy to find the rights holder from whom to request permission
-for use. Hunting for a permit can be a demanding task. The easiest way
-is to use images and figures from scientific articles (or with open
-licenses) as in these the rights holders are clearly declared.
-
-\section{Accessibility}
-\label{accessibility}
-Put effort into the accessibility of your thesis. The
-structure of an accessible document is clear, and the wording is as
-understandable as possible. Figures and tables should be given an
-alternative text that summarises the information they contain for the
-reader. Alternative text is especially important in situations where
-the reader cannot see the figure or table, for example due to vision
-impairment.  More information on accessible Word documents and
-archivable PDF files can be found in the texts of the University of
-Oulu Campus ICT~\cite{ictaccessibleword,ictwordpdfa}. You can also
-read about the accessibility of mathematical equations in the Campus
-ICT text~\cite{ictaccessiblemath}.
+The reproducibility package is the complete repository, a
+\texttt{docker-compose.yml} that brings the memory-bus reference
+service up, a HuggingFace hub release for the tag-preserving compressor
+weights, a GitHub release tag for the manuscript and code, model and
+data cards under \texttt{docs/}, and a \texttt{README.md} that exposes
+one-command reproduction for every chapter headline figure. The
+filesystem layout under \texttt{results/} is fixed: one CSV per
+hypothesis run, plus a \texttt{manifest.yaml} that records the resolved
+configuration, the configuration hash, the git revision, the Python
+version, the platform string, and the start time.

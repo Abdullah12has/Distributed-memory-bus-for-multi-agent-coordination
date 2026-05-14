@@ -119,7 +119,7 @@ bus-openapi: ## Dump the OpenAPI schema to docs/openapi.json.
 .PHONY: bench-generate bench-validate bench-release
 
 bench-generate: ## Regenerate the C1 benchmark v0.1 (150 instances, 3 families).
-	$(PY) -m m6.benchmark.cli generate --config configs/benchmark/c1-v0.1.yaml --out data/processed/c1-v0.1
+	$(PY) -m m6.benchmark.cli generate-cmd --config configs/benchmark/c1-v0.1.yaml --out data/processed/c1-v0.1
 
 bench-validate: ## Sanity-check the generated benchmark (schema + invariants).
 	$(PY) -m m6.benchmark.cli validate --path data/processed/c1-v0.1

@@ -8,14 +8,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from m6.benchmark.schemas import Workload, WorkloadTrace
+from m6.config.logging import get_logger
+
+log = get_logger(__name__)
 
 
 @dataclass(frozen=True)
 class CoordinationMetrics:
-    final_success: float                  # 0/1
-    sub_task_assignment_accuracy: float   # [0, 1]
+    final_success: float  # 0/1
+    sub_task_assignment_accuracy: float  # [0, 1]
     rounds_to_completion: int
-    critic_flagged_error_rate: float      # [0, 1]
+    critic_flagged_error_rate: float  # [0, 1]
 
 
 def score_coordination_trace(workload: Workload, trace: WorkloadTrace) -> CoordinationMetrics:
@@ -64,10 +67,18 @@ def _success_b(workload: Workload, trace: WorkloadTrace) -> bool:
     # Capacity check: aggregate load per worker, compare to the workload's
     # advertised capacities (stored in metadata).
     capacities = workload.metadata.get("capacities", "")
-    if isinstance(capacities, str) and capacities:
-        cap_list = [int(x) for x in capacities.split(",")]
-    else:
-        return True  # can't verify; the planner declared DONE
+    if not (isinstance(capacities, str) and capacities):
+        # Missing metadata is a generator bug, not a free pass — the
+        # constraint-satisfaction generator always sets ``capacities`` and
+        # ``Workload.metadata`` is typed as ``dict[str, str|int|float]``. If
+        # we ever see an empty value here, fail closed so the bug surfaces.
+        log.warning(
+            "coordination._success_b.missing_capacities",
+            workload_id=workload.workload_id,
+            note="returning success=False; expected metadata['capacities'] to be set",
+        )
+        return False
+    cap_list = [int(x) for x in capacities.split(",")]
     load_by_worker: dict[str, int] = {}
     for st in workload.sub_tasks:
         assigned = trace.sub_task_assignments.get(st.sub_task_id, "")

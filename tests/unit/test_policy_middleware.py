@@ -16,7 +16,7 @@ from m6.memory_bus.api import PolicyMiddleware
 from m6.memory_bus.policy import Principal
 
 
-@pytest.fixture()
+@pytest.fixture
 def app() -> FastAPI:
     app = FastAPI()
     app.add_middleware(PolicyMiddleware)
@@ -29,7 +29,7 @@ def app() -> FastAPI:
     return app
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_no_header_yields_superuser(app: FastAPI) -> None:
     """Without X-M6-Principal, dev-mode super-user is set on request.state."""
     client = TestClient(app)
@@ -41,7 +41,7 @@ def test_no_header_yields_superuser(app: FastAPI) -> None:
     assert body["acl"] == (2**64) - 1
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_header_resolves_to_principal(app: FastAPI) -> None:
     headers = {"X-M6-Principal": "alice:0xff:2"}
     client = TestClient(app)

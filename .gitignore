@@ -100,3 +100,4 @@ desktop.ini
 *.sublime-workspace
 
 .claude/worktrees/
+.claude/*

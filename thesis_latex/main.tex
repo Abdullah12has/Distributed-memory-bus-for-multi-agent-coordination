@@ -1,12 +1,12 @@
 % Template for B. Sc and M. Sc. (Tech.) degree programmes at the
 % Faculty of Information Technology and Electrical Engineering
 % at University of Oulu (CSE/BME/BA)
-% 
+%
 % Authors: Mika Korhonen (original author), Pekka Pietikäinen, Christian Wieser, Teemu Tokola, Juha Kylmänen, Tuomas Holmberg and Tuomas Varanka.
 % If you make any improvements to this template, submit them via
 % https://github.com/ouspg/cse-thesis
 %
-% Signing in to Overleaf with a oulu.fi account is strongly recommended, this gives students and staff 
+% Signing in to Overleaf with a oulu.fi account is strongly recommended, this gives students and staff
 % access to a Professional subscription
 %
 % CHANGELOG
@@ -38,14 +38,18 @@
 %\input{copyright-allrightsreserved}
 \input{copyright-ccby40.tex}
 
+% TikZ for the architecture diagram in Chapter 3.
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+
 %%%%%%%%%%%%%%%%%%%%% SET YOUR INFORMATION HERE %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Both English and Finnish title are needed
-\title{TODO: Bachelor's and Diploma Thesis Guide}
-\otsikko{TODO: Kandidaatintyön ja diplomityön teko-ohjeet}
+\title{Distributed Memory Bus for Multi-Agent Campus Systems: Context Compression, Coordination Quality, and Policy-Aware Sharing}
+\otsikko{Hajautettu muistiv\"ayl\"a monitoimijaj\"arjestelmille kampusymp\"arist\"oss\"a: kontekstin tiivist\"aminen, koordinaation laatu ja k\"ayt\"ant\"otietoinen jakaminen}
 
-\firstname{Program}
-\lastname{Committee}
+\firstname{Syed Abdullah}
+\lastname{Hassan}
 
 % Names of other authors can be added here
 %\firstnametwo{}
@@ -61,30 +65,38 @@
 % If the abstract contains multiple paragraphs or special characters,
 % provide the full text in abstract.tex and tiivistelma.tex.
 % This version should otherwise remain identical to it
-\abstract{This document provides general guidance for a degree student
-  in the technical degree programmes of Computer Science and
-  Engineering, Biomedical Engineering and Business Analytics (Tech.)
-  at the faculty of Information Technology and Electrical Engineering
-  at the University of Oulu in preparing his/her Bachelor's or
-  Master's thesis. This guide defines the role of a thesis in the
-  M.Sc. (Tech.) Degree, presents the actions to be taken in different
-  phases of the thesis procedure and introduces the way that the
-  thesis is written. The document has been formatted based on these
-  guidelines to serve as an example how the thesis should look like.}
+\abstract{This thesis designs, implements, and evaluates a distributed memory
+  bus with a context-compression layer for multi-agent institutional systems.
+  It contributes (i) a multi-agent coordination benchmark, (ii) an empirical
+  characterisation of how context compression affects multi-agent coordination
+  quality across model sizes from 7B to 70B parameters, (iii) a catalogue of
+  three retrieval-augmented generation pipeline architectures combining
+  retrieval and compression under matched evaluation conditions, and (iv) a
+  tag-preserving compressor variant integrated with a reference memory-bus
+  implementation that exposes the integration interfaces required by the
+  Future Computing Group platform at the University of Oulu. The compute
+  envelope is a single Apple M4 Pro 48 GB workstation, and the deliverable is
+  the manuscript together with an open-source reference implementation. The
+  empirical results sections of the thesis are pending experimental runs
+  scheduled for the second half of the project.}
 
-\tiivistelma{Näissä ohjeissa opastetaan valmistumisvaiheessa olevaa
-  opiskelijaa kandidaatin- ja diplomityön tekemisessä. Ohjeissa
-  selvitetään työn asema diplomi-insinööritutkinnossa, kerrotaan
-  toimenpiteet, joihin työn tekijän on ryhdyttävä työn eri vaiheissa,
-  sekä määritellään yksityiskohtaisesti kandidaatin- ja diplomitöiden
-  kirjallinen rakenne. Ohje on muotoiltu noudattaen näitä
-  kirjoitusohjeita ja toimii siten esimerkkinä, miltä lopputyön tulisi
-  näyttää.}
+\tiivistelma{T\"am\"a diplomity\"o suunnittelee, toteuttaa ja arvioi
+  hajautetun muistiv\"ayl\"an kontekstin tiivistyskerroksella
+  monitoimijallisille instituutioj\"arjestelmille. Ty\"on kontribuutiot ovat
+  (i) monitoimijallinen koordinaatio-benchmark, (ii) empiirinen
+  karakterisointi siit\"a, kuinka kontekstin tiivistys vaikuttaa monitoimijoiden
+  koordinaation laatuun mallikoissa 7B--70B parametrin v\"alill\"a, (iii)
+  kolmen RAG-arkkitehtuurin luettelo, joissa haku ja tiivistys yhdistet\"a\"an
+  yhdenmukaistettujen arviointiehtojen alla, sek\"a (iv) merkint\"oj\"a
+  s\"ailytt\"av\"a tiivist\"aj\"avariantti, joka on integroitu
+  viiteimplementaatioon. Laskentakapasiteetti rajoittuu yhteen Apple M4 Pro
+  48 GB -ty\"oasemaan ja toimitettava kokonaisuus koostuu k\"asikirjoituksesta
+  ja avoimen l\"ahdekoodin viiteimplementaatiosta.}
 
 % Keywords are also included in the PDF metadata, and cannot contain any
 % special characters. Separate them with \spc
-\keywords{M.Sc. degree\spc master’s thesis instructions\spc structure of a master’s thesis}
-\avainsanat{diplomi-insinöörin tutkinto\spc diplomityön ohjeet\spc diplomityön rakenne}
+\keywords{multi-agent systems\spc large language models\spc context compression\spc retrieval-augmented generation\spc agentic memory\spc privacy-aware retrieval}
+\avainsanat{monitoimijaj\"arjestelm\"at\spc suuret kielimallit\spc kontekstin tiivist\"aminen\spc hakuparannettu generointi\spc agenttinen muisti\spc yksityisyystietoinen haku}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,31 +142,31 @@
 \contents %Insert table of contents
 \input{Chapters/foreword}
 \input{Chapters/abbreviations}
-    
-% Enables page numbers and sets the dots for numbered chapters in 
+
+% Enables page numbers and sets the dots for numbered chapters in
 % table of contents
 \mainmatter
 
-\chapter{Introduction} %Set the name of a new chapter
-  \label{introduction} %Create a label for referencing purposes (\charef{.})
-  \input{Chapters/introduction} %Input the contents of the chapter from a separate file
-    
-\chapter{General outline for thesis projects}
+\chapter{Introduction}
+  \label{introduction}
+  \input{Chapters/introduction}
+
+\chapter{Background and Related Work}
   \label{relatedwork}
   \input{Chapters/relatedwork}
-    
-\chapter{Thesis writing instructions}
+
+\chapter{System Design and Implementation}
   \label{implementation}
   \input{Chapters/implementation}
-    
-\chapter{The literary structure of a thesis}
+
+\chapter{Experiment Design and Protocol}
   \label{experiments}
   \input{Chapters/experiments}
-    
-\chapter{Summary}
+
+\chapter{Discussion and Summary}
   \label{summary}
   \input{Chapters/summary}
-    
+
 \printbibliography[heading=bibnumbered, title=\mybibname]
 
 \startappendix

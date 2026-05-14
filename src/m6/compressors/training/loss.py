@@ -23,12 +23,12 @@ import numpy as np
 
 
 def infonce_loss(
-    anchors: "Any",  # torch.Tensor or mx.array, shape (B, D)
-    positives: "Any",
+    anchors: Any,  # torch.Tensor or mx.array, shape (B, D)
+    positives: Any,
     *,
     temperature: float = 0.07,
     backend: str = "auto",
-) -> "Any":
+) -> Any:
     """Symmetric InfoNCE.
 
     Both directions of the contrastive loss are computed and averaged. This is
@@ -52,13 +52,13 @@ def infonce_loss(
 # --------------------------------------------------------------------------- #
 # Torch backend
 # --------------------------------------------------------------------------- #
-def _infonce_torch(anchors: "Any", positives: "Any", *, temperature: float) -> "Any":
+def _infonce_torch(anchors: Any, positives: Any, *, temperature: float) -> Any:
     import torch
     import torch.nn.functional as F
 
     a = F.normalize(anchors, dim=-1)
     p = F.normalize(positives, dim=-1)
-    sim = (a @ p.T) / temperature                              # (B, B)
+    sim = (a @ p.T) / temperature  # (B, B)
     labels = torch.arange(sim.size(0), device=sim.device)
     loss_a = F.cross_entropy(sim, labels)
     loss_b = F.cross_entropy(sim.T, labels)
@@ -68,9 +68,9 @@ def _infonce_torch(anchors: "Any", positives: "Any", *, temperature: float) -> "
 # --------------------------------------------------------------------------- #
 # MLX backend
 # --------------------------------------------------------------------------- #
-def _infonce_mlx(anchors: "Any", positives: "Any", *, temperature: float) -> "Any":
+def _infonce_mlx(anchors: Any, positives: Any, *, temperature: float) -> Any:
     import mlx.core as mx
-    import mlx.nn as nn
+    from mlx import nn
 
     def _l2(x: Any) -> Any:
         n = mx.sqrt(mx.sum(x * x, axis=-1, keepdims=True) + 1e-12)
@@ -99,12 +99,13 @@ def _detect_backend(x: Any) -> str:
 # --------------------------------------------------------------------------- #
 # Numpy reference implementation for unit tests
 # --------------------------------------------------------------------------- #
-def _infonce_numpy(anchors: np.ndarray, positives: np.ndarray, *, temperature: float = 0.07) -> float:
+def _infonce_numpy(
+    anchors: np.ndarray, positives: np.ndarray, *, temperature: float = 0.07
+) -> float:
     """Reference impl. Tests assert torch and mlx match this."""
     a = anchors / (np.linalg.norm(anchors, axis=-1, keepdims=True) + 1e-12)
     p = positives / (np.linalg.norm(positives, axis=-1, keepdims=True) + 1e-12)
     sim = (a @ p.T) / temperature
-    n = sim.shape[0]
 
     def _ce(s: np.ndarray) -> float:
         # Numerically stable log-softmax cross-entropy with label = i.

@@ -1,318 +1,710 @@
-% Example bibliography for BibTeX
-% Help available at http://en.wikibooks.org/wiki/LaTeX/Bibliography_Management
+% =============================================================================
+% citations.bib — m6-thesis
+%
+% References for the thesis "Distributed Memory Bus for Multi-Agent Campus
+% Systems: Context Compression, Coordination Quality, and Policy-Aware Sharing".
+%
+% Grouped by topic (compression / multi-agent / RAG / privacy / FCG-internal).
+% Entries with the @techreport type starting with "fcg" refer to the unpublished
+% internal architecture documents bundled with the thesis repository.
+%
+% Style: IEEE numeric, as enforced by ieee.bbx in the Oulu CSE template.
+% =============================================================================
 
-@Book{lappalainen,
-    author =   "Lappalainen ,P. and Suutari-Jääskö ,L. and Silvén ,O.", 
-    year =   "1994",
-    title =   "Diplomityön teko-ohjeet",
-    publisher =   "Oulun yliopisto",
-    address = "Sähkö- ja tietotekniikan osasto, Oulu",
+% --------------------------------------------------------------------------- %
+% Context compression and memory
+% --------------------------------------------------------------------------- %
+
+@inproceedings{jiang2023llmlingua,
+    author       = {Huiqiang Jiang and Qianhui Wu and Chin-Yew Lin and Yuqing Yang and Lili Qiu},
+    title        = {{LLMLingua}: Compressing Prompts for Accelerated Inference of Large Language Models},
+    booktitle    = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+    year         = {2023},
 }
 
-@book{acta,
-    title =   "Ohjeita kirjoittajille",
-    publisher =   "Acta Universitatis Ouluensis -sarjan julkaisutoimikunta",
-    address = "Oulun yliopisto, Oulu",
-    year = "1997",
-    author = "Rautio, Leena"
+@inproceedings{jiang2024longllmlingua,
+    author       = {Huiqiang Jiang and Qianhui Wu and Xufang Luo and Dongsheng Li and Chin-Yew Lin and Yuqing Yang and Lili Qiu},
+    title        = {{LongLLMLingua}: Accelerating and Enhancing {LLM}s in Long Context Scenarios via Prompt Compression},
+    booktitle    = {Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
+    year         = {2024},
 }
 
-@Book{tirronen,
-    author =   "Tirronen, K.", 
-    year =   "1987",
-    title =   "Teknisen kirjoituksen laatiminen",
-    publisher =   "Suomen Teknillinen Seura STS r.y.",
-    address = "Teknillisten Tieteiden Akatemia, Jyväskylä",
+@inproceedings{pan2024llmlingua2,
+    author       = {Zhuoshi Pan and Qianhui Wu and Huiqiang Jiang and Menglin Xia and Xufang Luo and Jue Zhang and Qingwei Lin and Victor R{\"u}hle and Yuqing Yang and Chin-Yew Lin and H. Vicky Zhao and Lili Qiu and Dongmei Zhang},
+    title        = {{LLMLingua-2}: Data Distillation for Efficient and Faithful Task-Agnostic Prompt Compression},
+    booktitle    = {Findings of the Association for Computational Linguistics (ACL Findings)},
+    year         = {2024},
 }
 
-@Book{maamies,
-    year =   "1998",
-    title =   "Kielikello",
-    publisher =   "Kielenhuollon tiedotuslehti 3",
-    address = "Kotimaisten kielten tutkimuskeskus",
-    author = "Maamies, S."
+@inproceedings{mu2023gist,
+    author       = {Jesse Mu and Xiang Lisa Li and Noah Goodman},
+    title        = {Learning to Compress Prompts with Gist Tokens},
+    booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year         = {2023},
 }
 
-@online{korpela,
-    author = "Korpela, J.",
-    title = "Nykyajan kielenopas",
-    year = "2015",
-    url = {https://jkorpela.fi/kielenopas/},
-    urldate = "2025-05-27"
+@inproceedings{chevalier2023autocompressor,
+    author       = {Alexis Chevalier and Alexander Wettig and Anirudh Ajith and Danqi Chen},
+    title        = {Adapting Language Models to Compress Contexts},
+    booktitle    = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+    year         = {2023},
+    note         = {AutoCompressor.},
 }
 
-@online{kielitoimisto,
-    title = {Kielenhuolto},
-    author = {Kotimaisten kielten keskus},
-    year = 2025,
-    url = {http://www.kotus.fi/kielitoimisto/},
-    urldate = "2025-05-27"
+@inproceedings{ge2024icae,
+    author       = {Tao Ge and Jing Hu and Lei Wang and Xun Wang and Si-Qing Chen and Furu Wei},
+    title        = {In-context Autoencoder for Context Compression in a Large Language Model},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2024},
 }
 
-@online{reportwriting,
-    title = "{Report Writing - Resources for Students}",
-    url = {https://archive.learnhigher.ac.uk/Students/Report-writing.html},
-    year = 2021,
-    urldate = "2025-05-27"
+@inproceedings{wang2024icf,
+    author       = {{Wang et al.}},
+    title        = {In-Context Former: Lightning-fast Compressing Context for Large Language Model},
+    booktitle    = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+    year         = {2024},
 }
 
-@online{englishlanguage,
-    title = "{English Language Resources}",
-    year = 2013,
-    url = {http://www.usingenglish.com/resources/},
-    urldate = "2025-05-27"
+@inproceedings{fei2024semantic,
+    author       = {Weizhi Fei and Xueyan Niu and Pingyi Zhou and Lu Hou and Bo Bai and Lei Deng and Wei Han},
+    title        = {Extending Context Window of Large Language Models via Semantic Compression},
+    booktitle    = {Findings of the Association for Computational Linguistics (ACL Findings)},
+    year         = {2024},
 }
 
-
-@collection{siopas,
-	location = {Helsinki},
-	edition = {7. painos},
-	title = {{SI}-opas: 2019: kansainvälinen suure- ja yksikköjärjestelmä = international system of quantities and units},
-	isbn = {978-952-242-411-2},
-	shorttitle = {{SI}-opas},
-	pagetotal = {71},
-	publisher = {Suomen Standardisoimisliitto {SFS} ry},
-	editor = {{Suomen standardisoimisliitto}},
-	date = {2019},
-	keywords = {mittajärjestelmät, mittayksiköt, {SI}-järjestelmä, suureet},
+@inproceedings{rae2020compressive,
+    author       = {Jack W. Rae and Anna Potapenko and Siddhant M. Jayakumar and Chloe Hillier and Timothy P. Lillicrap},
+    title        = {Compressive Transformers for Long-Range Sequence Modelling},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2020},
 }
 
-@book{SIguide,
-	location = {Sèvres Cedex},
-	edition = {9th edition 2019, V3.01 August 2024},
-	title = {The International System of Units ({SI}): Text in English (updated in 2024)},
-	isbn = {978-92-822-2272-0},
-	shorttitle = {The International System of Units ({SI})},
-	author = {{BIPM}},
-	date = {2024},
-	note = {{OCLC}: 1477616178},
+@misc{guo2025dynamic,
+    author       = {{Guo et al.}},
+    title        = {Dynamic Context Compression for Retrieval-Augmented Generation},
+    howpublished = {arXiv preprint},
+    year         = {2025},
 }
 
-@online{systemofunits,
-    title = "{International System of Units}",
-    year = 2025,
-    url = {http://en.wikipedia.org/wiki/International\_System\_of\_Units},
-    urldate = "2025-05-27"
+@misc{cheng2024xrag,
+    author       = {{Cheng et al.}},
+    title        = {{xRAG}: Extreme Context Compression for Retrieval-augmented Generation with One Token},
+    howpublished = {arXiv preprint arXiv:2405.13792},
+    year         = {2024},
+}
+
+@inproceedings{li2025promptsurvey,
+    author       = {Zongqian Li and Yinhong Liu and Yixuan Su and Nigel Collier},
+    title        = {Prompt Compression for Large Language Models: A Survey},
+    booktitle    = {Proc. Conf. North American Chapter of the Association for Computational Linguistics (NAACL)},
+    year         = {2025},
+}
+
+% --------------------------------------------------------------------------- %
+% Multi-agent systems, agentic memory, and context engineering
+% --------------------------------------------------------------------------- %
+
+@misc{wu2023autogen,
+    author       = {Qingyun Wu and Gagan Bansal and Jieyu Zhang and Yiran Wu and Beibin Li and Erkang Zhu and Li Jiang and Xiaoyun Zhang and Shaokun Zhang and Jiale Liu and Ahmed Awadallah and Ryen W. White and Doug Burger and Chi Wang},
+    title        = {{AutoGen}: Enabling Next-Gen {LLM} Applications via Multi-Agent Conversation},
+    howpublished = {arXiv preprint arXiv:2308.08155},
+    year         = {2023},
+}
+
+@inproceedings{hong2024metagpt,
+    author       = {Sirui Hong and Mingchen Zhuge and Jiaqi Chen and Xiawu Zheng and Yuheng Cheng and Ceyao Zhang and Jinlin Wang and Zili Wang and Steven Ka Shing Yau and Zijuan Lin and Liyang Zhou and Chenyu Ran and Lingfeng Xiao and Chenglin Wu and J{\"u}rgen Schmidhuber},
+    title        = {{MetaGPT}: Meta Programming for a Multi-Agent Collaborative Framework},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2024},
+}
+
+@misc{li2023camel,
+    author       = {Guohao Li and Hasan Abed Al Kader Hammoud and Hani Itani and Dmitrii Khizbullin and Bernard Ghanem},
+    title        = {{CAMEL}: Communicative Agents for ``Mind'' Exploration of Large Scale Language Model Society},
+    howpublished = {arXiv preprint arXiv:2303.17760},
+    year         = {2023},
+}
+
+@inproceedings{shinn2023reflexion,
+    author       = {Noah Shinn and Federico Cassano and Edward Berman and Ashwin Gopinath and Karthik Narasimhan and Shunyu Yao},
+    title        = {{Reflexion}: Language Agents with Verbal Reinforcement Learning},
+    booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year         = {2023},
+}
+
+@misc{packer2023memgpt,
+    author       = {Charles Packer and Sarah Wooders and Kevin Lin and Vivian Fang and Shishir G. Patil and Ion Stoica and Joseph E. Gonzalez},
+    title        = {{MemGPT}: Towards {LLM}s as Operating Systems},
+    howpublished = {arXiv preprint arXiv:2310.08560},
+    year         = {2023},
+}
+
+@inproceedings{xu2025amem,
+    author       = {{Xu et al.}},
+    title        = {{A-MEM}: Agentic Memory for {LLM} Agents},
+    booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year         = {2025},
+}
+
+@misc{chhikara2025mem0,
+    author       = {{Chhikara et al.}},
+    title        = {{Mem0}: Building Production-Ready {AI} Agents with Scalable Long-Term Memory},
+    howpublished = {arXiv preprint arXiv:2504.19413},
+    year         = {2025},
+}
+
+@misc{rasmussen2025zep,
+    author       = {{Rasmussen et al.}},
+    title        = {{Zep}: A Temporal Knowledge Graph Architecture for Agent Memory},
+    howpublished = {arXiv preprint arXiv:2501.13956},
+    year         = {2025},
+}
+
+@misc{zhang2024agentprune,
+    author       = {{Zhang et al.}},
+    title        = {{AgentPrune}: Cost-Efficient Multi-Agent Communication via Graph Sparsification},
+    howpublished = {arXiv preprint arXiv:2410.02506},
+    year         = {2024},
+}
+
+@misc{wang2025agentdropout,
+    author       = {{Wang et al.}},
+    title        = {{AgentDropout}: Token-Efficient Multi-Agent Collaboration via Dynamic Agent Removal},
+    howpublished = {arXiv preprint arXiv:2503.18891},
+    year         = {2025},
+}
+
+@misc{park2025collaborative,
+    author       = {{Park et al.}},
+    title        = {Collaborative Memory: {M}ulti-User Memory Sharing in {LLM} Agents with Dynamic Access Control},
+    howpublished = {arXiv preprint arXiv:2505.18279},
+    year         = {2025},
+}
+
+@inproceedings{ye2025kvcomm,
+    author       = {{Ye et al.}},
+    title        = {{KVCOMM}: Online Cross-context {KV}-cache Communication for Efficient {LLM} Inference},
+    booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year         = {2025},
+}
+
+@misc{haseeb2025contextengineering,
+    author       = {{Haseeb}},
+    title        = {Context Engineering for Multi-Agent {LLM} Code Assistants Using Elicit, {NotebookLM}, {ChatGPT}, and {Claude} Code},
+    howpublished = {arXiv preprint arXiv:2508.08322},
+    year         = {2025},
+}
+
+@misc{yu2025memagent,
+    author       = {{Yu et al.}},
+    title        = {{MemAgent}: Reshaping Long-Context {LLM} with Multi-Conv {RL}-based Memory Agent},
+    howpublished = {arXiv preprint arXiv:2507.02259},
+    year         = {2025},
+}
+
+@online{anthropic2025multiagent,
+    author       = {{Anthropic}},
+    title        = {How We Built our Multi-agent Research System},
+    year         = {2025},
+    month        = jun,
+    organization = {Anthropic Engineering Blog},
+    url          = {https://www.anthropic.com/engineering/multi-agent-research-system},
+    urldate      = {2026-05-12},
+}
+
+@online{anthropic2025contextengineering,
+    author       = {Prithvi Rajasekaran and Kara Dixon and Jeremy Ryan and Adam Hadfield and others},
+    title        = {Effective Context Engineering for {AI} Agents},
+    year         = {2025},
+    organization = {Anthropic Applied {AI} Engineering Blog},
+    url          = {https://www.anthropic.com/engineering/context-engineering-for-ai-agents},
+    urldate      = {2026-05-12},
+}
+
+@online{anthropic2025contextediting,
+    author       = {{Anthropic}},
+    title        = {Managing Context on the {Claude} Developer Platform: Context Editing and the Memory Tool},
+    year         = {2025},
+    month        = oct,
+    organization = {Anthropic News},
+    url          = {https://www.anthropic.com/news/context-editing-memory-tool},
+    urldate      = {2026-05-12},
+}
+
+% --------------------------------------------------------------------------- %
+% RAG, long-context, and benchmarks
+% --------------------------------------------------------------------------- %
+
+@inproceedings{lewis2020rag,
+    author       = {Patrick Lewis and Ethan Perez and Aleksandra Piktus and Fabio Petroni and Vladimir Karpukhin and Naman Goyal and Heinrich K{\"u}ttler and Mike Lewis and Wen-tau Yih and Tim Rockt{\"a}schel and Sebastian Riedel and Douwe Kiela},
+    title        = {Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks},
+    booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year         = {2020},
+}
+
+@inproceedings{sarthi2024raptor,
+    author       = {Parth Sarthi and Salman Abdullah and Aditi Tuli and Shubh Khanna and Anna Goldie and Christopher D. Manning},
+    title        = {{RAPTOR}: Recursive Abstractive Processing for Tree-Organized Retrieval},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2024},
+}
+
+@misc{edge2024graphrag,
+    author       = {Darren Edge and Ha Trinh and Newman Cheng and Joshua Bradley and Alex Chao and Apurva Mody and Steven Truitt and Jonathan Larson},
+    title        = {From Local to Global: A {GraphRAG} Approach to Query-Focused Summarization},
+    howpublished = {arXiv preprint arXiv:2404.16130},
+    year         = {2024},
+}
+
+@inproceedings{gutierrez2024hipporag,
+    author       = {Bernal Jim{\'e}nez Guti{\'e}rrez and Yiheng Shu and Yu Gu and Michihiro Yasunaga and Yu Su},
+    title        = {{HippoRAG}: Neurobiologically Inspired Long-Term Memory for Large Language Models},
+    booktitle    = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year         = {2024},
+}
+
+@inproceedings{gutierrez2025hipporag2,
+    author       = {Bernal Jim{\'e}nez Guti{\'e}rrez and Yiheng Shu and Weijian Qi and Sizhe Zhou and Yu Su},
+    title        = {From {RAG} to Memory: Non-Parametric Continual Learning for Large Language Models},
+    booktitle    = {Proc. International Conference on Machine Learning (ICML)},
+    year         = {2025},
+}
+
+@inproceedings{asai2024selfrag,
+    author       = {Akari Asai and Zeqiu Wu and Yizhong Wang and Avirup Sil and Hannaneh Hajishirzi},
+    title        = {{Self-RAG}: Learning to Retrieve, Generate, and Critique through Self-Reflection},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2024},
+}
+
+@misc{hsieh2024ruler,
+    author       = {Cheng-Ping Hsieh and Simeng Sun and Samuel Kriman and Shantanu Acharya and Dima Rekesh and Fei Jia and Yang Zhang and Boris Ginsburg},
+    title        = {{RULER}: What's the Real Context Size of Your Long-Context Language Models?},
+    howpublished = {arXiv preprint arXiv:2404.06654},
+    year         = {2024},
+}
+
+@misc{bai2024longbench,
+    author       = {Yushi Bai and Shangqing Tu and Jiajie Zhang and others},
+    title        = {{LongBench v2}: Towards Deeper Understanding and Reasoning on Realistic Long-context Multitasks},
+    howpublished = {arXiv preprint arXiv:2412.15204},
+    year         = {2024},
+}
+
+@inproceedings{yen2025helmet,
+    author       = {Howard Yen and Tianyu Gao and Minmin Hou and Ke Ding and Daniel Fleischer and Peter Izsak and Moshe Wasserblat and Danqi Chen},
+    title        = {{HELMET}: How to Evaluate Long-context Language Models Effectively and Thoroughly},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2025},
+}
+
+@article{liu2024lostinmiddle,
+    author       = {Nelson F. Liu and Kevin Lin and John Hewitt and Ashwin Paranjape and Michele Bevilacqua and Fabio Petroni and Percy Liang},
+    title        = {Lost in the Middle: How Language Models Use Long Contexts},
+    journal      = {Transactions of the Association for Computational Linguistics (TACL)},
+    year         = {2024},
+    volume       = {12},
+    pages        = {157--173},
+}
+
+@misc{mialon2023gaia,
+    author       = {Gr{\'e}goire Mialon and Cl{\'e}mentine Fourrier and Craig Swift and Thomas Wolf and Yann LeCun and Thomas Scialom},
+    title        = {{GAIA}: A Benchmark for General {AI} Assistants},
+    howpublished = {arXiv preprint arXiv:2311.12983},
+    year         = {2023},
+}
+
+@inproceedings{liu2024agentbench,
+    author       = {Xiao Liu and Hao Yu and Hanchen Zhang and Yifan Xu and others},
+    title        = {{AgentBench}: Evaluating {LLM}s as Agents},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2024},
+}
+
+@online{anthropic2024contextualretrieval,
+    author       = {{Anthropic}},
+    title        = {Introducing Contextual Retrieval},
+    year         = {2024},
+    month        = sep,
+    organization = {Anthropic News},
+    url          = {https://www.anthropic.com/news/contextual-retrieval},
+    urldate      = {2026-05-12},
+}
+
+% --------------------------------------------------------------------------- %
+% Privacy-aware retrieval and adversarial robustness
+% --------------------------------------------------------------------------- %
+
+@misc{zhou2025privacyrag,
+    author       = {{Zhou et al.}},
+    title        = {{Privacy-Aware} Retrieval-Augmented Generation},
+    howpublished = {arXiv preprint arXiv:2503.15548},
+    year         = {2025},
+}
+
+@misc{bassit2025securerag,
+    author       = {{Bassit and Boddeti}},
+    title        = {{SecureRAG}: Privacy-Preserving Retrieval-Augmented Generation},
+    howpublished = {arXiv preprint},
+    year         = {2025},
+}
+
+@misc{zhao2024frag,
+    author       = {{Zhao}},
+    title        = {{FRAG}: Federated Retrieval-Augmented Generation},
+    howpublished = {arXiv preprint},
+    year         = {2024},
+}
+
+@misc{addison2024cfedrag,
+    author       = {{Addison et al.}},
+    title        = {{C-FedRAG}: A Confidential Federated Retrieval-Augmented Generation System},
+    howpublished = {arXiv preprint},
+    year         = {2024},
+}
+
+@inproceedings{li2025securitylingua,
+    author       = {{Li et al.}},
+    title        = {{SecurityLingua}: Adversarial Robustness for Prompt Compression},
+    booktitle    = {Proc. Conf. on Language Modeling (CoLM)},
+    year         = {2025},
+}
+
+% --------------------------------------------------------------------------- %
+% Foundation models, parameter-efficient fine-tuning, and inference stacks
+% --------------------------------------------------------------------------- %
+
+@inproceedings{hu2022lora,
+    author       = {Edward J. Hu and Yelong Shen and Phillip Wallis and Zeyuan Allen-Zhu and Yuanzhi Li and Shean Wang and Lu Wang and Weizhu Chen},
+    title        = {{LoRA}: Low-Rank Adaptation of Large Language Models},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2022},
+}
+
+@misc{llama31modelcard,
+    author       = {{Meta AI}},
+    title        = {The {Llama} 3 Herd of Models},
+    howpublished = {arXiv preprint arXiv:2407.21783},
+    year         = {2024},
+}
+
+@inproceedings{chen2020simclr,
+    author       = {Ting Chen and Simon Kornblith and Mohammad Norouzi and Geoffrey Hinton},
+    title        = {A Simple Framework for Contrastive Learning of Visual Representations},
+    booktitle    = {Proc. International Conference on Machine Learning (ICML)},
+    year         = {2020},
+}
+
+@misc{oord2018cpc,
+    author       = {Aaron van den Oord and Yazhe Li and Oriol Vinyals},
+    title        = {Representation Learning with Contrastive Predictive Coding},
+    howpublished = {arXiv preprint arXiv:1807.03748},
+    year         = {2018},
+    note         = {InfoNCE.},
+}
+
+@online{mlxframework,
+    author       = {Awni Hannun and Jagrit Digani and Angelos Katharopoulos and Ronan Collobert},
+    title        = {{MLX}: Efficient and Flexible Machine Learning on {Apple} Silicon},
+    year         = {2023},
+    organization = {Apple},
+    url          = {https://github.com/ml-explore/mlx},
+    urldate      = {2026-05-12},
+}
+
+@online{llamacpp,
+    author       = {Georgi Gerganov and others},
+    title        = {{llama.cpp}: Port of Facebook's {LLaMA} Model in C/{C}++},
+    year         = {2024},
+    url          = {https://github.com/ggerganov/llama.cpp},
+    urldate      = {2026-05-12},
+}
+
+@online{ollama,
+    author       = {{Ollama}},
+    title        = {{Ollama}: Get Up and Running with Large Language Models Locally},
+    year         = {2024},
+    url          = {https://ollama.com/},
+    urldate      = {2026-05-12},
+}
+
+@online{faiss,
+    author       = {Jeff Johnson and Matthijs Douze and Herv{\'e} J{\'e}gou},
+    title        = {{Faiss}: A Library for Efficient Similarity Search and Clustering of Dense Vectors},
+    year         = {2024},
+    organization = {Facebook AI Research},
+    url          = {https://github.com/facebookresearch/faiss},
+    urldate      = {2026-05-12},
+}
+
+@online{llamaindex,
+    author       = {Jerry Liu and {LlamaIndex Team}},
+    title        = {{LlamaIndex}: A Data Framework for {LLM} Applications},
+    year         = {2024},
+    url          = {https://github.com/run-llama/llama_index},
+    urldate      = {2026-05-12},
+}
+
+@online{huggingfacepeft,
+    author       = {{HuggingFace}},
+    title        = {{PEFT}: State-of-the-art Parameter-Efficient Fine-Tuning},
+    year         = {2024},
+    url          = {https://github.com/huggingface/peft},
+    urldate      = {2026-05-12},
+}
+
+% --------------------------------------------------------------------------- %
+% Evaluation tooling
+% --------------------------------------------------------------------------- %
+
+@misc{ragas2023,
+    author       = {Shahul Es and Jithin James and Luis Espinosa-Anke and Steven Schockaert},
+    title        = {{RAGAS}: Automated Evaluation of Retrieval Augmented Generation},
+    howpublished = {arXiv preprint arXiv:2309.15217},
+    year         = {2023},
+}
+
+@misc{deepeval2024,
+    author       = {{Confident AI}},
+    title        = {{DeepEval}: The {LLM} Evaluation Framework},
+    howpublished = {GitHub repository},
+    year         = {2024},
+    url          = {https://github.com/confident-ai/deepeval},
+    urldate      = {2026-05-12},
+}
+
+@inproceedings{zhang2020bertscore,
+    author       = {Tianyi Zhang and Varsha Kishore and Felix Wu and Kilian Q. Weinberger and Yoav Artzi},
+    title        = {{BERTScore}: Evaluating Text Generation with {BERT}},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2020},
+}
+
+@inproceedings{lin2004rouge,
+    author       = {Chin-Yew Lin},
+    title        = {{ROUGE}: A Package for Automatic Evaluation of Summaries},
+    booktitle    = {Text Summarization Branches Out},
+    pages        = {74--81},
+    year         = {2004},
+}
+
+@inproceedings{rajpurkar2016squad,
+    author       = {Pranav Rajpurkar and Jian Zhang and Konstantin Lopyrev and Percy Liang},
+    title        = {{SQuAD}: 100,000+ Questions for Machine Comprehension of Text},
+    booktitle    = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+    year         = {2016},
+}
+
+@article{kocisky2018narrativeqa,
+    author       = {Tom{\'a}{\v{s}} Ko{\v{c}}isk{\'y} and Jonathan Schwarz and Phil Blunsom and Chris Dyer and Karl Moritz Hermann and G{\'a}bor Melis and Edward Grefenstette},
+    title        = {The {NarrativeQA} Reading Comprehension Challenge},
+    journal      = {Transactions of the Association for Computational Linguistics (TACL)},
+    year         = {2018},
+    volume       = {6},
+    pages        = {317--328},
+}
+
+@inproceedings{yang2018hotpotqa,
+    author       = {Zhilin Yang and Peng Qi and Saizheng Zhang and Yoshua Bengio and William W. Cohen and Ruslan Salakhutdinov and Christopher D. Manning},
+    title        = {{HotpotQA}: A Dataset for Diverse, Explainable Multi-hop Question Answering},
+    booktitle    = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+    year         = {2018},
+}
+
+% --------------------------------------------------------------------------- %
+% Statistics
+% --------------------------------------------------------------------------- %
+
+@book{efron1993bootstrap,
+    author       = {Bradley Efron and Robert J. Tibshirani},
+    title        = {An Introduction to the Bootstrap},
+    publisher    = {Chapman \& Hall},
+    address      = {New York},
+    year         = {1993},
+}
+
+@article{holm1979bonferroni,
+    author       = {Sture Holm},
+    title        = {A Simple Sequentially Rejective Multiple Test Procedure},
+    journal      = {Scandinavian Journal of Statistics},
+    volume       = {6},
+    number       = {2},
+    pages        = {65--70},
+    year         = {1979},
+}
+
+@article{wilcoxon1945,
+    author       = {Frank Wilcoxon},
+    title        = {Individual Comparisons by Ranking Methods},
+    journal      = {Biometrics Bulletin},
+    volume       = {1},
+    number       = {6},
+    pages        = {80--83},
+    year         = {1945},
+}
+
+@article{mannwhitney1947,
+    author       = {Henry B. Mann and Donald R. Whitney},
+    title        = {On a Test of Whether One of Two Random Variables is Stochastically Larger than the Other},
+    journal      = {Annals of Mathematical Statistics},
+    volume       = {18},
+    number       = {1},
+    pages        = {50--60},
+    year         = {1947},
+}
+
+@article{cliff1993dominance,
+    author       = {Norman Cliff},
+    title        = {Dominance Statistics: Ordinal Analyses to Answer Ordinal Questions},
+    journal      = {Psychological Bulletin},
+    volume       = {114},
+    number       = {3},
+    pages        = {494--509},
+    year         = {1993},
+}
+
+% --------------------------------------------------------------------------- %
+% FCG / University of Oulu — internal documents and adjacent publications
+% --------------------------------------------------------------------------- %
+
+@article{saleh2025messagebrokers,
+    author       = {Alaa Saleh and Roberto Morabito and Schahram Dustdar and Sasu Tarkoma and Susanna Pirttikangas and Lauri Lov{\'e}n},
+    title        = {Towards Message Brokers for Generative {AI}: Survey, Challenges, and Opportunities},
+    journal      = {ACM Computing Surveys},
+    volume       = {58},
+    number       = {1},
+    pages        = {Article 20},
+    year         = {2025},
+    doi          = {10.1145/3742891},
+}
+
+@article{saleh2025memindex,
+    author       = {{Saleh et al.}},
+    title        = {{MemIndex}: Agentic Event-based Distributed Memory Management for Large Language Model Agents},
+    journal      = {ACM Transactions on Autonomous and Adaptive Systems (TAAS)},
+    year         = {2025},
+}
+
+@article{loven2025paper1,
+    author       = {Lauri Lov{\'e}n},
+    title        = {Real-Time {AI} Service Economy: A Polymatroidal Framework for Service Markets},
+    journal      = {IEEE Transactions on Services Computing (under review)},
+    year         = {2025},
+    note         = {Internal FCG reference, ``Paper 1''.},
+}
+
+@article{loven2025paper2,
+    author       = {Lauri Lov{\'e}n},
+    title        = {Trustworthy Marketplace Architecture for {AI} Service Exchanges},
+    journal      = {IEEE Transactions on Services Computing (in preparation)},
+    year         = {2025},
+    note         = {Internal FCG reference, ``Paper 2''.},
+}
+
+@article{loven2025paper3,
+    author       = {Lauri Lov{\'e}n},
+    title        = {Collusion, Learning, and Dynamic Credibility in {AI} Service Markets},
+    journal      = {IEEE Transactions on Services Computing},
+    year         = {2025},
+    note         = {Internal FCG reference, ``Paper 3''.},
+}
+
+@article{loven2025paper4,
+    author       = {Lauri Lov{\'e}n},
+    title        = {Epistemic Incentives in Markets for {AI} Services},
+    journal      = {IEEE Transactions on Services Computing (supplementary)},
+    year         = {2025},
+    note         = {Internal FCG reference, ``Paper 4''.},
+}
+
+@incollection{loven20256g,
+    author       = {Lauri Lov{\'e}n},
+    title        = {Large Language Models in the {6G}-Enabled Computing Continuum},
+    booktitle    = {6G Research Visions},
+    year         = {2025},
+}
+
+@misc{kokkonen2022autonomy,
+    author       = {Henna Kokkonen and Susanna Pirttikangas and Lauri Lov{\'e}n},
+    title        = {Autonomy and Intelligence in the Computing Continuum: Challenges, Enablers, and Future Directions for Orchestration},
+    howpublished = {arXiv preprint arXiv:2205.01423},
+    year         = {2022},
+}
+
+@inproceedings{sheikhi2025cognitive,
+    author       = {Salim Sheikhi and Panos Kostakos and Lauri Lov{\'e}n},
+    title        = {Cognitive {SOC}: From Reactive Triage to Predictive Reasoning},
+    booktitle    = {IEEE International Conference on Big Data (BigData)},
+    year         = {2025},
+}
+
+@techreport{fcgsystemarch2026,
+    author       = {{Future Computing Group}},
+    title        = {System Architecture for Real-Time {AI} Service Markets},
+    institution  = {CSE Research Unit, University of Oulu},
+    year         = {2026},
+    note         = {Internal document, March 2026.},
+}
+
+@techreport{fcgsoftwarearch2026,
+    author       = {{Future Computing Group}},
+    title        = {Neutral {AI} Service Exchange Software Architecture},
+    institution  = {CSE Research Unit, University of Oulu},
+    year         = {2026},
+    note         = {Internal document, March 2026.},
+}
+
+@techreport{fcgintegratorarch2026,
+    author       = {{Future Computing Group}},
+    title        = {Integrator System Architecture},
+    institution  = {CSE Research Unit, University of Oulu},
+    year         = {2026},
+    note         = {Internal document, March 2026.},
+}
+
+@techreport{fcgfinancial2026,
+    author       = {{Future Computing Group}},
+    title        = {Financial Analysis: University {AI} Service Economy},
+    institution  = {CSE Research Unit, University of Oulu},
+    year         = {2026},
+    note         = {Internal document, March 2026. Five-year projection across the University of Oulu.},
+}
+
+@techreport{fcgusecase2026,
+    author       = {{Future Computing Group}},
+    title        = {Use Case: A Week at the University in the {AI} Service Economy},
+    institution  = {CSE Research Unit, University of Oulu},
+    year         = {2026},
+    note         = {Internal document, March 2026. Vignette 3.7 (Period-end project reporting) is the focal scenario.},
+}
+
+% --------------------------------------------------------------------------- %
+% Frameworks for AI risk and governance
+% --------------------------------------------------------------------------- %
+
+@techreport{nistairmf,
+    author       = {{National Institute of Standards and Technology}},
+    title        = {{AI} Risk Management Framework ({AI RMF} 1.0)},
+    institution  = {U.S. Department of Commerce},
+    year         = {2023},
+}
+
+% --------------------------------------------------------------------------- %
+% Oulu thesis-template references (retained from the original template)
+% --------------------------------------------------------------------------- %
+
+@online{mscstudies,
+    title        = {Computer Science and Engineering Master's Programme},
+    author       = {{University of Oulu}},
+    year         = {2025},
+    url          = {https://www.oulu.fi/en/study-programmes/computer-science-and-engineering-master-of-science-technology},
+    urldate      = {2026-05-12},
 }
 
 @online{bscstudies,
-    title = "{Bachelor's thesis} Computer Science and Engineering",
-    year = 2025,
-    url = {https://www.oulu.fi/en/for-students/thesis-and-graduation/bachelors-degree/bachelors-thesis#177},
-    author = {{Degree Programme in Computer Science and Engineering, University of Oulu}},
-    urldate = "2015-05-27"
-}
-
-
-@online{mscstudies,
-    title = "{Master's thesis} Computer Science and Engineering",
-    year = 2025,
-    url = {https://www.oulu.fi/en/for-students/thesis-and-graduation/graduation-masters-degree/masters-thesis#177},
-    organization = {{Degree Programme in Computer Science and Engineering, University of Oulu}},
-    urldate = "2025-05-27"
-}
-
-@online{mscgraduation,
-    title = "{MSc} Graduation",
-    year = 2024,
-    url = {https://www.oulu.fi/en/graduation-masters-degree#177},
-    organization = "Degree Programme in Computer Science {and} Engineering, University of Oulu",
-    urldate = "2025-05-27"
-}
-
-
-@online{ieeetransactions,
-    title = "{IEEE Editorial Style Manual for Authors}",
-    url= {https://journals.ieeeauthorcenter.ieee.org/your-role-in-article-production/ieee-editorial-style-manual/},
-    year = 2025,
-    urldate = "2025-05-27",
-    author = {IEEE}
-}
-
-@book{moore,
-	title = {Cramming {More} {Components} {Onto} {Integrated} {Circuits}},
-	url = {https://books.google.fi/books?id=4ApqHAAACAAJ},
-	publisher = {McGraw-Hill},
-	author = {Moore, G.E.},
-	year = {1965},
-}
-
-
-@article{ojala:2002,
-	title = {Multiresolution gray-scale and rotation invariant texture classification with local binary patterns},
-	volume = {24},
-	% copyright = {https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html},
-	issn = {0162-8828},
-	% If DOI is present, no need for URL
-	% url = {http://ieeexplore.ieee.org/document/1017623/},
-	doi = {10.1109/TPAMI.2002.1017623},
-	number = {7},
-	urldate = {2025-05-28},
-	journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
-	author = {Ojala, T. and Pietikainen, M. and Maenpaa, T.},
-	month = jul,
-	year = {2002},
-	pages = {971--987},
-}
-
-@Book{riekki:1998,
-    author = "Riekki, J.",
-    year = "1998",
-    title = "Reactive task execution of a mobile robot",
-    publisher = "Acta Universitatis Ouluensis C 129"
-}
-
-@Book{pietikainen:2011,
-    author =   "Pietikäinen, M. and Hadid, A. and Zhao, G. and Ahonen, A.", 
-    year =   "2011",
-    title =   "Computer vision using local binary patterns",
-    publisher =   "London, Springer-Verlag"
-}
-
-@inproceedings{cvejic:2005,
-    author =   "Cvejic, N. and Seppänen, T.", 
-    year =   "2005",
-    title =   "Digital audio watermarking",
-    booktitle =   "Digital watermarking for digital media",
-    address = "Hershey, PA, Idea Group",
-    pages = "135-181",
-    editor = "{Seitz J.}"
-}
-
-@inproceedings{heikkila:1997,
-    author = {Heikkilä, J. and Silvén ,O.},
-    title = {A four-step camera calibration procedure with implicit image correction},
-    year = {1997},
-    booktitle = {Proc. 1997 IEEE Computer Society Conference on Computer Vision and Pattern Recognition, San Juan, Puerto Rico},
-    pages = {1106-1112},
-    doi = {10.1109/CVPR.1997.609468}
-}
-
-@Book{heikkinen:2011,
-    author = "Heikkinen, K.",
-    title = "Design specification of a dashboard interface for the management of steel service centers",
-    year = "2011",
-    publisher = "Master's thesis",
-    address = "University of Oulu, Department of Computer Science and Engineering"
-}
-
-@patent{toivonen:2004,
-	title = {Method and device for coding successive images},
-	url = {https://patents.google.com/patent/EP1438861A1/en?oq=1438861},
-	holder = {Individual},
-	type = {patenteu},
-	number = {1438861A1},
-	author = {Toivonen, Tuukka and Heikkilä, Janne and Silvén, Olli},
-	urldate = {2025-06-09},
-	date = {2004-07-21},
-	langid = {english},
-	keywords = {block, coded, theoretic, theoretic transform, transform},
-}
-
-@book{asuntoliitto_asumistaso_1969,
-	address = {Helsinki},
-	title = {Asumistaso : asuntoasiain vuosikirja},
-	% Not really available online
-	% url = {https://www.finna.fi/Record/tuni.991792974205973},
-	publisher = {Suomen asuntoliitto},
-	author = {{Suomen Asuntoliitto} and {Asuntoreformiyhdistys} and {Suomen asuntomessut}},
-	year = {1969},
-}
-
-
-
-@online{ictaccessibleword,
-	title = {{How to make an accessible Word document}},
-	year = {2020},
-	url = {https://ict.oulu.fi/15106/?page&lang=en},
-	urldate = {2025-06-13},
-	author = {Anna-Liisa Mattila}
-}
-
-@online{ictwordpdfa,
-	title = {How to create an accessible and archivable {PDF} from a {Word} file},
-	year = {2020},
-	url = {https://ict.oulu.fi/15132/?page&lang=en},
-	urldate = {2025-06-13},
-	author = {Anna-Liisa Mattila}
-}
-
-@online{ictaccessiblemath,
-	title = {Write accessible math formulae fast with {TeX}},
-	year = {2023},
-	url = {https://ict.oulu.fi/19002/?page&lang=en},
-	urldate = {2025-06-13},
-	author = {Anna-Liisa Mattila}
-}
-
-
-@online{ronkainen_copyright,
-	title = {{Kirjaston oppaat: Instructions for publishing in the series Acta Universitatis Ouluensis: - Copyright guidelines}},
-	rights = {Copyright Oulu University 2025},
-	url = {https://libguides.oulu.fi/actaguide/copyrights},
-	shorttitle = {Kirjaston oppaat},
-	abstract = {Copyright guidelines},
-	author = {Ronkainen, Timo},
-	urldate = {2025-06-16},
-	langid = {english},
-	year = {2025}
-
-}
-
-@online{ronkainen_tekijanoikeus,
-	title = {Kirjaston oppaat: Acta Universitatis Ouluensis -opinnäyteopas: - Yleisiä ohjeita tekijänoikeuksista},
-	rights = {Copyright Oulu University 2025},
-	url = {https://libguides.oulu.fi/actaopas/tekijanoikeusohjeita},
-	shorttitle = {Kirjaston oppaat},
-	abstract = {Yleisiä ohjeita tekijänoikeuksista},
-	author = {Ronkainen, Timo},
-	urldate = {2025-06-16},
-	langid = {finnish},
-	year = {2025}
-}
-
-@online{about_cc_licenses,
-	title = {About {CC} Licenses},
-	url = {https://creativecommons.org/share-your-work/cclicenses/},
-	abstract = {Creative Commons licenses give everyone from individual creators to large institutions a standardized way to grant the public permission to use their creative work under copyright law. From the reuser’s perspective, the presence of a Creative Commons license on a copyrighted work answers the question, What can I do with this work? The {CC} License…},
-	titleaddon = {Creative Commons},
-	urldate = {2025-06-16},
-	year = {2025},
-	langid = {american}
-}
-
-@book{coordination_open_2024,
-	title = {Open education and educational resources, open access to scholarly publications. National policy and executive plan by the higher education and research community for 2021–2025: Policy component for open access to theses},
-	rights = {Copyright (c) 2024},
-	url = {https://edition.fi/tsv/catalog/book/977},
-	shorttitle = {Open education and educational resources, open access to scholarly publications. National policy and executive plan by the higher education and research community for 2021–2025},
-	abstract = {The Declaration for Open Science and Research states that "In the research community, responsible openness is a part of everyday research throughout the research process, and research organisations have assessment practices, incentives, and services in place to support this." This also applies to the thesis process, and this policy component on open access to theses applies to all theses completed in higher education institutions (bachelor’s and master’s theses at universities and universities of applied sciences, advanced studies theses, licentiate theses, and doctoral theses). 
-Open science enables a broader use of research results by the research community and society, thus increasing the impact of research as well as the level of scholarship and innovation in society. Openness and the transparency of the process are also intended to support the quality of research. In the context of universities of applied sciences, a thesis is a task that requires and demonstrates expertise and takes into account aspects of the challenges of working life, thus making openness particularly useful from a professional point of view. The policy component on open access to theses has been developed to serve these basic objectives from the perspective of theses.},
-	author = {{Open Science and Research Coordination}},
-	urldate = {2025-06-17},
-	date = {2024-06-03},
-	langid = {english},
-	doi = {10.23847/tsv.977},
-	note = {Publication Title: Tieteellisten seurain valtuuskunta},
-	keywords = {avoin julkaiseminen, avoin oppiminen, avoin tiede, open access, open education, open science, öppen tillgång, öppen utbildning, öppen vetenskap},
-}
-
-
-@online{zotero,
-	title = {Zotero {\textbar} Your personal research assistant},
-	url = {https://www.zotero.org/},
-	urldate = {2025-06-26},
-	date = {2025},
-}
-
-@online{uniouluzotero,
-	title = {Kirjaston oppaat: Zotero reference manager: Start using Zotero},
-	rights = {Copyright Oulu University 2025},
-	url = {https://libguides.oulu.fi/c.php?g=710678&p=5128003},
-	shorttitle = {Kirjaston oppaat},
-	abstract = {Kirjaston oppaat: Zotero reference manager: Start using Zotero},
-	author = {Heinikoski, Ursula},
-	urldate = {2025-06-26},
-	year = {2025}
-
+    title        = {Computer Science and Engineering Bachelor's Programme},
+    author       = {{University of Oulu}},
+    year         = {2025},
+    url          = {https://www.oulu.fi/en/study-programmes/computer-science-and-engineering-bachelor-and-master-science-technology},
+    urldate      = {2026-05-12},
 }

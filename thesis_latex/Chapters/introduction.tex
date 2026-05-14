@@ -1,12 +1,218 @@
-Writing a thesis takes on a major part of completing the master’s degree studies. The thesis assignment prepares for the independent engineering work. Hence, supervision plays a smaller role in thesis procedure than during previous studies. A typical master’s thesis represents a solution to a relatively extensive technical problem. Additional studies in the given field are often necessary; however, the aim of the thesis work is to make use of the knowledge and skills acquired during preceding studies. Furthermore, technical and scientific documentation skills will be strengthened. The thesis work can be a conducted as a part of a larger project, but the master’s thesis itself should be written individually.
+\section{Motivation}
+\label{sec:motivation}
 
-The thesis work is undertaken in the final phase of the studies. It is recommended to begin the thesis work during the autumn term of the 2\textsuperscript{nd} study year in the master’s programme or the 5\textsuperscript{th} year after starting in the bachelor’s programme. However, timing is flexible and it is also possible to begin earlier depending on advancement in studies. As a general rule, it is time to get started, when there are 15 to 30 credit points left of the total coursework (in addition to the master’s thesis). Some fields of study require certain courses to be completed before the master’s thesis. Requirements should always be checked in advance with the supervisor. Information on the degree specific requirements is provided by the secretary of the degree program and the registered credit points can be viewed in Peppi.
+Large language models (LLMs) have moved from single-turn assistants to
+multi-agent systems in which a planner, several workers, and a critic
+cooperate on a shared task by reading and writing a common
+context~\cite{wu2023autogen, hong2024metagpt, shinn2023reflexion,
+anthropic2025multiagent}. The shared context is finite. As institutions
+deploy these systems at scale, the cost of moving state between agents
+grows fast enough to dominate operating expenses~\cite{fcgfinancial2026,
+anthropic2025contextengineering}. The closest published industry analogue,
+Anthropic's research team, reports that token usage alone explains
+approximately eighty percent of the performance variance in their
+multi-agent research system~\cite{anthropic2025multiagent}. Their context
+editing and memory-tool announcement reports an
+eighty-four percent token reduction on a 100-turn web-search evaluation,
+which is the practical setting in which compression is no longer optional
+but unavoidable~\cite{anthropic2025contextediting}.
 
-\section{Thesis guide}
-The aim of these instructions is to give detailed guidelines for composing and writing a master’s thesis. This document describes the thesis work process; starting from searching the topic to the formal approval of the completed thesis. The process has otherwise stayed the same for quite a while, but the final stages were changed in the beginning of 2013 due to electronic archiving for all master’s theses at the University of Oulu. Hence, the older versions of this document are no longer valid and should not be used. Moreover, this document offers practical instructions for the writing of the thesis: for the literary structure, the layout, and for the writing process as well. This document itself has been edited according to the instructed layout, though the literary structure is not similar to that of a master’s thesis.
+Context compression as a research area is well developed in the
+single-agent setting. LLMLingua and its successors compress prompts with
+small classifier networks that drop low-utility tokens~\cite{jiang2023llmlingua,
+jiang2024longllmlingua, pan2024llmlingua2}. Soft-prompt
+approaches such as gist tokens, AutoCompressor, and the In-Context
+Autoencoder (ICAE) train a small adapter to summarise a passage into a
+fixed set of memory slots~\cite{mu2023gist, chevalier2023autocompressor,
+ge2024icae, wang2024icf}. Surveys consolidate the design space and the
+reported accuracy--ratio trade-offs~\cite{li2025promptsurvey,
+rae2020compressive}.
 
-Before starting your master’s thesis work, \textbf{please first read this document carefully.} Following these instructions closely is likely to produce a better result and a higher grade. When the supervisor does not have to point out about these instructions (specifically about the layout) she/he can focus on instructing on the content and how the best grades can be achieved. The degree programme web pages \cite{mscstudies} offer instructions for master thesis as well. When neither of these sources gives an answer to your questions, please ask your supervisor or from the study affairs office. And remember: Although writing the thesis can be difficult at times, every M.Sc. graduated from Faculty of ITEE has succeeded in this effort!
+What the literature does not address directly is whether the single-agent
+accuracy curve continues to predict the quality of \emph{coordination}
+between agents under the same compression. A multi-agent task is not just
+a sum of single-agent QA accuracies; the planner has to assign sub-tasks
+based on a compressed view of the evidence, workers have to retrieve
+based on a compressed scratchpad, and the critic has to verify a draft
+answer against compressed source fragments. There is no shared empirical
+characterisation of how compression degrades that pipeline.
 
-\section{Author's contributions and the role of Artificial Intelligence}
+The Future Computing Group (FCG) at the University of Oulu is building an
+institutional AI service economy that puts compression on the critical
+path of every multi-system workflow~\cite{fcgsystemarch2026,
+fcgsoftwarearch2026, fcgintegratorarch2026}. The flagship use case,
+\emph{Vignette~3.7 -- Period-end project reporting}, gathers reporting
+data across eight university systems via roughly eight specialised
+agents, achieves an estimated 80\% cloud-payload reduction, and lowers
+the per-report cost to about
+EUR~2.15~\cite{fcgusecase2026}. TalentAdore, the industry partner of this
+thesis, runs production workloads whose operating expenses are dominated
+by token cost; their interest is the
+cost-per-workflow story that compression makes possible. Doctoral track
+D7 at FCG (Federated Knowledge Orchestration) takes over after this
+thesis to scale the resulting memory-bus substrate across institutional
+boundaries~\cite{kokkonen2022autonomy, loven2025paper1, loven2025paper2,
+loven2025paper3}. The master's-scale problem this thesis carves out is
+the question of whether compression preserves \emph{coordination}, and at
+what point it breaks.
 
-The structure of a thesis can vary. However, at the end of the introductory chapter, you must include a section titled \textit{Author's Contributions and the Role of Artificial Intelligence}. In this section, you should clarify your independent contributions to the thesis and explain how AI was used in its preparation, if applicable. More information can be found in Sections~\ref{writing} and~\ref{AI}.
+\section{Thesis statement and contributions}
+\label{sec:thesis_statement}
+
+This thesis designs, implements, and evaluates a distributed memory bus
+with a context-compression layer for multi-agent institutional systems.
+The empirical question is whether single-agent QA accuracy is a faithful
+predictor of multi-agent coordination success under compression, and the
+methodological question is whether such a coordination metric can be
+defined, measured, and shown to scale predictably with model size.
+
+The thesis contributes four artefacts, corresponding to the four research
+questions accepted at the project's inception:
+
+\begin{enumerate}
+\setlength\itemsep{2pt}
+
+\item \textbf{C1 --- A multi-agent coordination benchmark.}
+A reproducible synthetic benchmark inspired by Vignette~3.7: a planner, a
+configurable number of workers, and a critic exchanging compressed state
+through a shared scratchpad. Three workload families, configurable agent
+count, source-document characteristics, tag distributions, and
+coordination-quality metrics that go beyond per-turn correctness
+(planner-replan count, sub-task-assignment accuracy, rounds-to-completion,
+critic-flagged error rate, summary-level inference disclosure). Released
+alongside the thesis with documentation and seed configurations.
+
+\item \textbf{C2 --- Empirical characterisation of compression effects on
+multi-agent coordination across model size.}
+Three compressor families --- LLMLingua-2 as a token-level hard-prompt
+filter~\cite{pan2024llmlingua2}, an instruction-aware heuristic filter,
+and an ICAE-style soft-prompt compressor that is the trainable
+arm~\cite{ge2024icae, chevalier2023autocompressor} --- evaluated on the
+C1 benchmark at compression ratios from $1\times$ to $16\times$ and model
+sizes \{7B, 13B, 34B int4, 70B int4\}. The headline empirical result is
+the existence and shape of a \emph{coordination cliff}~$\tau^{*}$: a
+compression ratio beyond which coordination success degrades sharply even
+when single-agent QA accuracy degrades smoothly.
+
+\item \textbf{C3 --- Joint RAG plus compression pipeline catalogue.}
+Three pipeline architectures implemented end-to-end on FAISS and
+LlamaIndex~\cite{faiss, llamaindex}: P1 (compress, then retrieve), P2
+(retrieve, then compress; the classical LongLLMLingua
+setup~\cite{jiang2024longllmlingua}), and P3 (joint, conditional
+compression based on retrieval relevance scores, following the structure
+of~\cite{guo2025dynamic}). Each pipeline is benchmarked under matched
+retrieval quality, with a cost model in EUR per query fitted to
+TalentAdore production pricing for GPT-4o-mini and Claude Haiku 4.5 plus
+amortised local inference cost on the M4 Pro.
+
+\item \textbf{C4 --- Tag-preserving compressor variant and reference
+memory-bus integration.}
+A modification of the ICAE-style compressor that adds a per-slot
+tag-prediction head emitting an inherited provenance and
+access-control-list vector for each compressed
+fragment~\cite{park2025collaborative, nistairmf}. Evaluated on
+tag-preservation rate at ratios $\{2\times, 4\times, 8\times\}$, on
+accuracy delta relative to the unmodified variant, and on summary-level
+inference disclosure when a held-out reader is given compressed summaries
+with no quoted source text. Delivered with a reference memory-bus
+integration that exposes the read, write, subscribe, and audit interfaces
+the FCG platform team can adopt without rewriting the compression layer.
+
+\end{enumerate}
+
+The four contributions form a sequence: build the testbed, use it to make
+a measurement the field has not made, embed compression into the RAG
+pipelines institutional agents actually use, and then probe what happens
+when compression carries metadata.
+
+\section{Scope and compute envelope}
+\label{sec:scope}
+
+The thesis runs on a single Apple M4~Pro 48~GB workstation
+using MLX for training and 7B/13B inference, llama.cpp with GGUF Q4\_K\_M
+files for 34B and 70B inference, Ollama for developer-experience
+inference, HuggingFace Transformers with PEFT for fine-tuning, FAISS-CPU
+for vector search, LlamaIndex for RAG orchestration, AutoGen v0.4 for
+agent runtime, and SQLite for the audit log~\cite{mlxframework,
+llamacpp, ollama, huggingfacepeft, faiss, llamaindex, wu2023autogen}.
+Every wallclock estimate in the thesis is dimensioned for that envelope.
+
+Three items are explicitly out of scope and are deferred to D7:
+production-grade governance enforcement (the tag-preserving compressor is
+a research prototype with measured properties, not a compliance tool);
+cross-tokenizer or cross-model-family compressed exchange; and a live
+production deployment on the FCG platform (the integration interface is
+delivered as a reference implementation that the FCG team can adopt).
+
+\section{Hypotheses}
+\label{sec:hypotheses_intro}
+
+Eight hypotheses guide the empirical work; each is grounded in a specific
+measurable comparison with an explicit falsifiable claim. All eight are
+thesis hypotheses, and falsification of any one is itself reported as a
+thesis-worthy finding in the relevant chapter. The hypotheses are
+summarised in Chapter~\charef{experiments} and listed here only for
+completeness:
+
+\begin{itemize}
+\setlength\itemsep{2pt}
+\item H1. Single-agent QA accuracy under compression is a poor predictor
+of multi-agent coordination success.
+\item H2. A coordination cliff $\tau^{*}$ exists and is task-dependent.
+\item H3. Training distribution matters: a compressor fine-tuned on
+planner-worker-critic dialogue traces outperforms one fine-tuned on
+monolithic QA, at matched single-agent QA accuracy.
+\item H4. RAG pipeline placement matters: P1 and P2 dominate in different
+regimes, and P3 closes the gap on a combined accuracy-times-cost score.
+\item H5. A per-slot tag head preserves provenance tags at rate at least
+85\% at $4\times$ compression with accuracy degradation at most 5 pp.
+\item H6. Summary-level inference disclosure is measurable, and the
+tag-preserving variant reduces it relative to the baseline at matched
+compression.
+\item H7. The coordination cliff $\tau^{*}$ shifts toward higher
+compression ratios as model size grows.
+\item H8. Findings on synthetic Vignette-7 transfer to real M0/M1/M2
+traces.
+\end{itemize}
+
+The narrative arc is: standard metrics are incomplete (H1), so a
+coordination cliff exists and is measurable (H2); training distribution
+matters (H3); RAG pipeline placement matters (H4); governance metadata
+can ride along compression and the riding is measurable (H5, H6); the
+cliff scales with model size (H7); and the synthetic benchmark transfers
+to real deployment (H8).
+
+\section{Thesis structure}
+\label{sec:thesis_structure}
+
+Chapter~\charef{relatedwork} reviews related work in five strands:
+context compression and memory, multi-agent systems and agentic memory,
+RAG and long-context benchmarks, privacy-aware retrieval and adversarial
+robustness, and the FCG programme and its industry-relevance arm.
+Chapter~\charef{implementation} describes the system design and
+implementation: the three-layer memory-bus architecture, the compressor
+framework with its four variants, the C1 benchmark generator, the RAG
+pipeline catalogue, the agent runtime, and the inference-backend stack.
+Chapter~\charef{experiments} specifies the experimental protocol for
+each of the eight hypotheses, the metrics, and the statistical analysis
+plan, with placeholder result sections marked clearly. The manuscript
+closes with Chapter~\charef{summary}, which discusses the limitations,
+the bridge to doctoral research, and the deliverables.
+
+\section{Author's contributions and the role of artificial intelligence}
+\label{AI}
+
+The implementation, experimental design, training procedures, statistical
+protocol, and writing of this thesis are the independent work of the
+author, conducted under the supervision arrangement described in the
+foreword. Generative AI tools (Claude and ChatGPT) were used as writing
+aids in three documented capacities: as a literature-review assistant
+for locating and cross-referencing prior work, as a code-review assistant
+for catching defects in the reference implementation, and as a
+copy-editor for clarity and grammar in the manuscript. All technical
+decisions, architectural choices, experimental designs, statistical
+methods, hypothesis formulations, and conclusions are the author's own.
+No AI system produced any results or empirical claims in the thesis;
+every empirical result reported (when populated) is generated by the
+reproducible scripts in the open-source repository accompanying the
+manuscript.

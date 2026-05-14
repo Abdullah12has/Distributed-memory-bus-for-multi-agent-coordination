@@ -56,8 +56,10 @@ class LLMLingua2Compressor:
         self._force_tokens = self._filter_force_tokens(requested)
         log.info(
             "compressor.lingua2.init",
-            model=model_name, target_ratio=target_ratio,
-            force_tokens=self._force_tokens, dropped=tuple(set(requested) - set(self._force_tokens)),
+            model=model_name,
+            target_ratio=target_ratio,
+            force_tokens=self._force_tokens,
+            dropped=tuple(set(requested) - set(self._force_tokens)),
         )
 
     def _filter_force_tokens(self, requested: tuple[str, ...]) -> tuple[str, ...]:
@@ -104,14 +106,14 @@ class LLMLingua2Compressor:
             return slot.payload.text
         return ""
 
-    def embed(self, slot: CompressedSlot) -> list[float] | None:
+    def embed(self, slot: CompressedSlot) -> list[float] | None:  # noqa: ARG002
         # LLMLingua-2 is a token filter; we have no native embedding for the
         # output. The bus's vector store path is therefore unused for this
         # compressor — RAG pipelines re-embed the compressed text via a
         # dedicated embedder.
         return None
 
-    def embed_text(self, text: str) -> list[float] | None:
+    def embed_text(self, text: str) -> list[float] | None:  # noqa: ARG002
         return None
 
     def model_card(self) -> ModelCard:

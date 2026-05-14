@@ -50,7 +50,7 @@ class TrainerConfig:
 
     run_name: str = "icae-7b"
     base_model: str = "meta-llama/Llama-3.1-8B-Instruct"
-    dataset: str = "qa"                              # "qa" | "dialogue"
+    dataset: str = "qa"  # "qa" | "dialogue"
     dataset_path: str = "data/processed/training/qa.jsonl"
     num_slots: int = 128
     max_input_tokens: int = 512
@@ -71,7 +71,7 @@ class TrainerConfig:
 
     # Loss weights
     lambda_nce: float = 0.3
-    lambda_tag: float = 0.0                          # >0 ⇒ enable C4 tag head
+    lambda_tag: float = 0.0  # >0 ⇒ enable C4 tag head
     nce_temperature: float = 0.07
 
     # IO
@@ -80,8 +80,8 @@ class TrainerConfig:
     save_every: int = 500
 
     # Sanity / time-boxes
-    max_wallclock_hours: float = 72.0                # plan §4.3 ≤3 days
-    backend: str = "auto"                            # "auto" | "torch" | "mlx"
+    max_wallclock_hours: float = 72.0  # plan §4.3 ≤3 days
+    backend: str = "auto"  # "auto" | "torch" | "mlx"
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> TrainerConfig:
@@ -155,7 +155,9 @@ def _load_dataset(cfg: TrainerConfig) -> Sequence[TrainingExample]:
     raise ValueError(msg)
 
 
-def _iter_batches(ds: Sequence[TrainingExample], batch_size: int) -> Iterator[list[TrainingExample]]:
+def _iter_batches(
+    ds: Sequence[TrainingExample], batch_size: int
+) -> Iterator[list[TrainingExample]]:
     batch: list[TrainingExample] = []
     for ex in ds:
         batch.append(ex)
@@ -184,14 +186,20 @@ def _run_torch(cfg: TrainerConfig) -> int:
         import torch
         import torch.nn.functional as F
         from peft import LoraConfig, get_peft_model
-        from transformers import AutoModelForCausalLM, AutoTokenizer, get_cosine_schedule_with_warmup
+        from transformers import (
+            AutoModelForCausalLM,
+            AutoTokenizer,
+            get_cosine_schedule_with_warmup,
+        )
     except ImportError as e:
         log.error("trainer.torch_missing", error=str(e))
         return 2
 
     device = (
-        "cuda" if torch.cuda.is_available()
-        else "mps" if torch.backends.mps.is_available()
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
         else "cpu"
     )
     log.info("trainer.torch.device", device=device)
@@ -215,7 +223,15 @@ def _run_torch(cfg: TrainerConfig) -> int:
         lora_dropout=cfg.lora_dropout,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
     encoder = get_peft_model(base, lora_cfg)
     encoder.print_trainable_parameters()
@@ -270,18 +286,27 @@ def _run_torch(cfg: TrainerConfig) -> int:
 
             anchor_inputs = tokenizer(
                 [ex.anchor_text for ex in batch],
-                return_tensors="pt", padding=True, truncation=True, max_length=cfg.max_input_tokens,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=cfg.max_input_tokens,
             ).to(device)
             positive_inputs = tokenizer(
                 [ex.positive_text for ex in batch],
-                return_tensors="pt", padding=True, truncation=True, max_length=cfg.max_input_tokens,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=cfg.max_input_tokens,
             ).to(device)
 
             # Append num_slots MEM tokens for the compressor pass.
             def _append_mem(inputs: dict[str, Any]) -> dict[str, Any]:
                 B = inputs["input_ids"].size(0)
                 mem_ids = torch.full(
-                    (B, cfg.num_slots), int(mem_token_id), device=device, dtype=inputs["input_ids"].dtype,
+                    (B, cfg.num_slots),
+                    int(mem_token_id),
+                    device=device,
+                    dtype=inputs["input_ids"].dtype,
                 )
                 input_ids = torch.cat([inputs["input_ids"], mem_ids], dim=1)
                 attn = torch.cat([inputs["attention_mask"], torch.ones_like(mem_ids)], dim=1)
@@ -294,8 +319,8 @@ def _run_torch(cfg: TrainerConfig) -> int:
             p_out = encoder(**p_in, output_hidden_states=True, return_dict=True)
 
             # Memory embeddings = last hidden, last num_slots positions.
-            a_mem = a_out.hidden_states[-1][:, -cfg.num_slots:, :]
-            p_mem = p_out.hidden_states[-1][:, -cfg.num_slots:, :]
+            a_mem = a_out.hidden_states[-1][:, -cfg.num_slots :, :]
+            p_mem = p_out.hidden_states[-1][:, -cfg.num_slots :, :]
 
             # ---- L_recon ----
             # Feed [MEM_slots ; anchor_input_ids] through the FROZEN decoder,
@@ -329,7 +354,8 @@ def _run_torch(cfg: TrainerConfig) -> int:
             if tag_head is not None and cfg.lambda_tag > 0:
                 acl_targets = torch.tensor(
                     [_unpack_uint64(ex.acl_mask) for ex in batch],
-                    device=device, dtype=torch.float32,
+                    device=device,
+                    dtype=torch.float32,
                 )
                 class_targets = torch.tensor(
                     [ex.classification for ex in batch], device=device, dtype=torch.long
@@ -351,9 +377,13 @@ def _run_torch(cfg: TrainerConfig) -> int:
             if step % cfg.log_every == 0:
                 log.info(
                     "trainer.step",
-                    epoch=epoch, step=step,
-                    l_recon=float(l_recon), l_nce=float(l_nce), l_tag=float(l_tag),
-                    loss=float(loss), lr=scheduler.get_last_lr()[0],
+                    epoch=epoch,
+                    step=step,
+                    l_recon=float(l_recon),
+                    l_nce=float(l_nce),
+                    l_tag=float(l_tag),
+                    loss=float(loss),
+                    lr=scheduler.get_last_lr()[0],
                 )
             if step > 0 and step % cfg.save_every == 0:
                 _save(encoder, tag_head, out_dir, step=step, final=False)
@@ -364,12 +394,12 @@ def _run_torch(cfg: TrainerConfig) -> int:
     return 0
 
 
-def _build_tag_head(d_model: int) -> "Any":
+def _build_tag_head(d_model: int) -> Any:
     """Build the C4 TagHead — two linears, ACL (64) and classification (5)."""
     import torch
     from torch import nn
 
-    class TagHead(nn.Module):
+    class TagHead(nn.Module):  # type: ignore[misc]
         def __init__(self) -> None:
             super().__init__()
             self.acl = nn.Linear(d_model, 64)

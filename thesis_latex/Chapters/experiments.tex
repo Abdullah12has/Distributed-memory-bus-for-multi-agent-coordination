@@ -1,213 +1,427 @@
-% Discussion Chapter
+This chapter specifies the experimental protocol for each of the eight
+hypotheses, the metric suite, the statistical-analysis plan, and the
+schedule of arms. Each hypothesis section gives the falsifiable claim
+verbatim, the inputs the runner takes, the procedure, the decision rule
+that maps the run's output to a verdict, and the wallclock estimate.
+Result sections are explicit placeholders marked with the LaTeX comment
+\verb|% RESULTS|: they will be populated by the experimental runs of
+Months 3, 4, 6, 7, and 8 of the implementation plan and are
+intentionally empty in this submission. The empirical findings will be
+inserted into those slots verbatim from the
+\texttt{results/h\{N\}/<run\_id>/} directory and the corresponding
+\texttt{verdicts.json}.
 
-The structure of a text is based on a pre-designed content structure (table of contents and the body) that can vary a great deal from thesis to thesis depending on the topic as well as the scope of the thesis. The presentation order of the first few pages is fixed, and should be presented as it is described in Sections~\ref{sec:first_pages} to~\ref{sec:appendices} in these instructions. When applying page numbering, the title page has page number ‘1’, but page numbers are shown (at the right upper corner of each page, Arabic numerals) only from \charef{introduction}, Introduction, onwards.
+\section{Metric Suite}
+\label{sec:metric_suite}
 
-\section{First pages}
-\label{sec:first_pages}
-The first pages include the title page, abstract(s), table of contents, foreword and list of abbreviations and symbols. 
+The metric suite covers seven families. The first three are
+quality-oriented and standard; the next two are coordination- and
+compression-specific; the last two are operational.
 
-\subsection{Title page}
+\paragraph{Quality.} F1 (token-overlap), exact match (EM), ROUGE-L, and
+BERTScore, all computed by pure-Python implementations against
+ground-truth answers~\cite{rajpurkar2016squad, lin2004rouge,
+zhang2020bertscore}. The F1 implementation matches the SQuAD reference,
+which is the version reproduced by the LLMLingua-2 paper and the basis
+for the calibration target.
 
-In case the title page template of these instructions can't be used, you can produce the title page yourself following the model available from the degree program web pages. Please ensure that there are no typos, and that your degree program is stated correctly. Your name should be written into the middle. The title should be written below your name with capital letters, centered, and divided into several lines as necessary to produce a balanced appearance. University logo and the faculty name are placed at the top and the type of the thesis, degree programme name, and date are placed at the bottom.
+\paragraph{Coordination.} Final task success, sub-task assignment
+accuracy, rounds to completion, and critic-flagged error rate. All four
+are pure functions of the workload and the trace, as documented in
+Section~\ref{sec:c1} of Chapter~\charef{implementation}.
 
-\subsection{Abstract}
+\paragraph{Faithfulness and hallucination.} RAGAS~\cite{ragas2023} and
+DeepEval~\cite{deepeval2024} faithfulness scores, plus manual
+annotation on a 100-example random sample for spot-check calibration.
 
-The abstract of your thesis will be fed into various databases and catalogues. It should crystallize the essence of your thesis. A good abstract is a bait that attracts the reader to take a closer look of the content. The abstract should be self-contained, i.e., the reader should be able to get a clear picture of your thesis from the abstract alone. There must not be any references to your thesis or other sources, but it should also not include any information not found in your thesis. The abstract should include the main elements, as well as the methods used and results obtained, and main conclusions of your thesis. The recommended length of an abstract is 200 words. Rare terminology and abbreviations should be avoided. 
+\paragraph{Compression.} Input-to-output token ratio measured on
+the wrapped tokenizer of the active compressor; total tokens per
+workflow; per-stage compression ratio when more than one stage applies
+(as in P2 and P3).
 
-The bibliographic information of the thesis should be printed at the top of the abstract page. The keywords of your thesis should be printed below the abstract. The recommended number of keywords is 2--6 keywords or word sets. It is recommended that the keywords are not any words included in the title of the thesis. Keywords serve an important purpose for anyone performing literature searches in a library and other information catalogues. An example abstract is presented in Appendix 1.
+\paragraph{Cost.} EUR per query and EUR per workflow, computed from
+the cost ledger using the pricing constants of Section~\ref{sec:rag_pipelines}
+of Chapter~\charef{implementation}.
 
-\subsection{Abstract in finnish}
+\paragraph{Latency.} p50 and p95 milliseconds per query, computed
+separately for the compression step and end-to-end.
 
-You also have to write your thesis abstract in Finnish, or have your abstract translated into Finnish. It should be written in flawless Finnish. If the language of the thesis is English, the abstract in English is placed first, and abstract in Finnish (Tiivistelmä) after it. If the language of the thesis is Finnish the order is opposite. The requirement of the Finnish abstract does not apply to international master’s degree students.
+\paragraph{Governance.} Tag-preservation rate (per the H5 definition)
+and inference-disclosure rate (per the H6 protocol).
 
-\subsection{Table of contents}
+\paragraph{LLM-as-judge.} A subset of metrics is scored by
+GPT-4o-mini as the judge model, with a $10$\% sample cross-checked by
+Claude Sonnet 4.6. Cohen's $\kappa$ below $0.85$ between the two
+judges triggers a recalibration. The judge sees a position-randomised
+pair of answers and never sees which compressor produced which answer.
 
-The table of contents lists the chapters with their headings and subheadings and their respective page numbers. However, the page number is shown in the table of contents only from the first chapter, Introduction, onwards.
+\section{Statistical Analysis Plan}
+\label{sec:stat_plan}
 
-\subsection{Foreword}
+The pre-registered analysis plan is the one specified in the
+implementation plan and the technical reference.
 
-The foreword page should describe the aim of the thesis, and its various research stages, and present the partners, funding and circumstances involved in the thesis project. The forewords should also include words of gratitude, addressed to people who have been incremental in your thesis-writing process. The supervisor, the second examiner, and the technical supervisor can be mentioned as well.
+\paragraph{Seeds.} Five seeds per condition.
 
-\subsection{List of abbreviations and symbols}
+\paragraph{Confidence intervals.} Empirical 95\% bootstrap CI with
+$10\,000$ resamples, computed via \texttt{bootstrap\_mean\_ci} in
+\texttt{m6.evaluation.statistics}.
 
-The abbreviations of terms, variables and measurement units as well as
-the definitions of other symbols are given as a single list in
-alphabetical order stylized exactly as in the body text (see
-Section~\ref{sec:core_text}) on this page. You should check the validity
-of all abbreviations and symbols from standards and other reliable
-sources. Concerning measurement units, you should apply the
-internationally approved SI-system of symbols~\cite{siopas,
-systemofunits} and quantities and units specified in the IEC 80000-13
-standard. For example, 1000 bytes is one kilobyte (1 kB, `B' is Bytes,
-`b' is bits) and 1024 bytes is one kibibyte, 1 KiB. Similarly, 1 048
-576 bytes mebi (Mi); the larger units are gibi (Gi), tebi (Ti), pebi
-(Pi), and exbi (Ei).
+\paragraph{Paired comparisons.} For compressor-versus-compressor
+comparisons on matched instances, the paired bootstrap. The
+implementation uses the recentred-null percentile bootstrap p-value of
+Efron and Tibshirani~\cite{efron1993bootstrap} (Chapter~16): a
+two-sided test of $H_0$: mean difference $= 0$ is computed by
+re-centring the bootstrap distribution around its own mean and
+reporting the fraction of recentred bootstrap means whose absolute
+value meets or exceeds the observed absolute mean.
 
-In the list, the abbreviations are defined first, then mathematical and other symbols and last letter symbols so that Latin, Greek and other letters are each presented in their designated groups. 
+\paragraph{Cliff-detection test (H2).} Mann--Whitney U for the
+comparison of success-below-$\tau$ versus success-above-$\tau$. These
+two samples are independent because they are drawn across different
+$(\text{workload}, \text{seed}, \text{ratio})$ cells; a paired test
+would be incorrect~\cite{mannwhitney1947, wilcoxon1945}.
 
-\section{Introduction}
+\paragraph{Multiple-comparison correction.} Holm-Bonferroni within
+each hypothesis family~\cite{holm1979bonferroni}. The families are
+$\{H_1, H_2, H_3\}$, $\{H_4\}$, $\{H_5, H_6\}$, $\{H_7\}$, and
+$\{H_8\}$.
 
-In the introduction, you should describe the background and motivation of your thesis, introduce the reader to your research questions and methodology, describe in detail the objectives of your thesis (i.e. what is your aim to achieve), and on what basis the scope of your research area has been chosen. You can also state explicitly what will not be covered. You should cite earlier work done in the field. You should \textbf{not} discuss the results of your thesis in the introduction.
+\paragraph{Effect sizes.} Cliff's $\delta$ for ordinal
+comparisons~\cite{cliff1993dominance} and Cohen's $d$ for continuous
+ones, reported alongside p-values.
 
-You can start by introducing some need of an individual user or the society, or some well-known application or technology. Specifying your own topic as part of such larger entity helps the reader to understand the work and estimate its significance and success. Note that you should avoid specifying too challenging objectives, as failing to meet the objectives can reduce the grade.
+\paragraph{Validity.} Every experiment includes a no-compression
+control condition. If the variance of the control on the metric of
+interest meets or exceeds the variance of the treatment, the experiment
+is flagged \texttt{invalid} in the run's manifest and the verdict is
+suppressed. This is the documented mitigation for the AutoGen-runtime-bug
+risk.
 
-Nowadays master’s theses in engineering are often a part of wider research projects at universities or industries, and it might therefore be difficult for the reader to discern when the author is describing her/his personal work, and when is she/he describing the work of a research group. In cases like these, the author should describe as well as possible what exactly was her/his role and contribution in the research/project. At the end of the introduction, you might want to give an overview about the structure of your thesis.
+\section{Hypothesis H1 --- QA is a Poor Predictor of Coordination}
+\label{sec:h1_design}
 
-\section{Core text part of your thesis}
-\label{sec:core_text}
+\paragraph{Falsifiable claim.} Spearman $\rho$ between the
+single-agent QA-accuracy delta and the multi-agent
+coordination-success delta across matched compression ratios is below
+$0.6$ on at least two of the three compressors at 7B.
 
-How you handle the core topic of your thesis depends essentially on the nature of your research/project. Most theses first describe the technological and scientific environment of the thesis and state-of-the-art related to the topic. This part should focus on presenting context for the author’s own work and for the decisions made by the author, so that it is later clear why one approach, technology, or method was chosen over another.
+\paragraph{Inputs.} The C1 benchmark at version v0.1; the ICAE-style
+trained compressor checkpoint; the MLX-LM backend at the 7B size.
 
-When the author develops a part for a larger system, it is necessary to describe this larger system as well. For example, when an author develops a software component for an LTE base station, the base station and LTE telecommunication network need to be described. However, the author needs to pay attention to describe the larger system only at a reasonable level of detail. The rule of thumb is that detailed information should be given only when this information is necessary to understand the rest of the thesis.
+\paragraph{Procedure.} For each
+$(\text{compressor } c, \text{ratio } r, \text{workload } w,
+\text{seed } s)$ cell: (i) build the single-agent QA derivative of
+the workload (same sources, planner-only question, no workers or
+critic) and record F1; (ii) run the planner-worker-critic loop and
+record coordination success, sub-task accuracy, rounds, and
+critic-flagged rate; (iii) compute
+$\Delta_\text{qa} = qa(r) - qa(r{=}1)$ and
+$\Delta_\text{coord} = \text{coord}(r) - \text{coord}(r{=}1)$. For
+each compressor compute Spearman $\rho$ between
+$\Delta_\text{qa}$ and $\Delta_\text{coord}$, with bootstrap CI.
 
-In the beginning, you can describe and analyze optional approaches or methods, e.g., by applying system-level modeling. As stated above, you can also present solutions proposed in literature sources. The best grades require presenting the state of the art of both technology and science---that is, presenting both the already available solutions and the ongoing research. Such presentation shows that the author possesses good knowledge on the thesis’ topic. Hence, it is crucial to get familiar with the latest literature on the thesis’s topic as soon as possible. Books, scientific articles, and patents can be searched from the sources offered by the university library. The library’s subject guide on information technology\footnote{ http://libguides.oulu.fi/c.php?g=58694} is a good starting point for searching literature.
+\paragraph{Decision.} Supported if $\rho < 0.6$ on at least two of the
+three compressors at 7B, with the bootstrap CI excluding $0.6$ from
+above on the same two compressors. Falsified if $\rho \geq 0.6$ on at
+least two compressors. Both verdicts are thesis-worthy.
 
-A theoretical approach on the given topic can become a natural element in some theses where the student presents, based on his on her own prior knowledge or referring to literature, the theoretical grounds on which the
-thesis work relies. However, unnecessary wordiness must be avoided and as a result the theory presented must be directly linked to the realised work. It is noteworthy, that many theses do not include a theoretical section of any type. \textbf{Hence, you should not insist on adding theory if it does not fit in naturally.}
+\paragraph{Wallclock.} Approximately two days at 7B fp16.
 
-In the possible presentation of related theory, equations and
-mathematical notations often play a prominent role. However, it is
-important to keep in mind that mathematics is a tool for technical
-writing – not the main purpose. Therefore, introducing all details
-with a mathematical equation is unnecessary. It is sufficient to
-present the basic equations, necessary variables and the end
-results. If needed, the full derivation can be added to the thesis as
-an appendix. In science and technology, two types of equations are
-employed:
+% RESULTS: H1 results to be inserted from results/h1/7b/<run_id>/.
 
-\begin{itemize}
-\item{equations between quantities where letter symbols represent physical quantities, and}
-\item{equations between numerical values where letter symbols represent the numerical values of the variables.}
-\end{itemize}
+\section{Hypothesis H2 --- Coordination Cliff exists}
+\label{sec:h2_design}
 
-A quantity is the product of the numerical value and the unit of
-measure. The unit of measure must always be separated from the
-preceding numerical value with a spac (e.g., 5 Gbit/s,  5\,$^\circ$C, yet 5$^\circ$). Equations between quantities are recommended because they are not dependent on the choice of units of measure, unlike equations between numerical values. Calculations with quantities follow the rules of algebra, and the utilized symbols are typically single letters. The mathematical variables and symbols of quantities must be italicized, i.e., written in italics (e.g., area $A$, electric charge $q$). Vectors must be italicized and boldfaced (e.g., acceleration $\mathbf{a}$).
+\paragraph{Falsifiable claim.} For each $(\text{compressor},
+\text{workload})$ cell at 7B, there is a compression ratio $\tau^{*}$
+such that coordination success at ratios $r > \tau^{*}$ falls by at
+least 30\% relative to ratios $r < \tau^{*}$. $\tau^{*}$ varies by
+workload but not by compressor family, within $\pm 20\%$.
 
-Numbers, functions, chemical symbols, units of measure, and subscripts are not italicized (e.g., 200, $\cos$, $\log$, NaCl, $\mu$A, cm, electron mass $m_\mathrm{e}$), but subscripts representing symbols of quantities are italicized (e.g., thermal velocity $v_\mathit{T}$). The lowercase Greek letters used as symbols of quantities are italicized, but uppercase letters are not italicized (e.g., $\delta$ vs.\ $\Delta$). More instructions for writing symbols can be found in the SI Guide~\cite{SIguide}, and some of them may be discipline-specific.
-List the symbols in the list at the beginning of your thesis, stylized the same as they appear in text and equations. Each equation must be part of a complete sentence. A blank line is left above and below an equation, and the equations are numbered in an increasing order through the entire text or, alternatively, by chapter if there are large quantities of equations. The corresponding order number is placed in parentheses on the right side of the equation. In the text, the equations are referred to by the order number of the equation in parentheses.
-In steady movement, speed $v$ is
-% Punctuation is placed inside \text{}, LaTeX changes . to , otherwise
-\begin{equation}
-    v = \frac{s}{t}\text{,}
-    \label{eq:speed}
-\end{equation}
-where $s$ is the distance and $t$ the time travelled. The implications of equation~\eqref{eq:speed}, in turn, are\ldots
+\paragraph{Inputs.} The C1 benchmark, the three baseline compressors,
+the MLX-LM backend at 7B and 13B (the latter on a 30-workload
+sub-sample for sanity).
 
-After the opening sections of your thesis, you should present the actual personal contribution your thesis is making, although some of this can already be included in the previous chapters. Describing the phases of the development work provides a clear structure, that is, describing first the requirements for the solution, then the design and implementation, followed by testing (i.e. verification).
+\paragraph{Procedure.} Sweep $r \in \{1, 2, 3, 4, 5, 6, 8, 10, 12, 16\}$
+on each cell with five seeds. Fit a piecewise-linear function
+$f(r; a, b, \tau)$ to the (ratio, success) curve via differential
+evolution under the constraint that the right-piece slope is at most
+the left-piece slope (the cliff drops). Run a Mann--Whitney U test on
+success-below-$\tau$ versus success-above-$\tau$ with the
+``greater'' alternative, then apply Holm correction within the
+$\{H_1, H_2, H_3\}$ family.
 
-The requirements can be either given by the customer or the author might need to determine the requirements her/himself by interviewing experts, for example. In either case, the actual work must not be straightforward following of instructions given by others but the author must provide a significant contribution to the solutions. Thesis work is independent, analytical problem solving and engineering work, in which the author weighs different solutions for the encountered problems and presents the reasoning and justifications for the selections she/he make during this process. Essential selections can be presented, for example, in a table listing the alternatives and selection criteria, and giving justified points for the alternatives for each criterion. For example, when a certain device needs to be selected, the criteria can be price, performance, and reliability, and each candidate devices is given points for each criterion.
+\paragraph{Decision.} A cliff exists at a cell if the relative drop is
+at least $0.30$ and the Holm-adjusted Mann--Whitney p-value is less
+than $0.05$. The $\tau$-spread-by-workload check passes for a family
+when the (max-min)/mean of $\tau^{*}$ across compressors is at most
+$0.20$.
 
-The design should be presented using the established tools and representations. For example, UML diagrams can be used to describe software design. The aim of testing is to verify the solution. When the requirements are presented in an earlier chapter, it is natural to test the solution against the requirements. So that your observations will benefit your readers, you should record and publish them in your thesis in as thorough and detailed a way as possible in their original format (such as tables, etc.). You must be careful not to mix actually obtained results and your estimates of the results. The reliability of the results can be analyzed using statistical methods, though strong conclusions require large samples.
+\paragraph{Wallclock.} Approximately 5--10 days at 7B plus 3 days at
+13B sub-sample.
 
-In construction, or software-based theses, you should approach your research questions by means of system planning. You should only describe the necessary details of your basic theory and construction, which are directly relevant to the construction or software. You can include a broader description of the constructions and/or software in an appendix if you deem it important. You should describe the details of your construction/software in sections, starting from a general level, and then going into more detail, level by level. You should avoid a too detailed description concerning the operational principles of software structures and electronic circuits. However, details that are essential to the thesis---especially details that cover new ground or are not clear even to experts in the field---should be included in the thesis.
-Measurements are intrinsically related to theses which present constructions and therefore they must be carefully planned. The same is valid for the testing of software solutions. Yet, the thesis is not a measurement report and hence it is unnecessary to introduce all the results. Consequently, each presented figure must have a clear significance.
+% RESULTS: H2 results, including the headline coordination-cliff figure,
+%          to be inserted from results/h2/7b/<run_id>/ and 13b/<run_id>/.
 
-These instructions give guidelines on writing the core text of your thesis when your topic is to develop a concrete solution that can be tested, like a device, piece of software, or an algorithm. Even if the work does not produce such a concrete result, the analytical problem solving has to be present in the documentation and the result be presented clearly. For example, for a literature study, presenting the subject matter and the essential content found from the literature is not enough, but the author has to classify this content or otherwise analyze it. In topics not producing concrete results, such analysis is a mandatory requirement for the best grades. Specifically, it is always crucial to analyze how well the results meet the objectives set in the introduction. This analysis can be placed in the discussion chapter.
+\section{Hypothesis H3 --- Training Distribution Matters}
+\label{sec:h3_design}
 
-\section{Discussion}
+\paragraph{Falsifiable claim.} An ICAE-style compressor fine-tuned on
+planner-worker-critic dialogue traces outperforms the same compressor
+fine-tuned on monolithic QA, at matched single-agent QA accuracy.
 
-A good thesis or other scientific work always has a discussion. In order to write this, you should be able to look at your work as if from a distance, to \enquote{step out of the box}, as they say. You should be self-critical, compare your work to similar work in the field, and think analytically. You should be able to crystallize the results of your work, and put them into words. This can often be difficult even for an experienced writer, but it helps if you are well acquainted with published literature in the field.
+\paragraph{Inputs.} Two ICAE checkpoints
+(\texttt{icae-7b-qa} and \texttt{icae-7b-dialogue}) trained on
+matched compute budgets (same optimiser, same LoRA configuration,
+same step count) but on different datasets; the C1 family-(a)
+workload subset.
 
-A justified analysis of meeting the thesis’ objectives is an important part of the discussion, and generally analysis of the results. When the requirements for the developed solution are presented earlier in the thesis, it is natural to first discuss how these requirement were fulfilled and from that conclude how well the objectives were met. Own solution should also be compared to the state of the art (technology and science) presented at the beginning. Your solution does not have to be better, but this kind of analysis is essential in engineering work and hence an important part of master thesis as well. Such a comparison is needed for the best grades.
+\paragraph{Procedure.} For each checkpoint, sweep ratios and find the
+operating ratio at which the two checkpoints' single-agent QA F1 are
+within $\pm 1$~pp of each other (the matched operating point). At
+that operating point, run the planner-worker-critic loop on the
+C1 family-(a) workloads with the five seeds and compare coordination
+success via the paired bootstrap.
 
-The analysis can contain also more general commenting, for example, what was easy and what was difficult in the work. You can also discuss the overall significance of your thesis on a more general level. Outlining potential further development based on your thesis, is valuable, especially if you have put forth clearly new or groundbreaking ideas. However, you should avoid unnecessary speculation here, as well as elsewhere: all statements should be well reasoned and brief. Other requirements for discussion can be found from the supervisors’ evaluation instructions that are available at the degree programme web pages~\cite{mscstudies}.
+\paragraph{Decision.} Supported if the paired bootstrap mean
+$\text{coord}_\text{dialogue} - \text{coord}_\text{qa}$ is positive
+and the Holm-adjusted p-value is less than $0.05$.
 
-\section{Summary}
+\paragraph{Wallclock.} Approximately two days; trainings can be
+scheduled in parallel.
 
-In the summary (or conclusions) you should present clearly in a nutshell the objectives of your thesis, its main content, your results, and the significance of your results. You should lay special emphasis on your results if you feel you have accomplished something. In summary you should not make references, or present any results not found elsewhere in your thesis.
+% RESULTS: H3 results to be inserted from results/h3/7b/<run_id>/.
 
-The abstract and the summary overlap to a certain extent; they both describe the main contents and results of a thesis. However, the nature of the summary is broader and it does not have to be self-contained. In it, you should describe your aims, and you could describe any optional solutions or approaches, and motive the choices you have made. The abstract on the other hand could just describe in detail the solutions and approaches chosen for the thesis, leaving the optional approaches out.
+\section{Hypothesis H4 --- RAG Pipeline Placement Matters}
+\label{sec:h4_design}
 
-\section{References}
+\paragraph{Falsifiable claim.} P1 dominates P2 on storage-bounded
+settings; P2 dominates P1 on accuracy-bounded settings; P3 closes the
+gap on a combined accuracy-times-EUR score. Effect size of at least
+5 pp F1.
 
-The use of references serves many purposes. Scientific method relies on familiarizing with the topic and state of the art. However, efficient referencing can also compress your text, as you can leave the details in the references and repeat only the most important results.
+\paragraph{Inputs.} The C1 family-(a) workloads plus NarrativeQA and
+HotpotQA for external comparability; the three pipelines P1, P2, and
+P3; the three compressors.
 
-The literature survey should be close to exhaustive, and this means that most of the information you present is taken from references. If a piece of information is not derived or devised by you, it is borrowed, and the origin of the information must be stated. Presenting somebody else’s finding as your own is a scientific theft (plagiarism) that has serious consequences.
+\paragraph{Procedure.} Two budget regimes are defined:
+\textit{storage-bounded}, with the FAISS index size capped at 100~MB so
+that both P1 and P2 are tuned to fit; and \textit{accuracy-bounded},
+with retrieval recall@10 capped at $0.85$ so that both P1 and P2 are
+tuned to meet that ceiling.
+For each $(\text{pipeline}, \text{regime}, \text{ratio} \in
+\{2, 4, 8\}, \text{seed})$ cell run the full workload and record
+F1, EUR per query, latency p50 and p95, FAISS index megabytes, and
+recall@10. P3 is swept over $(\theta_\text{high}, \theta_\text{low})$
+on the small grid documented in
+Section~\ref{sec:rag_pipelines} of Chapter~\charef{implementation}.
 
-You should refer to original sources of the data---for example, to a book and not the handouts made based on the book. Be careful when referencing: the things you state really need to be found from the reference.
+\paragraph{Decision.} P1-versus-P2 effect-size at least 5 pp F1 with
+paired-bootstrap CI excluding $0$ in both regimes (with the sign
+flipping per the H4 claim); P3 wins on a combined $F_1 / \text{EUR}$
+ranking with Holm-adjusted p less than $0.05$.
 
-The references are mostly cited in your own words, and direct quoting is used only if you want to emphasis the source. In this case you place the quote in quotation marks, for example saying that the original phrasing of Moore’s law is  ``The complexity for minimum component costs has increased at a rate of roughly a factor of two per year (see graph on next page).''~\cite{moore}. Longer
-quotations (several lines) are placed in an indented paragraph (omit quotation marks). As Moore stated:
-\begin{quote}
-Certainly over the short term this rate can be expected to continue, if not to increase. Over the longer term, the rate of increase is a bit more uncertain, although there is no reason to believe it will not remain nearly constant for at least 10 years.~\cite{moore}
-\end{quote}
-Correct referencing is important as the archiving of electronic theses makes them easily accessible (either in the library or in the Internet, depending on the publicity level selected by the thesis author). The reader must be able
-to easily find the original source to both assess your work and for the
-authors of the reference to be properly credited.
+\paragraph{Wallclock.} Approximately three days.
 
-The sources are cited and the bibliography is compiled according to
-the IEEE style~\cite{ieeetransactions}.  Sources are numbered in
-increasing order and listed in the order in which they appear in the
-text.  References in the text are then indicated with a reference
-number, e.g.,~\cite{lappalainen} or~\cite{lappalainen, acta, korpela},
-which is placed inside square brackets, inside sentence punctuation
-with a (non-breaking) space before the bracket. References to books
-should also include the page number, for
-example~\cite[p.~15]{lappalainen} or~\cite[pp.~15--17]{lappalainen}.
-Figures and equations can be cited using:~\cite[Fig.~3]{lappalainen};
-\cite[eq.~(3)]{lappalainen}. When writing in Finnish, you should adapt the IEEE guidelines, e.g., \cite[s.~15]{lappalainen};\cite[s.~15--17]{lappalainen};
-\cite[Kuva~3]{lappalainen};~\cite[Yhtälö~(3)]{lappalainen}.
+% RESULTS: H4 results, including the headline RAG-pipeline figure and
+%          the EUR/workflow cost table, to be inserted from
+%          results/h4/<run_id>/.
 
-The reference is placed immediately where it is used or at the end of
-the sentence it relates to. Grammatically it can treated as a noun or
-a footnote, e.g., ``As shown by Lappalainen~\cite{lappalainen}'' or
-``As shown in~\cite{lappalainen}''. The authors are only named if they
-are relevant for the sentence. \textbf{If no citation is mentioned,
-the sentence is assumed to be your own idea}.
+\section{Hypothesis H5 --- Tag Preservation}
+\label{sec:h5_design}
 
-In IEEE style, if multiple sentences refer to the same source, the
-citation should normally be repeated for each sentence to avoid
-ambiguity. If it is made explicitly clear that the same source
-continues -- for example, by using linking phrases (“According to Smith
-[5]\ldots He states\ldots”) — then repeating the citation for each
-sentence is not strictly necessary.
+\paragraph{Falsifiable claim.} At $4\times$ compression the tag
+head preserves at least 85\% of fragment tags, with at most 5~pp
+accuracy degradation relative to the unmodified baseline. The CI
+lower bound on the accuracy delta is used as the strict test (not the
+point estimate).
 
-If an entire paragraph is paraphrased from one source, you may place a
-single citation after the final sentence (as demonstrated here by
-placing~\cite{lappalainen} at the very end of this paragraph). This
-approach should be used sparingly in scientific writing, but it can be
-acceptable in a thesis literature review where a subsection is devoted
-to a single source. In all cases, ensure that paraphrased material is
-written entirely in your own words. Avoid covering long page ranges
-from books or articles in one block -- instead, summarize in smaller,
-focused chunks with exact citations in each
-sentence.~\cite{lappalainen}
+\paragraph{Inputs.} The ICAE baseline checkpoint and the C4
+tag-preserving checkpoint; the C1 benchmark across the three tag
+distributions (uniform, skewed, hierarchical).
 
-Referencing is easiest to do using \LaTeX\ for writing the thesis and
-following the model given in these instructions. You should add your
-own references to the file \textit{citations.bib}. A bibliography
-manager, such as Zotero~\cite{zotero,uniouluzotero}, is strongly
-recommended, as it often automatically fills in the required fields
-of the references. 
+\paragraph{Procedure.} For each $r \in \{2, 4, 8\}$ and each workload,
+compress every fragment with the C4 variant and recover its tag via
+the tag head. The preservation predicate combines the ACL test
+(either the recovered ACL is a superset of the true ACL or the
+intersection-over-true ratio is at least $0.9$) and the classification
+test (the recovered classification is at least the true classification).
+For the accuracy delta, run the planner-worker-critic loop with the
+baseline and the C4 compressor on the same workloads with the same
+seeds and compute the paired bootstrap of the coordination-success
+difference.
 
-References need to be presented so that it is clear what information
-is from a source and what is created by the author. Also the sources
-of equations, figures, and tables need to be given, when not created
-by the author her/himself. In addition, permissions need to be asked
-for tables and figures. Special attention needs to be paid to web
-sources, as web content can have a short life cycle. Hence, the date
-of downloading referenced web content should always be mentioned in
-the reference.
+\paragraph{Decision.} Supported if the mean preservation rate at
+$4\times$ is at least $0.85$ and the paired-bootstrap CI lower bound on
+the accuracy delta is at least $-5$~pp.
 
-The examples below illustrate correct references. All authors should
-be listed, the names of journals and series should be written
-completely without abbreviations, and only the first letter of the
-title and proper nouns in the title should have uppercase letters. The
-DOI (Digital Object Identifier) of the publication should be included
-in the reference, when possible. This identifier locates the
-publication in an unambiguous fashion and hence facilitates the work
-of a reader searching the reference. The DOI can be found from the
-publications front page or from publishers’ databases (e.g. IEEE
-Xplore, Springer Link, ACM Digital Library). When the reference has a
-DOI, you do not have to include an URL for it.
+\paragraph{Wallclock.} Approximately one day.
 
-The \textit{citations.bib} file in Overleaf ITEE MSc thesis template should guide you to use correct citation formats. The initials of the author's first names are written first, followed by the last name. If you are using other text preparation tools such as Microsoft Word, you should cite articles in journals  as~\cite{ojala:2002}, in series as~\cite{riekki:1998}, and in books as~\cite[p. 55]{pietikainen:2011}. A section of compiled work should be cited as~\cite{cvejic:2005}, and articles in conference proceedings as~\cite{heikkila:1997}. The citation to a thesis should look like~\cite{heikkinen:2011}, and patents should be cited in the manner of~\cite{toivonen:2004}. In some cases it is necessary to cite a source in the Internet~\cite{korpela}, and publications that lack a known author~\cite{asuntoliitto_asumistaso_1969}. Please, see the References chapter for examples.
+% RESULTS: H5 results to be inserted from results/h5/<run_id>/.
 
-\section{Appendices}
-\label{sec:appendices}
-Things you can include as an appendix are, e.g., derivations of equations or formulas, details of important computer programs, various tables, or performance characteristics and descriptions of special equipment or components applied in the thesis work. You can also include construction drawings and parts of catalogues in the appendix. Appendices are titled as shown before. As with figures and tables, all appendices you include should have a clear meaning---the number of appendices itself is not a merit.
+\section{Hypothesis H6 --- Inference Disclosure}
+\label{sec:h6_design}
 
-If your text seems to contain a lot of references to an appendix, it may be easier for the reader that you copy the information (e.g., a schematic) into the text. This way the reader does not need to browse between pages.
+\paragraph{Falsifiable claim.} A held-out reader recovers protected
+facts from compressed summaries at a rate substantially above the
+priors-only chance baseline when the tag-preserving compressor is
+\emph{not} used (showing that the metric measures something real),
+and at a lower rate when it \emph{is} used at matched compression.
 
-Large block diagrams or schematics can be copied on A3 size paper. This needs to have two bends (Z-like) so that the right side of the appendix lies top and with a width of ca 2/3 of A4 page.
+\paragraph{Inputs.} The C1 fragments whose tag classification is at
+least \textsc{confidential}; the protected-fact list shipped with
+the benchmark (one or two yes/no questions per protected fragment with
+ground-truth answers); the GPT-4o-mini API as the held-out reader.
+
+\paragraph{Procedure.} Three conditions per workload. Under
+\emph{priors only}, the reader sees only the workload's public
+preamble, with no source fragments. Under \emph{baseline}, the reader
+sees the compressed summary produced by the unmodified ICAE
+compressor. Under \emph{C4}, the reader sees the compressed summary
+produced by the tag-preserving variant at matched compression. The
+reader answers each protected-fact question with yes/no/unknown, and
+the recall of the protected facts is reported.
+
+\paragraph{Decision.} The metric measures something real if
+$\text{recall}_\text{baseline} > \text{recall}_\text{priors}$ with
+paired-bootstrap p less than $0.05$. The C4 variant reduces disclosure
+if $\text{recall}_\text{c4} < \text{recall}_\text{baseline}$ with
+paired-bootstrap p less than $0.05$, both under Holm correction within
+$\{H_5, H_6\}$.
+
+\paragraph{Wallclock and cost.} Approximately one day; expected API
+spend approximately EUR~30.
+
+% RESULTS: H6 results to be inserted from results/h6/<run_id>/.
+
+\section{Hypothesis H7 --- Model-Size Scaling of the Coordination Cliff}
+\label{sec:h7_design}
+
+\paragraph{Falsifiable claim.} Across $\{7\text{B}, 13\text{B},
+34\text{B int4}, 70\text{B int4}\}$, $\tau^{*}$ increases monotonically
+with model size on at least two of the three workload families. 70B
+int4 is a single-point characterisation at the suspected $\tau^{*}$
+identified at 13B/34B; 7B and 13B are full sweeps; 34B int4 is a
+focused partial sweep.
+
+\paragraph{Inputs.} The H2 machinery with the backend factory varied
+across the four model sizes. The 70B GGUF Q4\_K\_M files are pulled via
+the \texttt{download\_models.sh} script; the llama.cpp backend's
+NarrativeQA-shaped sanity check is run at startup and the backend
+refuses to serve if F1 drops by more than $5$~pp from the recorded
+baseline.
+
+\paragraph{Procedure.} (i) 7B full sweep, already collected for H2.
+(ii) 13B full sweep on family (a) on a 30-workload sub-sample. (iii)
+34B int4 focused sweep at $r \in \{\tau_\text{13B}-2,
+\tau_\text{13B}, \tau_\text{13B}+2\}$ plus coarse sanity at
+$r \in \{1, 16\}$ on 15 workloads. (iv) 70B int4 single point at
+$r = \tau_\text{34B}$ with five seeds on 10 workloads, gated on the
+sanity-check pass.
+
+\paragraph{Decision.} Monotonically non-decreasing $\tau^{*}$ across
+$\{7\text{B}, 13\text{B}, 34\text{B int4}, 70\text{B int4}\}$ on at
+least two of three families; 70B is single-point on family (a) only.
+
+\paragraph{Wallclock.} Approximately three weeks, dominated by the 70B
+int4 throughput.
+
+% RESULTS: H7 results, including the model-size scaling figure, to
+%          be inserted from results/h7/{7b,13b,34b-int4,70b-int4}/.
+
+\section{Hypothesis H8 --- Real-Trace Transfer}
+\label{sec:h8_design}
+
+\paragraph{Falsifiable claim.} On a subset of multi-agent workflows
+reconstructed from real M0/M1/M2 traces, the qualitative shape of the
+coordination-versus-compression curve matches synthetic results within
+$\pm 15\%$ on $\tau^{*}$ and $\pm 10$ pp on coordination success.
+Gated on M0/M1/M2 connector readiness.
+
+\paragraph{Pre-condition.} The thesis ships with an
+\texttt{docs/agent\_readiness.yaml} that records whether each of the
+three sibling agents (Publication~DB / Contract~DB / Moodle--Patio) is
+ready. The runner short-circuits with a \texttt{documented-as-deferred}
+verdict if all three flags are \texttt{false}, per the scope-signoff
+with the supervisor.
+
+\paragraph{Procedure.} With the agent owners, identify two or three
+cross-system workflows reconstructable from the trace exports.
+Reformulate each as a \texttt{Workload} instance loadable by C1's
+runner. Run the H2 procedure on those workflows. Compare $\tau^{*}$
+and the coordination-success curve to the synthetic baseline.
+
+\paragraph{Decision.} Supported if both $\tau^{*}$ and the
+coordination-success curve are within the stated tolerances on at
+least one workflow.
+
+\paragraph{Wallclock.} Gated on connector readiness, not on compute.
+
+% RESULTS: H8 results to be inserted from results/h8/<run_id>/, or the
+%          deferred-arm statement from docs/agent_readiness.yaml if
+%          no agent is ready by Month 7.
+
+\section{Headline Figures}
+\label{sec:figures}
+
+The four chapter-headline figures the manuscript will produce are
+listed in Table~\ref{tab:figures}; each figure is a single command
+(\texttt{make reproduce-ch<N>}) that lands in
+\texttt{results/h\{X\}/<run\_id>/plots/}.
+
+\begin{table}[h]
+\centering
+\caption{Chapter-headline figures and their reproduction targets.}
+\label{tab:figures}
+\small
+\begin{tabular}{p{1.5cm}p{6.5cm}p{6cm}}
+\hline
+Chapter & Figure & Reproduction \\
+\hline
+5 & Coordination cliff $\tau^{*}$ at 7B & \texttt{make reproduce-ch5} (H1, H2, H3) \\
+6 & RAG pipeline placement and cost & \texttt{make reproduce-ch6} (H4) \\
+7 & Tag preservation and inference disclosure & \texttt{make reproduce-ch7} (H5, H6) \\
+8 & Model-size scaling of $\tau^{*}$ & \texttt{make reproduce-ch8} (H7) \\
+\hline
+\end{tabular}
+\end{table}
+
+% RESULTS-FIGURES: Insert the four headline figures here once the
+%                  experimental runs have produced their CSVs and
+%                  plot scripts.
+
+\section{Threats to Validity}
+\label{sec:threats}
+
+\paragraph{Construct validity.}
+The C1 benchmark is synthetic. The H8 arm is the construct-validity
+check, and the documented-as-deferred path is the honest fallback if
+M0/M1/M2 are not ready by Month~7.
+
+\paragraph{Internal validity.}
+The no-compression control condition guards against AutoGen-runtime
+bugs confounding the compression-quality signal. The deterministic
+backend provides a second upper bound that any AutoGen run must
+match.
+
+\paragraph{External validity.}
+The 70B int4 single-point characterisation rests on the
+NarrativeQA-shaped sanity check passing at startup. The H8 transfer
+result, when available, anchors external validity against real
+deployment traces.
+
+\paragraph{Statistical validity.}
+The recentred-null percentile-bootstrap p-value is more rigorous than
+the tail-doubling shortcut and is consistent with the recommendations
+of Efron and Tibshirani~\cite{efron1993bootstrap}. The Mann--Whitney~U
+test for the cliff-detection check matches the independent-samples
+structure of the data. Holm correction is applied per hypothesis
+family to control the family-wise error rate.
+
+\paragraph{Reproducibility.}
+Every experiment writes a \texttt{manifest.yaml} that pins the
+configuration hash, the git revision, the Python version, and the
+platform string. Every CSV is reproducible from a single command. The
+pricing constants live in one Python module and are updated in one
+place.

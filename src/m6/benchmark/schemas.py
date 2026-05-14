@@ -7,7 +7,7 @@ three with a discriminator field.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from m6.memory_bus.schemas import Fragment, TagVector
 
 
-class WorkloadFamily(str, Enum):
+class WorkloadFamily(StrEnum):
     CROSS_DOC_FACT_AGGREGATION = "a"
     CONSTRAINT_SATISFACTION = "b"
     MULTI_STEP_RETRIEVAL = "c"
@@ -27,12 +27,12 @@ class SubTask(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     sub_task_id: str
     description: str
-    expected_solver: str          # e.g. "worker-2" or "any-with-tool=retrieve"
-    expected_answer: str          # ground truth used by the critic
+    expected_solver: str  # e.g. "worker-2" or "any-with-tool=retrieve"
+    expected_answer: str  # ground truth used by the critic
     constraints: dict[str, str | int | float] = Field(default_factory=dict)
 
 
-class TagDistribution(str, Enum):
+class TagDistribution(StrEnum):
     UNIFORM = "uniform"
     SKEWED = "skewed"
     HIERARCHICAL = "hierarchical"
@@ -55,13 +55,13 @@ class Workload(BaseModel):
 
     workload_id: str
     family: WorkloadFamily
-    seed: int                                # generation seed (not the experiment seed)
+    seed: int  # generation seed (not the experiment seed)
     tag_distribution: TagDistribution
     fragments: tuple[Fragment, ...]
     sub_tasks: tuple[SubTask, ...]
     initial_prompt: str
     n_agents: int
-    expected_answer: str                     # planner's final-answer ground truth
+    expected_answer: str  # planner's final-answer ground truth
     protected_facts: tuple[ProtectedFact, ...] = Field(default_factory=tuple)
     metadata: dict[str, str | int | float] = Field(default_factory=dict)
 
@@ -103,4 +103,4 @@ class WorkloadTrace(BaseModel):
     sub_task_assignments: dict[str, str]
     critic_flag_count: int
     wallclock_ms: int
-    expected: TagVector | None = None     # not used by scorers; for forensics
+    expected: TagVector | None = None  # not used by scorers; for forensics

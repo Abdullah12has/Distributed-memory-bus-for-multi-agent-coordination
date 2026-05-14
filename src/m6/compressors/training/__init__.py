@@ -6,7 +6,7 @@ from :mod:`m6.compressors.training.train_icae` and the loss primitives from
 (QA vs. dialogue) live in :mod:`m6.compressors.training.dataset`.
 """
 
-from m6.compressors.training.loss import infonce_loss
 from m6.compressors.training.dataset import DialogueDataset, QADataset
+from m6.compressors.training.loss import infonce_loss
 
 __all__ = ["DialogueDataset", "QADataset", "infonce_loss"]

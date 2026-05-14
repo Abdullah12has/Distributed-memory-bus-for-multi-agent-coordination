@@ -1,25 +1,164 @@
-% Appendix Chapter
+% Appendix chapter — populated with thesis-relevant material.
 
-Appendix 1 \hskip 2.5em Example Abstract 
-\vspace{7em}
+\noindent The appendices collect three artefacts that support the main
+text but would interrupt its narrative: the memory-bus HTTP contract
+(Appendix~A), the canonical long-format results-dataframe schema used by
+every experiment runner (Appendix~B), and an example C1 workload
+instance from family~(a) showing the source-fragment structure
+(Appendix~C). The full reproducibility package, including the model
+cards and the data cards, is shipped with the open-source release
+described in Section~\ref{sec:deliverables} of
+Chapter~\charef{summary}.
 
-\noindent Note 1: Page numbering is done by consecutive numbering. Additional appendices, that are attached to the thesis (such as copies, drawings, etc.) are left without page numbers and placed at the end of the thesis.
+\section*{Appendix A. Memory-Bus HTTP Contract}
+\markboth{left}{\normalfont{Appendix A. Memory-Bus HTTP Contract}}
 
-\newpage
-\markboth{left}{\normalfont{Appendix 1. Example Abstract}}
+The reference memory-bus service exposes four endpoints. The contract
+below summarises the request and response shapes; the authoritative
+OpenAPI schema lives at \texttt{docs/openapi.json} in the repository
+and is regenerated via \texttt{make bus-openapi}.
 
-\noindent \textbf{Jurmu M.\ (2007) Resource Management in Smart Spaces Using Context-Based Leases.} University of Oulu, Department of Electrical and Information Engineering. Master’s Thesis, 77 p.
+\begin{description}\setlength\itemsep{0pt}
+\item[\texttt{POST /v1/write}] Body: a \texttt{Fragment} JSON object
+(\texttt{fragment\_id}, \texttt{text}, \texttt{tags}) and an optional
+\texttt{target\_ratio}. Returns the assigned \texttt{slot\_id}, the
+audit row identifier, and the hex-encoded \texttt{chain\_hash}.
+HTTP $201$ on success; $403$ on policy denial.
 
-\begin{center}
-\textbf{\fontsize{16}{19pt}\selectfont ABSTRACT}\\
-\end{center}
+\item[\texttt{GET /v1/read/\{slot\_id\}}] Returns a
+\texttt{CompressedSlot} with its payload, tags, compressor identifier,
+nominal ratio, and creation timestamp. HTTP $200$ on success;
+$403$ on policy denial; $404$ on slot not found.
 
-{\bfseries \noindent The convergence of wireless access networks in conjunction with the increased computing power of the handheld terminals is preparing the emergence of the ubiquitous computing paradigm. In the center of this paradigm are smart spaces, which are local environments saturated with various embedded computational resources. These spaces co-operate with mobile client devices in enabling advanced, service-oriented computation scenarios. This co-operation is typically enabled through the utilization of distributed and modular middleware frameworks. An emerging additional requirement however is the possibility to harness resources from the proximity environment to the mobile device in an on-demand fashion. This is a challenge especially to the resource management infrastructure of the smart spaces.
+\item[\texttt{POST /v1/subscribe}] Body: a \texttt{SubscribeRequest}
+with a \texttt{query} string, a \texttt{ttl\_seconds} positive integer,
+and a top-\textit{k} integer. Returns a server-sent-event stream
+emitting newly-matched \texttt{slot\_id}s with their cosine scores
+until the TTL elapses.
 
-This thesis explores the concept of a smart space and presents a review of the current research and technologies. Subsequently, a lease-based design for resource management in smart spaces is presented. Leases in this work are negotiated agreements between the mobile clients and the resource management infrastructure, regarding the harnessed resources. Leasing is seen as a suitable solution for the management due to the transient nature of the resource usage. The inclusion of additional contextual features to the leases further facilitates the management.
+\item[\texttt{GET /v1/audit/\{slot\_id\}}] Returns the chronological
+list of \texttt{AuditRow} entries that mention the given slot.
+\end{description}
 
-Requirements for the design are derived from the review and from an example usage scenario. The requirements include dynamic mapping and contracting of resources from the proximity environment, monitoring of the contract validity, access control towards the resources and dynamic maintenance of the smart space infrastructure. Presented design is analytically compared against existing solutions, and several points for future development are listed. According to the comparison, none of the existing solutions utilize contracts with contextual validity in resource management. Two publications of this work have been accepted into an international conference and a workshop on the focus area of pervasive computing.
+Every request is processed by the \texttt{PolicyMiddleware} which
+parses the requester principal from the \texttt{X-M6-Principal} header
+in the development build and from an OAuth/JWT verifier in a production
+deployment. The principal carries a $64$-bit access-control mask and a
+$5$-tier classification level (PUBLIC $<$ INTERNAL $<$ CONFIDENTIAL $<$
+RESTRICTED $<$ SECRET). A request is granted access to a slot when the
+principal's mask is a superset of the slot tag's mask and the
+principal's classification is at least the slot tag's classification.
 
-\vspace{1\baselineskip}
-\noindent\textbf{Keywords: Ubiquitous computing, mobile computing, task-based computing, context-awareness, QoS.}
+\section*{Appendix B. Long-Format Results Schema}
+\markboth{left}{\normalfont{Appendix B. Long-Format Results Schema}}
+
+Every experiment runner writes its results to a CSV that conforms to
+the long-format schema implemented as
+\texttt{m6.evaluation.statistics.LongDF}. The columns are listed in
+Table~\ref{tab:longdf}.
+
+\begin{table}[h]
+\centering
+\caption{The canonical long-format dataframe schema used by every
+experiment runner. The same schema underlies every CSV under
+\texttt{results/}, which makes cross-hypothesis analysis a single
+\texttt{pandas.concat} away.}
+\label{tab:longdf}
+\small
+\begin{tabular}{p{4cm}p{2.5cm}p{6.5cm}}
+\hline
+Column & Type & Notes \\
+\hline
+\texttt{experiment\_id} & str & unique per run \\
+\texttt{hypothesis} & str & one of \texttt{h1}\,\ldots\,\texttt{h8} \\
+\texttt{compressor} & str & e.g.\ \texttt{lingua2}, \texttt{filter},
+\texttt{icae}, \texttt{icae-tag}, \texttt{none} \\
+\texttt{ratio} & float & nominal compression ratio \\
+\texttt{actual\_ratio} & float & measured ratio post-compression \\
+\texttt{pipeline} & str & one of \texttt{none}, \texttt{P1},
+\texttt{P2}, \texttt{P3} \\
+\texttt{model} & str & e.g.\ \texttt{llama-3.1-8b-instruct} \\
+\texttt{model\_size} & str & \texttt{7b}, \texttt{13b}, \texttt{34b-int4},
+\texttt{70b-int4} \\
+\texttt{workload\_family} & str & \texttt{a}, \texttt{b}, or \texttt{c} \\
+\texttt{workload\_id} & str & e.g.\ \texttt{c1-a-007} \\
+\texttt{seed} & int &  \\
+\texttt{metric} & str & e.g.\ \texttt{coord\_success}, \texttt{qa\_f1},
+\texttt{preservation\_rate} \\
+\texttt{value} & float &  \\
+\texttt{wallclock\_ms} & int &  \\
+\texttt{eur\_cost} & float &  \\
+\texttt{run\_id} & str &  \\
+\texttt{git\_sha} & str &  \\
+\texttt{config\_hash} & str &  \\
+\texttt{created\_at} & str & ISO-8601 UTC \\
+\texttt{invalid} & bool & control-condition variance dominates? \\
+\texttt{invalid\_reason} & str & free-text explanation if invalid \\
+\hline
+\end{tabular}
+\end{table}
+
+\section*{Appendix C. Example C1 Workload (family a)}
+\markboth{left}{\normalfont{Appendix C. Example C1 Workload}}
+
+The following JSON object illustrates a single instance of C1
+family~(a) (cross-document fact aggregation). Each fragment represents
+one institutional system; the planner is asked to aggregate hours and
+budget across all eight; the critic verifies the answer against the
+ground-truth aggregate.
+
+\begin{verbatim}
+{
+  "workload_id": "c1-a-007",
+  "family": "a",
+  "seed": 1247,
+  "tag_distribution": "skewed",
+  "initial_prompt":
+    "Aggregate the period-end report for project P-3219 across the
+     following systems: publication_db, contract_db, moodle, patio,
+     peppi, crm, tatu_sap, sap_travel. Report total hours and total
+     budget.",
+  "expected_answer": "hours=853;budget=148340",
+  "n_agents": 8,
+  "fragments": [
+    {
+      "fragment_id": "c1-a-007/publication_db",
+      "text": "[publication_db] Project P-3219 - period 2025-Q3. ...",
+      "tags": {"acl_mask": 12876, "classification": 1}
+    },
+    {
+      "fragment_id": "c1-a-007/contract_db",
+      "text": "[contract_db] Project P-3219 - period 2025-Q3. ...",
+      "tags": {"acl_mask": 8901, "classification": 2}
+    }
+    // (six more fragments, one per system)
+  ],
+  "sub_tasks": [
+    {
+      "sub_task_id": "c1-a-007/sub-0",
+      "description":
+        "Extract recorded hours and budget for project P-3219 from
+         publication_db.",
+      "expected_solver": "worker-0",
+      "expected_answer": "hours=112;budget=18420"
+    }
+    // (seven more sub-tasks)
+  ],
+  "protected_facts": [
+    {
+      "fragment_id": "c1-a-007/contract_db",
+      "fact": "contract_db.budget=22150",
+      "yesno_questions": [
+        "Did contract_db for project P-3219 exceed EUR 27150 in budget?",
+        "Was contract_db's recorded hours for P-3219 more than 142?"
+      ],
+      "answers": ["no", "no"]
+    }
+  ]
 }
+\end{verbatim}
+
+The full dataset is reproduced from
+\texttt{configs/benchmark/c1-v0.1.yaml} via \texttt{make
+bench-generate}; the manifest carries the configuration hash so any
+reader can verify they are looking at the same release.

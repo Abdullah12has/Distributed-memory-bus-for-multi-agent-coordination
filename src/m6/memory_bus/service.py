@@ -54,7 +54,7 @@ class CompressorAPI(Protocol):
         target_ratio: float | None = None,
     ) -> CompressedSlot: ...
 
-    def embed(self, slot: CompressedSlot) -> "list[float] | None":
+    def embed(self, slot: CompressedSlot) -> list[float] | None:
         """Return an indexable embedding for the slot, or None if not applicable."""
 
 
@@ -77,6 +77,12 @@ class MemoryBusService:
         # cannot append unbounded ERROR rows to the audit log.
         self._read_miss_seen: OrderedDict[tuple[str, str], float] = OrderedDict()
         self._read_miss_lock = threading.Lock()
+        # Per-(subject, fragment_id) dedupe for *denied writes*. Without this,
+        # an attacker hammering /v1/write with un-grantable tags could grow the
+        # audit log unboundedly — each denied write would otherwise generate a
+        # new ``deny-<uuid>`` slot_id and a fresh audit row.
+        self._write_deny_seen: OrderedDict[tuple[str, str], float] = OrderedDict()
+        self._write_deny_lock = threading.Lock()
 
     # ------------------------------------------------------------------ #
     # write
@@ -93,20 +99,21 @@ class MemoryBusService:
         # Policy: the WRITER must satisfy the fragment's tags. Reading the
         # write side of policy is symmetric to reading-back.
         if not enforce(principal, fragment.tags):
-            row = self.audit.append(
-                slot_id=_provisional_slot_id(),
-                event_type=EventType.DENY,
-                result="DENIED",
-                payload_bytes=fragment.text.encode("utf-8"),
-                requester_acl=principal.acl_mask,
-                requester_classification=int(principal.classification),
-            )
-            log.info(
-                "bus.write_denied",
-                subject=principal.subject,
-                fragment_id=fragment.fragment_id,
-                audit_rowid=row.rowid,
-            )
+            if self._should_log_write_deny(principal.subject, fragment.fragment_id):
+                row = self.audit.append(
+                    slot_id=_provisional_slot_id(),
+                    event_type=EventType.DENY,
+                    result="DENIED",
+                    payload_bytes=fragment.text.encode("utf-8"),
+                    requester_acl=principal.acl_mask,
+                    requester_classification=int(principal.classification),
+                )
+                log.info(
+                    "bus.write_denied",
+                    subject=principal.subject,
+                    fragment_id=fragment.fragment_id,
+                    audit_rowid=row.rowid,
+                )
             raise PolicyDenied(f"Write denied for subject={principal.subject}")
 
         # Compress, then store, then audit. Order matters: the audit row's
@@ -120,9 +127,7 @@ class MemoryBusService:
 
             self.vector_store.add(slot.slot_id, np.asarray(embedding, dtype="float32"))
 
-        payload_bytes = (
-            f"WRITE|{slot.slot_id}|{slot.compressor_id}|{slot.ratio}|{fragment.fragment_id}".encode()
-        )
+        payload_bytes = f"WRITE|{slot.slot_id}|{slot.compressor_id}|{slot.ratio}|{fragment.fragment_id}".encode()
         row = self.audit.append(
             slot_id=slot.slot_id,
             event_type=EventType.WRITE,
@@ -220,19 +225,23 @@ class MemoryBusService:
         Subsequent misses within the window → False.
         After the cap is hit, the oldest entry is evicted FIFO.
         """
-        key = (subject, slot_id)
-        now = time.time()
-        with self._read_miss_lock:
-            ts = self._read_miss_seen.get(key)
-            if ts is not None and now - ts < _READ_MISS_DEDUPE_TTL_S:
-                # Refresh the position so frequent offenders age out together.
-                self._read_miss_seen.move_to_end(key)
-                return False
-            self._read_miss_seen[key] = now
-            self._read_miss_seen.move_to_end(key)
-            while len(self._read_miss_seen) > _READ_MISS_DEDUPE_CAP:
-                self._read_miss_seen.popitem(last=False)
-            return True
+        return _dedupe_check(
+            (subject, slot_id),
+            self._read_miss_seen,
+            self._read_miss_lock,
+            ttl_s=_READ_MISS_DEDUPE_TTL_S,
+            cap=_READ_MISS_DEDUPE_CAP,
+        )
+
+    def _should_log_write_deny(self, subject: str, fragment_id: str) -> bool:
+        """Same dedupe shape, applied to denied writes."""
+        return _dedupe_check(
+            (subject, fragment_id),
+            self._write_deny_seen,
+            self._write_deny_lock,
+            ttl_s=_READ_MISS_DEDUPE_TTL_S,
+            cap=_READ_MISS_DEDUPE_CAP,
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -251,3 +260,30 @@ class SlotNotFound(Exception):
 def _provisional_slot_id() -> str:
     """For audit rows that record a denied write (no real slot exists)."""
     return f"deny-{uuid.uuid4().hex[:16]}"
+
+
+def _dedupe_check(
+    key: tuple[str, str],
+    seen: OrderedDict[tuple[str, str], float],
+    lock: threading.Lock,
+    *,
+    ttl_s: float,
+    cap: int,
+) -> bool:
+    """Generic sliding-window dedupe.
+
+    Returns True iff ``key`` should be acted on (first time, or outside the TTL
+    window). Updates ``seen`` in place; evicts oldest entries FIFO once size
+    exceeds ``cap``.
+    """
+    now = time.time()
+    with lock:
+        ts = seen.get(key)
+        if ts is not None and now - ts < ttl_s:
+            seen.move_to_end(key)
+            return False
+        seen[key] = now
+        seen.move_to_end(key)
+        while len(seen) > cap:
+            seen.popitem(last=False)
+        return True

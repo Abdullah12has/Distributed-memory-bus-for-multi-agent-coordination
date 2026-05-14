@@ -8,7 +8,7 @@ from m6.evaluation.metrics.coordination import (
     CoordinationMetrics,
     score_coordination_trace,
 )
-from m6.evaluation.metrics.qa import f1_score, em_score, rouge_l
+from m6.evaluation.metrics.qa import em_score, f1_score, rouge_l
 from m6.evaluation.metrics.tag_preservation import preservation_rate
 
 __all__ = [

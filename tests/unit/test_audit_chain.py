@@ -9,7 +9,7 @@ import pytest
 from m6.memory_bus.storage.sqlite_audit import GENESIS_HASH, SQLiteAuditLog
 
 
-@pytest.fixture()
+@pytest.fixture
 def audit(tmp_path: Path) -> SQLiteAuditLog:
     return SQLiteAuditLog(tmp_path / "audit.sqlite")
 

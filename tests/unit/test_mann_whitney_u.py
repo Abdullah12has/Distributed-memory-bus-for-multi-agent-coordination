@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from m6.evaluation.statistics import mann_whitney_u, wilcoxon_signed_rank
 
@@ -14,7 +15,8 @@ def test_independent_samples_clear_separation() -> None:
     b = rng.normal(loc=0.0, scale=0.1, size=80)  # different N!
     res = mann_whitney_u(a, b, alternative="greater")
     assert (res.p_value or 1.0) < 0.001
-    assert res.effect_size is not None and res.effect_size > 0.8
+    assert res.effect_size is not None
+    assert res.effect_size > 0.8
     assert res.method == "mann_whitney_u"
 
 
@@ -29,8 +31,6 @@ def test_unequal_lengths_supported() -> None:
 
 def test_wilcoxon_rejects_unequal_lengths() -> None:
     """The paired test should refuse mismatched shapes after the fix."""
-    import pytest
-
     a = np.array([1.0, 2.0, 3.0])
     b = np.array([4.0, 5.0])
     with pytest.raises(ValueError, match="paired samples of equal length"):

@@ -1,12 +1,18 @@
 # H6 — summary-level inference disclosure. Reads OPENAI_API_KEY from env.
+# Only families (a) and (c) emit protected_facts; (b) carries no signal and
+# H6Runner will refuse to start if no protected facts are present.
 hypothesis: h6
 benchmark_path: data/processed/c1-v0.1
 compressors: ["icae", "icae-tag"]
 ratios: [4.0]
 seeds: [0]
-workload_families: ["a"]
+workload_families: ["a", "c"]
 model_size: "7b"
 backend: "openai"
 out_dir: "results"
 include_no_compression_control: false
 notes: "Plan §3 H6; reader=gpt-4o-mini; budget ~EUR 30."
+
+# Headline run: refuse to start if any ICAE-family compressor is in stub mode.
+# Flip to false to deliberately run with deterministic-hash stubs (dev only).
+require_trained_compressors: true
