@@ -32,7 +32,7 @@ InferenceBackendName = Literal["mlx", "ollama", "llamacpp", "openai", "anthropic
 CompressorName = Literal["icae", "icae-tag", "lingua2", "filter", "none"]
 
 
-class M6Settings(BaseSettings):
+class M6Settings(BaseSettings):  # type: ignore[misc]
     """Resolved runtime configuration for every entry-point in the project.
 
     Values map 1-1 to the variables documented in ``.env.example``. Subsystems
@@ -51,7 +51,7 @@ class M6Settings(BaseSettings):
 
     # ----- service ----------------------------------------------------------
     env: EnvName = "dev"
-    host: str = "0.0.0.0"  # noqa: S104 — intentional for the bus
+    host: str = "0.0.0.0"
     port: int = 8080
     log_level: LogLevel = "INFO"
     log_format: LogFormat = "json"
@@ -73,9 +73,7 @@ class M6Settings(BaseSettings):
     # ----- external APIs ----------------------------------------------------
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
-    anthropic_api_key: SecretStr | None = Field(
-        default=None, validation_alias="ANTHROPIC_API_KEY"
-    )
+    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-haiku-4-5", validation_alias="ANTHROPIC_MODEL")
     anthropic_crosscheck_model: str = Field(
         default="claude-sonnet-4-6", validation_alias="ANTHROPIC_CROSSCHECK_MODEL"
@@ -83,16 +81,16 @@ class M6Settings(BaseSettings):
 
     # ----- HF cache ---------------------------------------------------------
     hf_token: SecretStr | None = Field(default=None, validation_alias="HF_TOKEN")
-    hf_home: Path = Field(default_factory=lambda: Path("./data/hf-cache"), validation_alias="HF_HOME")
+    hf_home: Path = Field(
+        default_factory=lambda: Path("./data/hf-cache"), validation_alias="HF_HOME"
+    )
 
     # ----- experiment defaults ---------------------------------------------
     default_seeds: Annotated[tuple[int, ...], Field(default=(0, 1, 2, 3, 4))]
     results_dir: Path = Field(default_factory=lambda: Path("./results"))
 
     # ----- observability ----------------------------------------------------
-    otel_service_name: str = Field(
-        default="m6-memory-bus", validation_alias="OTEL_SERVICE_NAME"
-    )
+    otel_service_name: str = Field(default="m6-memory-bus", validation_alias="OTEL_SERVICE_NAME")
     otel_exporter_otlp_endpoint: str = Field(
         default="", validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT"
     )
@@ -106,7 +104,7 @@ class M6Settings(BaseSettings):
         """Accept ``"0,1,2"`` from env. Empty string ⇒ default."""
         if value is None or value == "":
             return (0, 1, 2, 3, 4)
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             return tuple(int(v) for v in value)
         if isinstance(value, str):
             return tuple(int(x.strip()) for x in value.split(",") if x.strip())
@@ -139,7 +137,9 @@ class M6Settings(BaseSettings):
         return self.openai_api_key is not None and self.openai_api_key.get_secret_value() != ""
 
     def has_anthropic(self) -> bool:
-        return self.anthropic_api_key is not None and self.anthropic_api_key.get_secret_value() != ""
+        return (
+            self.anthropic_api_key is not None and self.anthropic_api_key.get_secret_value() != ""
+        )
 
 
 @lru_cache(maxsize=1)

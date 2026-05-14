@@ -107,12 +107,12 @@ class TagPreservingICAE(ICAECompressor):
 
         # ACL: sigmoid(W_acl·h + b_acl) > 0.5 ⇒ bit set. Aggregate via OR.
         acl_logits = arr @ self._w_acl.T + self._b_acl
-        acl_probs = 1.0 / (1.0 + np.exp(-acl_logits))           # (num_slots, 64)
+        acl_probs = 1.0 / (1.0 + np.exp(-acl_logits))  # (num_slots, 64)
         acl_bits = (acl_probs > 0.5).any(axis=0).astype(np.uint64)
         acl_mask = int(_bits_to_uint64(acl_bits))
 
         # Classification: arg-max over softmax(W_class·h + b_class), aggregate via MAX.
-        class_logits = arr @ self._w_class.T + self._b_class    # (num_slots, 5)
+        class_logits = arr @ self._w_class.T + self._b_class  # type: ignore[union-attr]  # (num_slots, 5)
         per_slot_class = class_logits.argmax(axis=1)
         clazz = Classification(int(per_slot_class.max()))
 

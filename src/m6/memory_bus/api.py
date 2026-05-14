@@ -33,7 +33,6 @@ from m6.config.settings import M6Settings, get_settings
 from m6.memory_bus.policy import Principal, get_principal
 from m6.memory_bus.schemas import (
     AuditRow,
-    CompressedSlot,
     HealthResponse,
     ReadResponse,
     SlotId,
@@ -89,8 +88,17 @@ def create_app(
             yield
         finally:
             # ---- shutdown ----
-            vector_store.save()
-            audit.close()
+            # Each subsystem's close must run even if a previous one raised —
+            # leaking the SQLite handle on shutdown causes WAL-recovery on the
+            # next start and risks losing the last few audit rows on macOS.
+            try:
+                vector_store.save()
+            except Exception:
+                log.exception("api.shutdown.vector_store_save_failed")
+            try:
+                audit.close()
+            except Exception:
+                log.exception("api.shutdown.audit_close_failed")
             log.info("api.shutdown")
 
     app = FastAPI(
@@ -132,14 +140,14 @@ class PolicyMiddleware:
     ``Principal`` lookup downstream.
     """
 
-    def __init__(self, app: "ASGIApp") -> None:
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
     async def __call__(self, scope: dict[str, object], receive: object, send: object) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)  # type: ignore[arg-type]
             return
-        headers = dict(scope.get("headers", []))  # type: ignore[arg-type]
+        headers = dict(scope.get("headers", []))  # type: ignore[call-overload]
         header_val = headers.get(b"x-m6-principal", b"").decode()
         principal = Principal.from_header(header_val or None)
 
@@ -158,7 +166,7 @@ class PolicyMiddleware:
 # Routes
 # --------------------------------------------------------------------------- #
 def _register_routes(app: FastAPI) -> None:
-    @app.get("/healthz", response_model=HealthResponse, tags=["ops"])
+    @app.get("/healthz", response_model=HealthResponse, tags=["ops"])  # type: ignore[misc]
     async def healthz(request: Request) -> HealthResponse:
         settings = get_settings()
         audit = request.app.state.audit
@@ -167,7 +175,9 @@ def _register_routes(app: FastAPI) -> None:
             version=__version__, env=settings.env, audit_chain_tip=tip.hex() if tip else None
         )
 
-    @app.post("/v1/write", response_model=WriteResponse, tags=["bus"], status_code=status.HTTP_201_CREATED)
+    @app.post(
+        "/v1/write", response_model=WriteResponse, tags=["bus"], status_code=status.HTTP_201_CREATED
+    )  # type: ignore[misc]
     async def write(
         request: Request,
         body: WriteRequest,
@@ -178,7 +188,7 @@ def _register_routes(app: FastAPI) -> None:
             principal=principal, fragment=body.fragment, target_ratio=body.target_ratio
         )
 
-    @app.get("/v1/read/{slot_id}", response_model=ReadResponse, tags=["bus"])
+    @app.get("/v1/read/{slot_id}", response_model=ReadResponse, tags=["bus"])  # type: ignore[misc]
     async def read(
         request: Request,
         slot_id: SlotId = Path(..., description="Slot id returned from /v1/write"),
@@ -188,7 +198,7 @@ def _register_routes(app: FastAPI) -> None:
         slot, row = service.read(principal, slot_id)
         return ReadResponse(slot=slot, audit_rowid=row.rowid)
 
-    @app.get("/v1/audit/{slot_id}", response_model=list[AuditRow], tags=["bus"])
+    @app.get("/v1/audit/{slot_id}", response_model=list[AuditRow], tags=["bus"])  # type: ignore[misc]
     async def audit_history(
         request: Request,
         slot_id: SlotId = Path(..., description="Slot id to look up"),
@@ -196,7 +206,7 @@ def _register_routes(app: FastAPI) -> None:
         service: MemoryBusService = request.app.state.service
         return service.audit_history(slot_id)
 
-    @app.post("/v1/subscribe", tags=["bus"])
+    @app.post("/v1/subscribe", tags=["bus"])  # type: ignore[misc]
     async def subscribe(
         request: Request,
         body: SubscribeRequest,
@@ -216,7 +226,7 @@ def _register_routes(app: FastAPI) -> None:
             # slot id in memory. The cap is 8× the requested top-k — well above
             # what any reasonable subscriber would re-receive in a single TTL,
             # while keeping memory bounded for adversarial subscribers.
-            seen: "OrderedDict[str, None]" = OrderedDict()
+            seen: OrderedDict[str, None] = OrderedDict()
             seen_cap = max(body.k * 8, 256)
 
             for _ in range(body.ttl_seconds):
@@ -243,7 +253,7 @@ def _register_routes(app: FastAPI) -> None:
                     while len(seen) > seen_cap:
                         seen.popitem(last=False)
                     payload = json.dumps({"slot_id": slot_id, "score": score})
-                    yield f"data: {payload}\n\n".encode("utf-8")
+                    yield f"data: {payload}\n\n".encode()
                 await asyncio.sleep(1.0)
 
         return StreamingResponse(event_source(), media_type="text/event-stream")
@@ -253,11 +263,11 @@ def _register_routes(app: FastAPI) -> None:
 # Error mapping
 # --------------------------------------------------------------------------- #
 def _register_exception_handlers(app: FastAPI) -> None:
-    @app.exception_handler(PolicyDenied)
+    @app.exception_handler(PolicyDenied)  # type: ignore[misc]
     async def policy_denied(_request: Request, exc: PolicyDenied) -> StreamingResponse:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
-    @app.exception_handler(SlotNotFound)
+    @app.exception_handler(SlotNotFound)  # type: ignore[misc]
     async def slot_not_found(_request: Request, exc: SlotNotFound) -> StreamingResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

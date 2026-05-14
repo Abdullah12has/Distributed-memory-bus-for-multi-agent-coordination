@@ -35,9 +35,8 @@ from m6.config.logging import get_logger
 from m6.memory_bus.schemas import CompressedSlot, Fragment, SoftEmbed
 
 if TYPE_CHECKING:  # pragma: no cover - optional imports
-    import torch
     from peft import PeftModel
-    from transformers import AutoTokenizer, PreTrainedModel
+    from transformers import AutoTokenizer
 
 log = get_logger(__name__)
 
@@ -76,8 +75,8 @@ class ICAECompressor:
         self.d_model = d_model
         self.max_input_tokens = max_input_tokens
         self.device = device
-        self._encoder: "PeftModel | None" = None
-        self._tokenizer: "AutoTokenizer | None" = None
+        self._encoder: PeftModel | None = None
+        self._tokenizer: AutoTokenizer | None = None
 
         self._mode: str = "stub"
         if self.checkpoint_path is not None and self.checkpoint_path.exists():
@@ -95,10 +94,32 @@ class ICAECompressor:
                     "compressor.icae.fallback_stub",
                     reason=str(e),
                     checkpoint=str(self.checkpoint_path),
+                    action=(
+                        "ICAE will produce deterministic-hash embeddings, NOT "
+                        "real compressed representations. Train via "
+                        "`make train-icae` before relying on these results."
+                    ),
                 )
                 self._mode = "stub"
         else:
-            log.info("compressor.icae.init", mode=self._mode, base_model=base_model)
+            # Stub mode is a development convenience but is easy to miss when
+            # an experiment relies on a trained checkpoint. Surface it at
+            # WARNING level with the resolution path.
+            log.warning(
+                "compressor.icae.stub_mode_active",
+                base_model=base_model,
+                checkpoint=str(self.checkpoint_path) if self.checkpoint_path else None,
+                action=(
+                    "ICAE will produce deterministic-hash embeddings, NOT "
+                    "real compressed representations. Set `checkpoint_path` "
+                    "to a trained adapter, or train via `make train-icae` "
+                    "(plan §4.3, ~3 days on M4 Pro)."
+                ),
+            )
+
+    def is_trained(self) -> bool:
+        """True iff a real LoRA checkpoint is loaded; False if stub-mode."""
+        return self._mode == "trained"
 
     # ------------------------------------------------------------------ #
     # Compressor protocol
@@ -137,14 +158,16 @@ class ICAECompressor:
         if not isinstance(slot.payload, SoftEmbed):
             return None
         arr = slot.payload.as_ndarray()
-        return arr.mean(axis=0).astype(np.float32).tolist()
+        return arr.mean(axis=0).astype(np.float32).tolist()  # type: ignore[no-any-return]
 
     def embed_text(self, text: str) -> list[float] | None:
         """Embed a free-form query string for ``/v1/subscribe`` searches."""
-        arr = self._encode_stub(text, self.num_slots) if self._mode == "stub" else self._encode_trained(
-            text, self.num_slots
+        arr = (
+            self._encode_stub(text, self.num_slots)
+            if self._mode == "stub"
+            else self._encode_trained(text, self.num_slots)
         )
-        return arr.mean(axis=0).astype(np.float32).tolist()
+        return arr.mean(axis=0).astype(np.float32).tolist()  # type: ignore[no-any-return]
 
     def model_card(self) -> ModelCard:
         return ModelCard(
@@ -183,7 +206,8 @@ class ICAECompressor:
 
         Only invoked when a checkpoint was loaded in ``__init__``.
         """
-        assert self._encoder is not None and self._tokenizer is not None
+        assert self._encoder is not None
+        assert self._tokenizer is not None
         import torch
 
         with torch.inference_mode():
@@ -206,13 +230,13 @@ class ICAECompressor:
                 # gives these positions their compressing behaviour.
                 mem_token_id = self._tokenizer.bos_token_id
             mem_ids = torch.full(
-                (1, num_slots), int(mem_token_id), dtype=inputs["input_ids"].dtype,
+                (1, num_slots),
+                int(mem_token_id),
+                dtype=inputs["input_ids"].dtype,
                 device=inputs["input_ids"].device,
             )
             input_ids = torch.cat([inputs["input_ids"], mem_ids], dim=1)
-            attention_mask = torch.cat(
-                [inputs["attention_mask"], torch.ones_like(mem_ids)], dim=1
-            )
+            attention_mask = torch.cat([inputs["attention_mask"], torch.ones_like(mem_ids)], dim=1)
             out = self._encoder(
                 input_ids=input_ids,
                 attention_mask=attention_mask,

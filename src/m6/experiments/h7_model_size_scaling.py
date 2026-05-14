@@ -9,7 +9,7 @@ from m6.experiments.base import ExperimentResult, ExperimentRunner
 
 
 class H7Runner(ExperimentRunner):
-    """Runs the H2 procedure across model sizes.
+    r"""Runs the H2 procedure across model sizes.
 
     Compute-wise: 70B is **one ratio** (the suspected τ\* from 13B/34B), not
     a full sweep (plan §4.4). The model_size to use per run is controlled via
@@ -28,15 +28,19 @@ class H7Runner(ExperimentRunner):
             for w in workloads:
                 for r in ratios:
                     for s in self.cfg.seeds:
-                        result = await self.score_workload_with_compressor(
-                            w, c, ratio=r, seed=s
+                        result = await self.score_workload_with_compressor(w, c, ratio=r, seed=s)
+                        rows.append(
+                            self.emit_row(
+                                compressor=c,
+                                ratio=r,
+                                workload_family=w.family.value,
+                                workload_id=w.workload_id,
+                                seed=s,
+                                metric="coord_success",
+                                value=result["coord_success"],
+                                model_size=self.cfg.model_size,
+                            )
                         )
-                        rows.append(self.emit_row(
-                            compressor=c, ratio=r,
-                            workload_family=w.family.value, workload_id=w.workload_id,
-                            seed=s, metric="coord_success", value=result["coord_success"],
-                            model_size=self.cfg.model_size,
-                        ))
 
         df = pd.DataFrame(rows)
         verdict = self._fit_tau_per_size(df)

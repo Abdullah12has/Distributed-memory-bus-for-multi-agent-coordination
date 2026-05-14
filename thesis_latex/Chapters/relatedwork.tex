@@ -1,73 +1,318 @@
-The process starts with specifying the topic of the thesis and applying for its formal approval by the degree programme committee head. You need to define the topic together with the commissioner and the supervisors (see the next section). The topic, commissioner, and supervisors are specified in the topic application form that is used to apply the approval of the topic. The list below presents the general thesis process, with emphasis on the administrative issues and supervision:
+This chapter reviews prior work that grounds the four contributions of the
+thesis. It is organised into five strands. Section~\ref{sec:rw_compression}
+covers context compression and agentic memory; Section~\ref{sec:rw_multiagent}
+covers multi-agent systems and the closest published industry analogue;
+Section~\ref{sec:rw_rag} covers retrieval-augmented generation, long-context
+benchmarks, and the evaluation suite that frames C3;
+Section~\ref{sec:rw_privacy} covers privacy-aware retrieval and adversarial
+robustness; and Section~\ref{sec:rw_fcg} situates the work within the Future
+Computing Group programme at the University of Oulu and the closely related
+TalentAdore industry use case.
 
-\begin{enumerate}
-    \setlength\itemsep{0pt}
-    \setlength\parskip{0pt}
-    \item approval for the topic,
-    \item writing the thesis (preferably at the same time as carrying out the research),
-    \item delivering the thesis and applying for the degree,
-    \item evaluation and grading, and
-    \item granting the degree.
-\end{enumerate}
+\section{Context Compression and Agentic Memory}
+\label{sec:rw_compression}
 
-The second stage is the most laborious part, which includes writing the thesis and performing the actual work, for example, designing, building and testing a piece of software. When the thesis is ready, it is reviewed by the supervisors, modified by you if necessary, and then delivered to the Laturi system. The next step is to apply for the degree certificate and to perform the other tasks that are required from graduating students. The supervisors download the thesis from the archive and evaluate it. The degree programme committee approves the grading in its meeting and the faculty grants the degree. The thesis is transferred to the university archive and published according to the publicity level you defined when uploading the thesis to Laturi. The graduation ceremony ends your M.Sc. studies. The process is explained in more detail in the rest of this document and on the degree programme web pages~\cite{mscstudies}.
+\subsection{Hard-prompt token filtering}
 
-\section{Approval of the topic}
+The first generation of practical context-compression techniques operated
+at the token level. Jiang \emph{et al.}~\cite{jiang2023llmlingua} introduced
+LLMLingua, which uses a small autoregressive language model to score
+tokens by their per-step perplexity contribution and drop those whose
+removal least disturbs the conditional distribution. The same line of work
+produced LongLLMLingua~\cite{jiang2024longllmlingua}, which extends the
+coarse-to-fine ranking with a question-aware step to handle the retrieval
+setting, and LLMLingua-2~\cite{pan2024llmlingua2}, which trains an
+XLM-RoBERTa token classifier on data distilled from a more capable model,
+yielding a task-agnostic compressor that runs natively on CPU and on
+Apple's MPS backend.
 
-Your first task is to find a commissioner for your thesis that is typically a company which hires you to make a thesis project. For example, a summer job or training in a company or some other organization gives a good starting point to continue in a thesis project. A research unit in the Faculty of Information Technology and Electrical Engineering can also act as the commissioner, in which case the topic will most likely be linked with ongoing research at the unit. Research units provide information about current master’s thesis topics in their web pages. You can also directly ask topics from the research unit personnel. In some cases the research units can pay salary to the master’s thesis worker, but in most cases you need to be prepared to make the thesis for free.
+This thesis takes LLMLingua-2 as the principal hard-prompt baseline.
+Pan~\emph{et al.}~\cite{pan2024llmlingua2} report substantial token
+reductions at modest accuracy costs on long-context QA, and the
+model is bundled with the official \texttt{llmlingua} package, which
+makes it the de facto baseline against which any new compressor must be
+calibrated. The thesis includes a Month-1 stop-the-line criterion that
+NarrativeQA F1 must reproduce within $2$ pp and HotpotQA F1 within $3$ pp
+of the reported numbers~\cite{kocisky2018narrativeqa, yang2018hotpotqa}.
 
-There are 2-3 supervisors involved in the master’s thesis process, and they are assigned after the topic is confirmed. \textit{Principal supervisor} is a professor or a doctor who belongs to the personnel of some ITEE research unit. A list of potential supervisors and their fields of expertise can be found on the degree program web pages~\cite{mscstudies}. The professor or doctor you approach first can decide based on the thesis topic to act as a principal supervisor her/himself or suggest someone else.  Usually, the thesis is done on a topic within the area of your orientation (major).  However, topics proposed by companies are often multi-disciplinary or cross-scientific  and the topic does not fit into the realm of any particular orientation. In these cases, the supervision should be agreed with a professor or doctor who best represents the overall field of the thesis work.
+\subsection{Soft-prompt compression}
 
-If the master’s thesis is made to a university research unit, the commissioner often becomes the principal supervisor. If the thesis is made to a company or some other organization outside the university, the commissioner should assign a \textit{technical supervisor} who is responsible for advising you in the technical matters. It is also common to have a technical supervisor for theses made to university research units. In that case the role of the principal supervisor is mainly to ensure that the requirements set for a master’s thesis are fulfilled. In addition, there is always a \textit{second examiner} from the university who is selected by the principal supervisor. The second examiner evaluates the thesis together with the principal supervisor and sometimes also participates to supervision in the issues related to her/his expertise.
+A parallel line of work compresses passages into a small number of
+continuous embedding slots that occupy the same positions in a frozen
+decoder's attention windows. Mu~\emph{et al.}~\cite{mu2023gist}
+introduced \emph{gist tokens}, special positions trained with a masked
+attention pattern to summarise a prefix prompt. Chevalier~\emph{et
+al.}~\cite{chevalier2023autocompressor} extended this idea with
+\emph{AutoCompressor}, which adapts a frozen decoder via LoRA-trained
+\emph{summary vectors} and uses a token-level reconstruction loss as the
+training objective; their result that a small LoRA adapter is sufficient
+on the encoder side, with the decoder kept frozen, is the design
+principle this thesis inherits.
 
-If the thesis work is conducted outside the university, it is important to find the principal supervisor as soon as possible in order to make sure that the topic is suitable and to agree on the scope of the thesis. It is recommended to organize a meeting together with the commissioner and the principal supervisor to discuss about the thesis work before it has been started. It is also recommended to write a short project plan that describes the background, motivation, and objectives of the work as well as a timetable and possible risks. The project plan gives a good basis for following the progress of the work.
+Ge~\emph{et al.}~\cite{ge2024icae} formalised this architecture as the
+\emph{In-context Autoencoder (ICAE)}, training the encoder to emit a
+fixed number of memory tokens that, when re-injected into the decoder,
+allow it to reconstruct the source passage. Wang~\emph{et
+al.}~\cite{wang2024icf} present the In-Context Former, a faster cross-
+attention compressor that drops the reconstruction objective entirely.
+Fei~\emph{et al.}~\cite{fei2024semantic} compress at the semantic-unit
+level rather than the token level. Rae~\emph{et al.}~\cite{rae2020compressive}
+establish that compressed memory in transformers has a degradation curve
+in the first place, but report smooth monotonic decay in the
+single-context regime --- a baseline that H2 explicitly tests against.
 
-After the supervisors have been selected, invite the main supervisor in Laturi. The head of the degree programme will will formally appoint the role. After the aims have been agreed with the supervisors, you are ready to submit the research plan for your thesis.  You should apply for approval as soon as possible, to be able to take the possible feedback into account in your thesis work. 
+The trainable arm of this thesis is an ICAE-style compressor with the
+dual-objective loss documented in Section~\ref{sec:training} of
+Chapter~\charef{implementation}. The construction follows Ge~\emph{et
+al.}~\cite{ge2024icae} for the architecture and
+Chevalier~\emph{et al.}~\cite{chevalier2023autocompressor} for the
+reconstruction-loss formulation. The contrastive term is an InfoNCE
+loss~\cite{oord2018cpc, chen2020simclr} sampled over
+positive--negative source-fragment pairs.
 
-As a rule, Bachelor's thesis is written in Finnish. It can be written in English in exceptional cases, for example, if the supervisor is English-speaking or if the thesis project group includes members who do not speak Finnish. In English-language degree programmes the Bachelor's thesis is written in English. For Master's thesis, the student can choose the language. If the work is written in English, proofreading by a professional translator can be required. The decision is made by the principal supervisor. The author is responsible for paying the proofreading costs unless it is specified otherwise in the application. It should also be noticed that language is one of the thesis evaluation criteria.
+\subsection{Compression for RAG}
 
-\section{Writing the thesis}
-\label{writing}
+A third strand of work pushes compression into the retrieval-augmented
+generation pipeline. Cheng~\emph{et al.}~\cite{cheng2024xrag} propose
+\emph{xRAG}, which compresses retrieved chunks to a single soft-prompt
+token, anchoring the extreme end of the ratio spectrum.
+Guo~\emph{et al.}~\cite{guo2025dynamic} make compression
+\emph{relevance-conditional}: chunks whose retrieval scores exceed a
+threshold are kept verbatim, those below are compressed, and those well
+below are discarded. The third pipeline of this thesis (P3) follows
+their structural design directly, while the first two pipelines (P1 and
+P2) reproduce the classical \emph{compress--then--retrieve} and
+\emph{retrieve--then--compress} configurations against which P3 must
+demonstrate a benefit. Li~\emph{et al.}~\cite{li2025promptsurvey}
+publish a survey that consolidates this design space and was used as a
+checklist of comparators during the C3 design.
 
-During the actual work, you are expected to communicate regularly with the technical and principal supervisors. In the beginning, meetings with the principal supervisor can be less frequent, but during the write-up phase, regular meetings are more important.
+\subsection{LLM-as-operating-system memory hierarchies}
 
-Every master’s thesis is a unique project and it is difficult to define general rules what the individual steps are and how frequently the meetings with the supervisors should be arranged. The Master's thesis gives an opportunity to demonstrate your professional maturity, but it is also the final learning possibility at the university. Hence, it is important to find the balance between the independent work and the amount of supervision required, which is one of the thesis evaluation criteria. You are entitled to get the necessary supervision, but do not expect that the supervisor will make the thesis for you. During the actual work it is recommended to have frequent appointments with the technical supervisor for discussing about the issues that help you to solve the problems encountered in the work. These meetings also keep the supervisor updated and ensure that you are not stuck or going to wrong direction.
+Packer~\emph{et al.}~\cite{packer2023memgpt} introduced \emph{MemGPT},
+which models the LLM as an operating system that pages information between
+a fast in-context working set and a slow archive. Xu~\emph{et
+al.}~\cite{xu2025amem} propose \emph{A-MEM}, which extends this with
+Zettelkasten-style linking. Chhikara~\emph{et al.}~\cite{chhikara2025mem0}
+and Rasmussen~\emph{et al.}~\cite{rasmussen2025zep} target the production
+end of the spectrum with embedding-based extraction (\emph{Mem0}) and
+temporal knowledge-graph memory (\emph{Zep}). Yu~\emph{et
+al.}~\cite{yu2025memagent} learn to retrieve from past actions via
+reinforcement learning. The memory bus in this thesis is not a
+replacement for any of these but a substrate on top of which they could
+sit: the storage layer protocols are factored so that an OS-style pager,
+a knowledge graph, or an episodic store all conform to the same
+contract.
 
-At the beginning of the write-up phase, guidance from the principal supervisor is crucial concerning the structure, presentation order and style of the thesis. During the write-up, meetings with the principal supervisor should be held in order to discuss a) whether the information order and emphases are right, b) whether the issues being covered or planned to be covered are relevant to the thesis, and c) whether some areas have been overlooked. The emphasis in the meetings with the principal supervisor should mainly concern the structuring of the thesis.
+\section{Multi-Agent Systems and Coordination}
+\label{sec:rw_multiagent}
 
-At minimum, you should present the table of contents to the principal supervisor before you start writing the thesis, present the first complete draft when it is ready, and in this meeting agree the necessary modifications, and then review the modifications in follow-up meetings. In these final meetings (one or more), special attention needs to be paid to correct referencing of others’ work and to the rights and permissions to the content included in the thesis. When the supervisor judges the thesis to be ready, she/he permits electronic publication of the thesis.
+\subsection{Multi-agent frameworks}
 
-Further, always discuss the use of Artificial Intelligence-powered tools with your supervisor(s) well before writing the thesis. You must include a dedicated subsection at the end of the Inroduction chapter, titled \textit{Author's Contributions and the Role of Artificial Intelligence}. The statement must first clearly clarify what was the role of the thesis author in the included work and, second, how AI was used in preparing the thesis. Please familiarise yourself with the more specific guidelines in Section '\textit{Clarifying contributions and using AI}' in Chapter~\ref{implementation} of this guide.
+Wu~\emph{et al.}~\cite{wu2023autogen} introduced \emph{AutoGen}, a
+conversational multi-agent framework with role-based agents and tool
+use that became the de facto research vehicle for studying
+planner-worker-critic topologies. Hong~\emph{et
+al.}~\cite{hong2024metagpt} introduced \emph{MetaGPT}, which encodes
+standardised operating procedures (SOPs) as structured artefacts passed
+between agents. Li~\emph{et al.}~\cite{li2023camel} explored
+role-playing dialogues for autonomous agents (\emph{CAMEL}).
+Shinn~\emph{et al.}~\cite{shinn2023reflexion} introduced
+\emph{Reflexion}, which formalises the critic loop as verbal
+reinforcement learning. This thesis adopts AutoGen v0.4 as the agent
+runtime; the planner-worker-critic loop is a
+\texttt{RoundRobinGroupChat} over a planner, a configurable number of
+workers, and a critic that emits a structured \texttt{DONE} or
+\texttt{REVISE} verdict in the spirit of Reflexion.
 
-\section{Delivering the thesis and applying for the degree}
+\subsection{Token-efficient multi-agent coordination}
 
-Starting from January 2013, master’s thesis have been published only in an electronic form. When the thesis is ready and the supervisor has given the permission, the student delivers an electronic version of the thesis to the Laturi system\footnote{http://laturi.oulu.fi/. A good name for your thesis file is <year>-<month>-<familyname>-<firstname>-Thesis.pdf. When several theses are downloaded for review from Laturi, this naming convention helps to identify the files}. Since the supervisors fetch your thesis for evaluation from Laturi, MSc students need to deliver the thesis no later than 10 days prior to a degree programme committee meeting approving your thesis. You can discuss the details of the schedule with the supervisor. Committee meetings are held mainly once per month, and the meeting schedule can be found from the degree programme web pages (for BSc students~\cite{bscstudies} and MSc students~\cite{mscstudies}). After submission to Laturi, BSc students will send the final version of the thesis to the study office as well.
+A small but growing literature directly attacks the multi-agent
+token-efficiency problem. Zhang~\emph{et al.}~\cite{zhang2024agentprune}
+sparsify the communication graph between agents. Wang~\emph{et
+al.}~\cite{wang2025agentdropout} drop agents stochastically during
+training. Ye~\emph{et al.}~\cite{ye2025kvcomm} share KV-cache prefixes
+across agents to amortise communication cost.
+Park~\emph{et al.}~\cite{park2025collaborative} introduce
+\emph{Collaborative Memory}, which pushes per-fragment access-control
+metadata into a shared memory layer for multi-user agent systems; this
+is the closest published precedent for the C4 tag-preserving
+extension and the structural ancestor of the per-slot tag head in
+Section~\ref{sec:c4_design} of Chapter~\charef{implementation}.
 
-The delivered version must be the final version of the thesis manuscript\footnote{A second version of the thesis can be uploaded to the Laturi system only for a cogent reason and requires a permission from the university library (this permission has to be applied by the student).}. The thesis must have the official title page and the layout and general structure presented in this document. \textbf{Pay special attention to the title page, as you have to set your degree program correctly.} The new template can be downloaded from degree programme web pages~\cite{mscstudies}; old templates are no longer valid.
+\subsection{The closest published industry analogue}
 
-Once the thesis is accepted by the supervisors and graded by the degree programme committee, it is transferred to the university archive and published at the OuluREPO repository\footnote{https://oulurepo.oulu.fi/} or e-thesis workstations in the university library according to the publicity level you determined when you delivered the thesis.
+Anthropic's published descriptions of their multi-agent research system
+provide the closest industry analogue to the empirical question of this
+thesis. Their engineering blog~\cite{anthropic2025multiagent} reports
+that \emph{token usage} alone explains approximately eighty percent of
+the performance variance in a multi-agent research workflow, and their
+context-engineering write-up~\cite{anthropic2025contextengineering}
+names four primitives --- \emph{compaction}, \emph{tool-result clearing},
+\emph{memory}, and \emph{just-in-time retrieval} --- that frame the
+design choices in C3 (RAG pipeline placement). Their announcement of
+context editing and the memory tool on the Claude Developer
+Platform~\cite{anthropic2025contextediting} reports an
+\emph{eighty-four percent token reduction on a 100-turn web-search
+evaluation} via context editing alone. These results are the strongest
+signal in the public literature that something like a coordination cliff
+exists; H2 in this thesis is the first attempt the author is aware of to
+characterise its shape empirically.
 
-The application for a diploma is submitted via Peppi's graduation service at student's desktop. In addition, there is a feedback questionnaire for BSc students. MSc students can download TEK Survey for Graduates from~\cite{mscgraduation}. The secretaries will prepare your papers, calculate your GPA, etc. 
+\subsection{Context engineering for multi-agent assistants}
 
-Before graduation you also need to attend the \textbf{maturity test.} Passing the maturity test is required for all degree students and it is taken after the completion of the thesis. The students with Finnish/Swedish as the language of their elementary education will write the test in Finnish/Swedish. If the elementary education has been taken in some other language, the maturity test is taken in English. The maturity test is a written examination based on the thesis, where the candidate is asked to write an essay about the topic(s). The registration for the maturity test should be discussed with the supervisor as you are getting your thesis approved. Finally, you need to return all books, keys, equipment, machinery, and tools that belong to the university.
+Haseeb~\cite{haseeb2025contextengineering} attacks the related question
+of training-distribution mismatch in multi-agent code assistants; the H3
+training-distribution experiment of this thesis is directly motivated by
+his finding that compressors trained on monolithic QA underperform when
+deployed against dialogue traces. The stretch goal S3
+(Chapter~\charef{summary}) would implement his approach as a baseline
+comparator on C1.
 
-\section{Evaluation and grading}
+\section{Retrieval-Augmented Generation and Long-Context Benchmarks}
+\label{sec:rw_rag}
 
-The principal supervisor and the second examiner download the thesis from Laturi for \textbf{final evaluation and grading.} They fill out the evaluation form with the proposed grading in Laturi. If the thesis was commissioned by a company or an organization outside the university, the technical supervisor is expected to fill out a separate evaluation form and send it to the principal supervisor well in advance before the grading. The degree programme committee approves the thesis based on the evaluation by the principal supervisor and the second examiner. The forms and a document describing the evaluation criteria can be found from the degree programme web pages~\cite{mscstudies}.
+\subsection{Retrieval-augmented generation}
 
-A master’s thesis that has been approved will be graded according to the university regulations with the following 5-point scale: satisfactory (1), very satisfactory (2), good (3), very good (4), and excellent (5). The title of the thesis, the name of the Degree programme director, as well as the grade will be printed on the Master’s Degree Certificate.
+Lewis~\emph{et al.}~\cite{lewis2020rag} introduced the original
+retrieval-augmented generation framework, which combines a parametric
+generator with a non-parametric retrieval index. The descendant literature
+has explored hierarchical
+indices~\cite{sarthi2024raptor}, graph
+summaries~\cite{edge2024graphrag}, neurobiologically inspired
+memory~\cite{gutierrez2024hipporag, gutierrez2025hipporag2}, and
+self-reflective gating that decides on the fly whether to
+retrieve~\cite{asai2024selfrag}. Anthropic's contextual-retrieval
+write-up~\cite{anthropic2024contextualretrieval} reports that prepending
+a Claude-generated chunk-level summary to each document chunk before
+embedding improves retrieval across codebases, fiction, arXiv preprints,
+and scientific papers at a stated cost of approximately
+USD~$1.02$ per million document tokens with prompt caching --- a
+useful pre-processing comparator for P1 in the C3 catalogue.
 
-The student has the right to see the grade proposed by the supervisor, as well as the evaluation form, \textbf{three} days prior to the committee meeting. In case the student feels mistreated, she/he has the opportunity to issue a written \textbf{appeal} to the board of examiners of the University of Oulu concerning the evaluation of his/her thesis no later than \textbf{fourteen days} after having received the information. This process evidently delays the graduation.
+The C3 catalogue of this thesis (P1, P2, P3) sits at the intersection of
+retrieval and compression. P1 is the \emph{compress-then-retrieve}
+configuration, where the index stores compressed chunks; P2 is the
+\emph{retrieve-then-compress} configuration that recovers the
+LongLLMLingua setup~\cite{jiang2024longllmlingua}; P3 is the
+\emph{joint} configuration that routes chunks through one of three
+branches based on retrieval relevance, following the structural design of
+\cite{guo2025dynamic}.
 
-\section{Publicity}
-\label{sec:publicity}
+\subsection{Long-context benchmarks and the \emph{lost-in-the-middle} problem}
 
-A master’s thesis is a public document. A thesis must therefore not reveal any business secrets or confidential information. The thesis can only be evaluated based on its written contents. For this reason, it is crucial to discuss thesis publicity with company representatives as early as possible, when the topic is defined. Should any major conflicting interests arise between the author and the customer concerning the publication of information, the author should turn to the principal supervisor for consultation.
+Liu~\emph{et al.}~\cite{liu2024lostinmiddle} document the
+\emph{lost-in-the-middle} phenomenon: language models attend
+disproportionately to the beginning and end of their context windows.
+Hsieh~\emph{et al.}~\cite{hsieh2024ruler} introduce the RULER benchmark,
+which probes the \emph{effective} context size of long-context LLMs by
+constructing tasks at varying needle-in-haystack difficulties.
+Bai~\emph{et al.}~\cite{bai2024longbench} maintain LongBench, a suite of
+long-context tasks that this thesis uses as an external calibration
+anchor. Yen~\emph{et al.}~\cite{yen2025helmet} introduce
+\emph{HELMET}, a more recent long-context capability suite that is used
+to validate the 70B int4 inference path before any C1 numbers are
+collected.
 
-The Ministry of Education has issued a set of written statements concerning the public nature of master’s theses to universities and colleges. According to the statements the thesis must not contain classified information, and once approved, the thesis should be public. The ownership as well as the publication and/or patent rights should be agreed upon together with the supervisor, author, and the possible commissioner.
+\subsection{Agent-task benchmarks}
 
-Starting from January 2013, all master’s thesis written at the University of Oulu have been published electronically by the university library. The publicity level is decided by the author when the thesis is delivered to Laturi; whether the electronic version will be available to everyone from an open access repository or only at special workstations in university libraries.
+GAIA~\cite{mialon2023gaia} and AgentBench~\cite{liu2024agentbench}
+motivate the agent-task framing of this thesis. The C1 benchmark is
+\emph{not} a competitor to either; it isolates the specific question of
+coordination-quality-versus-compression, which neither GAIA nor AgentBench
+poses directly. GAIA Level 1 is used as a sanity check that the
+planner-worker-critic loop produces non-trivial behaviour at 7B; a
+subset of AgentBench environments (OS, DB, LTP) is held in reserve as a
+non-critical-path external comparator.
 
-\section{Thesis awards}
+\section{Privacy-Aware Retrieval and Adversarial Robustness}
+\label{sec:rw_privacy}
 
-The Technological Society of Finland and the IEEE Finland section issue the Best Thesis of the Year Award, chosen from a list of candidates that is compiled by Finnish universities and colleges and is including almost all theses published annually in Finland.
+The tag-preserving extension (C4) is grounded in a small but active
+literature on privacy-aware retrieval. Zhou~\emph{et
+al.}~\cite{zhou2025privacyrag} propose a privacy-aware variant of RAG
+that filters retrieved documents against requester-side policy; their
+threat model is the structural anchor for the H6 inference-disclosure
+metric of this thesis. Bassit and Boddeti~\cite{bassit2025securerag}
+push the privacy guarantee deeper, providing cryptographic guarantees on
+the retrieval side. Zhao~\cite{zhao2024frag} and Addison~\emph{et
+al.}~\cite{addison2024cfedrag} extend RAG to the federated setting, in
+which the index itself is distributed across institutional boundaries
+that the master's-scale work in this thesis does not cross.
+
+Li~\emph{et al.}~\cite{li2025securitylingua} introduce
+\emph{SecurityLingua}, a red-team treatment of prompt compression that
+demonstrates adversarial prompts against compressors. The S2 stretch
+goal (Chapter~\charef{summary}) would run a SecurityLingua-style
+red-team sweep against the tag-preserving variant as part of the
+governance-claim hardening.
+
+The NIST AI Risk Management Framework~\cite{nistairmf} is cited as the
+lattice from which the 5-tier classification hierarchy
+(\textsc{public} $<$ \textsc{internal} $<$ \textsc{confidential} $<$
+\textsc{restricted} $<$ \textsc{secret}) used by the tag vector
+in Section~\ref{sec:datamodel} of
+Chapter~\charef{implementation} is derived. This thesis does not claim
+NIST compliance; the framework simply provides a vocabulary.
+
+\section{The FCG Programme and the Industry Setting}
+\label{sec:rw_fcg}
+
+The thesis sits within the FCG's institutional AI service economy
+research programme. Three internal architecture documents specify the
+target platform: the system
+architecture~\cite{fcgsystemarch2026}, the software
+architecture~\cite{fcgsoftwarearch2026}, and the integrator-internal
+architecture~\cite{fcgintegratorarch2026}. The financial
+analysis~\cite{fcgfinancial2026} sets out a five-year projection for
+the University of Oulu that produces a Year-5 benefit-to-cost ratio of
+3.5:1 under the Normal scenario, a five-year cumulative net benefit of
+approximately EUR~7.7~M, and per-user monthly compute costs that fall
+from approximately EUR~20/month (Phase~1, research-active users) to
+approximately EUR~11/month (Phase~2). The
+use-case document~\cite{fcgusecase2026} narrates a week of an institutional
+researcher and is the source of the Vignette~3.7 (Period-end project
+reporting) workflow that anchors the C1 benchmark.
+
+Saleh~\emph{et al.}~\cite{saleh2025memindex} introduce \emph{MemIndex},
+the FCG group's baseline architecture for distributed agent memory; the
+three-layer split (access, compression, storage) used in
+Chapter~\charef{implementation} is a direct extension of MemIndex with
+compression promoted to a first-class layer. The companion
+ACM Computing Surveys paper~\cite{saleh2025messagebrokers} surveys
+message brokers for generative AI, evaluating Kafka, NATS, Mosquitto,
+RocketMQ, NSQ, VerneMQ, and many others against the GenAI workload, and
+proposes the perception--brain--actuation reference architecture for
+generative-AI agents that the planner-worker-critic loop of this thesis
+instantiates as three concrete actors. The thesis is also informed by
+the wider FCG programme on the AI service
+economy~\cite{loven2025paper1, loven2025paper2, loven2025paper3,
+loven2025paper4}, on the 6G computing
+continuum~\cite{loven20256g, kokkonen2022autonomy}, and on
+LLM-augmented operations~\cite{sheikhi2025cognitive}.
+
+The industry partner of this thesis, TalentAdore, supplies the
+production-pricing constants for the cost model in C3
+(GPT-4o-mini and Claude Haiku 4.5) and is the source of the
+EUR-per-workflow framing for the cost-arm. Their interest in this thesis
+is the cost-vs-coordination trade-off curve, not the C4 governance arm.
+
+\section{Synthesis and Positioning}
+\label{sec:rw_synthesis}
+
+In summary, the literature offers strong single-agent compression
+techniques (LLMLingua-2 and ICAE), a maturing multi-agent runtime
+ecosystem (AutoGen, MetaGPT, CAMEL, Reflexion), a maturing RAG-plus-
+compression literature (xRAG, LongLLMLingua, dynamic compression for
+RAG), and an emerging privacy-aware retrieval literature
+(Privacy-Aware RAG, SecureRAG, FRAG, C-FedRAG). It offers indirect
+evidence from industry that coordination cost dominates production
+multi-agent deployments (Anthropic's research-system writeup, Anthropic's
+context-editing release).
+What it does not offer is a systematic empirical
+characterisation of how compression degrades multi-agent coordination
+across model size --- whether the coordination curve is smooth like
+the single-agent QA curve or has a cliff that single-agent metrics
+cannot anticipate. The thesis is positioned squarely on that gap, with
+the four contributions C1--C4 working together to make the question
+empirically tractable on a single workstation.

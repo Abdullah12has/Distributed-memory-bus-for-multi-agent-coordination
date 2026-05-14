@@ -5,6 +5,7 @@ Atomic write, JSONL streaming, run-id generation, content hashing.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -12,7 +13,7 @@ import tempfile
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,7 @@ def atomic_write(path: Path | str, mode: str = "w", encoding: str = "utf-8") -> 
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = tempfile.NamedTemporaryFile(
+    tmp = tempfile.NamedTemporaryFile(  # noqa: SIM115
         mode=mode,
         encoding=encoding if "b" not in mode else None,
         dir=path.parent,
@@ -41,10 +42,8 @@ def atomic_write(path: Path | str, mode: str = "w", encoding: str = "utf-8") -> 
         os.fsync(tmp.fileno())
     except Exception:
         tmp.close()
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp.name)
-        except OSError:
-            pass
         raise
     else:
         tmp.close()
@@ -88,7 +87,7 @@ def hash_dict(d: dict[str, Any]) -> str:
 
 def make_run_id(prefix: str = "run") -> str:
     """Generate a sortable run id: ``<prefix>-YYYYmmdd-HHMMSS-<uuid8>``."""
-    now = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    now = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     return f"{prefix}-{now}-{uuid.uuid4().hex[:8]}"
 
 
@@ -96,7 +95,7 @@ def _json_default(o: Any) -> Any:
     """Default JSON serializer for non-stdlib types."""
     if isinstance(o, Path):
         return str(o)
-    if isinstance(o, (set, frozenset)):
+    if isinstance(o, set | frozenset):
         return sorted(o)
     if hasattr(o, "isoformat"):
         return o.isoformat()

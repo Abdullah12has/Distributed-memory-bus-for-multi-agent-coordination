@@ -25,11 +25,56 @@ log = get_logger(__name__)
 # A minimal English stop-word list; we deliberately keep it small so this stays
 # pure-Python and dependency-free at runtime.
 _STOPWORDS = frozenset(
-    """
-    a an and are as at be by for from has have he her him his i if in is it its
-    just my no not of on or so that the their them they this to was we what
-    when where which who will with you your
-    """.split()
+    [
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "he",
+        "her",
+        "him",
+        "his",
+        "i",
+        "if",
+        "in",
+        "is",
+        "it",
+        "its",
+        "just",
+        "my",
+        "no",
+        "not",
+        "of",
+        "on",
+        "or",
+        "so",
+        "that",
+        "the",
+        "their",
+        "them",
+        "they",
+        "this",
+        "to",
+        "was",
+        "we",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "will",
+        "with",
+        "you",
+        "your",
+    ]
 )
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 _TOKEN_RE = re.compile(r"\w+|[^\w\s]")
@@ -121,7 +166,9 @@ class InstructionAwareFilter:
             scores = self._reranker.predict(
                 [(task_hint, s) for s in sentences], convert_to_numpy=True
             )
-            ranked = sorted(zip(sentences, scores, strict=True), key=lambda x: float(x[1]), reverse=True)
+            ranked = sorted(
+                zip(sentences, scores, strict=True), key=lambda x: float(x[1]), reverse=True
+            )
             sentences_ranked = [s for s, _ in ranked]
         else:
             hint_tokens = {t.lower() for t in _TOKEN_RE.findall(task_hint)}

@@ -14,13 +14,13 @@ from m6.compressors import make_compressor
 from m6.memory_bus.api import create_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client() -> TestClient:
     app = create_app(compressor=make_compressor("none"))
     return TestClient(app)
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_healthz(client: TestClient) -> None:
     r = client.get("/healthz")
     assert r.status_code == 200
@@ -28,7 +28,7 @@ def test_healthz(client: TestClient) -> None:
     assert body["status"] == "ok"
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_write_then_read_roundtrip(client: TestClient) -> None:
     payload = {
         "fragment": {
@@ -48,7 +48,7 @@ def test_write_then_read_roundtrip(client: TestClient) -> None:
     assert r2.json()["slot"]["slot_id"] == slot_id
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_read_denied_when_classification_below(client: TestClient) -> None:
     # Write a CONFIDENTIAL (=2) fragment. The default dev principal is super-user,
     # so we write OK. Then we attempt to read with a low-classification principal.
@@ -69,7 +69,7 @@ def test_read_denied_when_classification_below(client: TestClient) -> None:
     assert r2.status_code == 403
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_audit_history_appears(client: TestClient) -> None:
     payload = {
         "fragment": {

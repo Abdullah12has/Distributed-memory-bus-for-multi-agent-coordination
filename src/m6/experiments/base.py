@@ -20,7 +20,7 @@ import json
 import platform
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,17 +48,20 @@ class ExperimentConfig:
     Subclasses subclass this with extra fields.
     """
 
-    hypothesis: str                          # "h1".."h8"
+    hypothesis: str  # "h1".."h8"
     benchmark_path: str = "data/processed/c1-v0.1"
     compressors: tuple[str, ...] = ("lingua2", "filter", "icae")
     ratios: tuple[float, ...] = (1.0, 2.0, 4.0, 8.0, 16.0)
     seeds: tuple[int, ...] = (0, 1, 2, 3, 4)
     workload_families: tuple[str, ...] = ("a",)
     model_size: str = "7b"
-    backend: str = "echo"                    # for tests; production uses "mlx" etc.
+    backend: str = "echo"  # for tests; production uses "mlx" etc.
     out_dir: str = "results"
     n_workloads: int | None = None
     include_no_compression_control: bool = True
+    # Strict mode: refuse to run if any ICAE-family compressor is in stub mode.
+    # Set this true for headline runs that must rest on trained weights.
+    require_trained_compressors: bool = False
     notes: str = ""
 
     @classmethod
@@ -91,6 +94,11 @@ class ExperimentRunner(ABC):
         self.run_id = make_run_id(prefix=self.HYPOTHESIS or "exp")
         self.out_dir = Path(cfg.out_dir) / self.HYPOTHESIS / cfg.model_size / self.run_id
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        # Per-(name, ratio) compressor cache. Trained ICAE/PEFT instances load
+        # model weights in __init__; without this cache every inner-loop call
+        # would re-load. Keyed on the ratio because some compressors close over
+        # their target_ratio at construction.
+        self._compressor_cache: dict[tuple[str, float], Any] = {}
         self._write_manifest()
 
     # ------------------------------------------------------------------ #
@@ -134,7 +142,7 @@ class ExperimentRunner(ABC):
             "run_id": self.run_id,
             "git_sha": _git_sha(),
             "config_hash": hash_dict(dataclasses.asdict(self.cfg)),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "invalid": False,
             "invalid_reason": None,
         }
@@ -157,8 +165,30 @@ class ExperimentRunner(ABC):
         *,
         seed: int,
     ) -> dict[str, Any]:
-        """Run one (workload, compressor, ratio, seed) cell. Used by H1/H2/H7."""
-        comp = make_compressor(compressor_name, target_ratio=ratio)
+        """Run one (workload, compressor, ratio, seed) cell. Used by H1/H2/H7.
+
+        The compressor is cached on ``self._compressor_cache`` so a trained
+        ICAE/PEFT instance is constructed once per ``(name, ratio)`` pair, not
+        once per workload-seed call (which for H2 would be ~22 500 reloads).
+        """
+        key = (compressor_name, float(ratio))
+        comp = self._compressor_cache.get(key)
+        if comp is None:
+            comp = make_compressor(compressor_name, target_ratio=ratio)
+            # If the user asked for strict-mode (trained-checkpoint required),
+            # refuse to run ICAE-family compressors that fell back to stub.
+            if self.cfg.require_trained_compressors and compressor_name in {"icae", "icae-tag"}:
+                is_trained = getattr(comp, "is_trained", lambda: False)()
+                if not is_trained:
+                    msg = (
+                        f"require_trained_compressors=true but {compressor_name!r} "
+                        f"is in stub mode (no checkpoint at the configured path). "
+                        f"Train via `make train-icae` or set "
+                        f"require_trained_compressors=false in the experiment "
+                        f"config to acknowledge the stub run."
+                    )
+                    raise RuntimeError(msg)
+            self._compressor_cache[key] = comp
         orchestrator = PlannerWorkerCritic(
             cfg=AgentConfig(backend="determ"),
             compressor=comp,
@@ -185,7 +215,7 @@ class ExperimentRunner(ABC):
             "python": platform.python_version(),
             "config": dataclasses.asdict(self.cfg),
             "config_hash": hash_dict(dataclasses.asdict(self.cfg)),
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         }
         with atomic_write(self.out_dir / "manifest.yaml", mode="w") as fh:
             yaml.safe_dump(manifest, fh, sort_keys=True)
@@ -198,7 +228,9 @@ def _git_sha() -> str:
 
         out = subprocess.run(
             ["git", "rev-parse", "--short=10", "HEAD"],
-            check=True, capture_output=True, text=True,
+            check=True,
+            capture_output=True,
+            text=True,
         )
         return out.stdout.strip()
     except Exception:  # pragma: no cover
@@ -209,7 +241,9 @@ def configure_runner(hypothesis: str, config_path: Path | str) -> ExperimentRunn
     """Build the right :class:`ExperimentRunner` subclass by hypothesis name."""
     cfg = ExperimentConfig.from_yaml(config_path)
     if cfg.hypothesis != hypothesis:
-        log.warning("experiment.config_hypothesis_mismatch", expected=hypothesis, in_config=cfg.hypothesis)
+        log.warning(
+            "experiment.config_hypothesis_mismatch", expected=hypothesis, in_config=cfg.hypothesis
+        )
 
     from m6.experiments.h1_qa_vs_coordination import H1Runner
     from m6.experiments.h2_coordination_cliff import H2Runner

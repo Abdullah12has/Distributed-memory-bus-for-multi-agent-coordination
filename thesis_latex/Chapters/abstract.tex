@@ -1,9 +1,35 @@
-% Remove the following line and define them in main.tex
-\keywords{M.Sc. degree\spc master’s thesis instructions\spc structure of a master’s thesis\footnote{The keywords should be different from the ones used in the title. Remove this footnote from your thesis.}}
-
 \begin{thesisabstract}{english}
   \abstractmetadata
-% Alternatively you can write the abstract here.
-% Paragraph breaks and special characters are allowed here, but the content
-% should essentially be the same as the abstract in your metadata
+
+Multi-agent systems built on large language models share their working state
+through a context window that is fundamentally bounded. As institutional
+deployments scale across many cooperating agents, the cost of moving that
+state grows fast enough to dominate operating expenses, and the temptation to
+compress it is correspondingly strong. The empirical question this thesis
+asks is whether single-agent metrics --- accuracy on a question-answering
+task, faithfulness on a retrieval task --- continue to predict the quality of
+\emph{coordination} between agents under compression, or whether compression
+introduces a regime in which coordination breaks faster than single-agent
+quality does.
+
+The thesis contributes a multi-agent coordination benchmark inspired by a
+period-end reporting workflow that spans eight university systems, an
+empirical characterisation of three compressor families across compression
+ratios from 1$\times$ to 16$\times$ and model sizes from 7B to 70B parameters,
+a catalogue of three retrieval-augmented generation pipelines combining
+retrieval and compression in different orders, and a tag-preserving
+compressor variant that lets provenance and access-control metadata travel
+alongside compressed memory slots. All four contributions are delivered with
+a single-machine reference implementation built on a 48~GB Apple Silicon
+workstation.
+
+The thesis is grounded in the Future Computing Group's institutional
+AI-service-economy programme at the University of Oulu and in industry need
+expressed by TalentAdore, whose production workloads are dominated by token
+costs. The empirical results sections are placeholders pending the
+experimental runs scheduled for Months 3, 4, 6, 7, and 8 of the
+ten-month implementation plan; the manuscript documents the benchmark,
+the system, the experimental protocol, and the falsification targets so
+that the empirical work can proceed against fixed hypotheses.
+
 \end{thesisabstract}

@@ -202,11 +202,21 @@ ignore = [
     "PLR2004",      # magic numbers are unavoidable in research code
     "B008",         # function calls in argument defaults (FastAPI Depends)
     "N812",         # lowercase imports as uppercase (e.g. `import torch.nn.functional as F`)
+    "PLC0415",      # intentional lazy imports throughout (optional deps, factory pattern)
+    "RUF001",       # mathematical notation (×, –, −, ρ) in strings is intentional
+    "RUF002",       # mathematical notation in docstrings is intentional
+    "RUF003",       # mathematical notation in comments is intentional
+    "N818",         # PolicyDenied / SlotNotFound are established names; renaming breaks API
+    "PLR0912",      # research training loops naturally have many branches
+    "PLR0911",      # family-dispatch functions naturally have many return statements
+    "N806",         # ML convention: single-letter uppercase for batch size (B, T, C, etc.)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["PLR2004", "ARG001", "ARG002", "B011"]
 "src/m6/experiments/**/*.py" = ["PLR0915"]  # experiment scripts get long
+"src/m6/agents/orchestrator.py" = ["PLR0915"]  # family-solver dispatch is long by design
+"src/m6/compressors/training/**/*.py" = ["PLR0915"]  # training loops get long
 
 [tool.ruff.format]
 quote-style = "double"
@@ -241,6 +251,24 @@ module = [
     "rouge_score.*",
 ]
 ignore_missing_imports = true
+
+# Inference backends import optional dependencies conditionally; the
+# type: ignore[import-not-found] comments are correct on machines where the
+# extras are not installed — disable warn_unused_ignores per-module so they
+# don't become noisy on machines that *do* have the extras installed.
+[[tool.mypy.overrides]]
+module = [
+    "m6.inference.mlx_backend",
+    "m6.inference.llamacpp_backend",
+    "m6.inference.ollama_backend",
+    "m6.compressors.lingua2",
+    "m6.memory_bus.storage.vector_store",
+    "m6.agents.orchestrator",
+    "m6.memory_bus.api",
+    "m6.utils.seed",
+]
+warn_unused_ignores = false
+
 
 # -----------------------------------------------------------------------------
 # pytest

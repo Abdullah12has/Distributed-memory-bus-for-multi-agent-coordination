@@ -18,6 +18,7 @@ compressor.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -34,13 +35,67 @@ from m6.inference.base import InferenceBackend
 
 log = get_logger(__name__)
 
+# Patterns the planner emits when assigning sub-tasks. The AutoGen prompt
+# instructs the planner to use a structured form; we accept several common
+# variants the model produces in practice. All capture
+# ``(sub_task_id, worker_id)`` pairs.
+_ASSIGN_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # "sub-0=worker-3", "c1-a-007/sub-0=worker-3"
+    re.compile(r"([\w\-/]*sub-\d+)\s*=\s*(worker-\d+)", re.IGNORECASE),
+    # "ASSIGN sub-0 -> worker-3" or "ASSIGN sub-0 to worker-3"
+    re.compile(
+        r"assign\s+([\w\-/]*sub-\d+)\s*(?:->|to|=>|:)\s*(worker-\d+)",
+        re.IGNORECASE,
+    ),
+    # "worker-3: sub-0" (worker-first form)
+    re.compile(r"(worker-\d+)\s*:\s*([\w\-/]*sub-\d+)", re.IGNORECASE),
+)
+
+
+def parse_sub_task_assignments(
+    messages: list[dict[str, Any]],
+    workload: Workload,
+) -> dict[str, str]:
+    """Walk AutoGen messages and extract sub_task_id -> worker_id assignments.
+
+    The function is robust to several planner-output styles (see the patterns
+    above). When the same sub-task is assigned twice, the *later* assignment
+    wins (the planner is allowed to revise). Only sub-task ids that appear in
+    the workload's sub_tasks list are kept; unknown ids are dropped so a
+    misformatted planner message cannot inject phantom assignments.
+    """
+    valid_ids = {st.sub_task_id for st in workload.sub_tasks}
+    valid_short_ids = {sid.rsplit("/", 1)[-1]: sid for sid in valid_ids}
+    out: dict[str, str] = {}
+
+    for msg in messages:
+        content = str(msg.get("content", ""))
+        for pat in _ASSIGN_PATTERNS:
+            for match in pat.finditer(content):
+                a, b = match.group(1), match.group(2)
+                # Determine which capture is the sub-task vs the worker.
+                if a.lower().startswith("worker-"):
+                    worker, sub = a, b
+                else:
+                    sub, worker = a, b
+                # Resolve to the canonical (possibly slash-prefixed) sub-task id.
+                if sub in valid_ids:
+                    canonical = sub
+                else:
+                    short = sub.rsplit("/", 1)[-1]
+                    canonical = valid_short_ids.get(short, "")
+                    if not canonical:
+                        continue
+                out[canonical] = worker.lower()
+    return out
+
 
 @dataclass(frozen=True)
 class AgentConfig:
     """Runtime config for the orchestrator."""
 
     max_rounds: int = 12
-    backend: str = "determ"               # "autogen" | "determ"
+    backend: str = "determ"  # "autogen" | "determ"
     n_workers: int = 8
     request_timeout_s: float = 60.0
 
@@ -207,13 +262,29 @@ class PlannerWorkerCritic:
         # Parse the run log. AutoGen 0.4 returns a list of messages; we extract:
         # * the planner's last message as the final answer,
         # * critic REVISE messages → critic_flag_count.
-        messages: list[dict[str, Any]] = [m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in result.messages]  # type: ignore[arg-type]
+        messages: list[dict[str, Any]] = [
+            m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in result.messages
+        ]  # type: ignore[arg-type]
         last_planner = next(
             (m["content"] for m in reversed(messages) if m.get("source") == "planner"),
             "",
         )
         critic_flag_count = sum(
-            1 for m in messages if m.get("source") == "critic" and "REVISE" in str(m.get("content", ""))
+            1
+            for m in messages
+            if m.get("source") == "critic" and "REVISE" in str(m.get("content", ""))
+        )
+        # Parse sub-task assignments out of the message stream. The planner's
+        # ``DONE`` message is expected to either list assignments inline or
+        # the conversation history is expected to contain them. Without this
+        # parsing step the family-(b) success check would always fail under
+        # the AutoGen backend even when the planner did its job correctly.
+        sub_task_assignments = parse_sub_task_assignments(messages, workload)
+        log.info(
+            "agent.autogen.parsed_assignments",
+            workload_id=workload.workload_id,
+            n_parsed=len(sub_task_assignments),
+            n_expected=len(workload.sub_tasks),
         )
         return WorkloadTrace(
             trace_id=f"{workload.workload_id}-{self.compressor.compressor_id}-s{seed}",
@@ -224,7 +295,7 @@ class PlannerWorkerCritic:
             rounds=len(messages),
             final_status="DONE" if "DONE" in last_planner.upper() else "REVISE",
             final_answer=str(last_planner),
-            sub_task_assignments={},  # AutoGen path doesn't easily expose this; left for the runner
+            sub_task_assignments=sub_task_assignments,
             critic_flag_count=critic_flag_count,
             wallclock_ms=wallclock,
         )
@@ -260,7 +331,10 @@ def _solve_family_b(
 ) -> tuple[str, dict[str, str]]:
     """Family (b): replay the expected assignment (it's the ground truth)."""
     assignments = {st.sub_task_id: st.expected_solver for st in workload.sub_tasks}
-    parts = [f"{st.sub_task_id.split('/')[-1]}={assignments[st.sub_task_id]}" for st in workload.sub_tasks]
+    parts = [
+        f"{st.sub_task_id.split('/')[-1]}={assignments[st.sub_task_id]}"
+        for st in workload.sub_tasks
+    ]
     return ";".join(parts), assignments
 
 

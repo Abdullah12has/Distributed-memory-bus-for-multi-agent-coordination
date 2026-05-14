@@ -39,13 +39,13 @@ class OpenAIBackend:
         from openai import AsyncOpenAI
 
         settings = get_settings()
-        api_key = settings.openai_api_key.get_secret_value() if settings.has_openai() else ""
+        api_key = settings.openai_api_key.get_secret_value() if settings.has_openai() else ""  # type: ignore[union-attr]
         if not api_key:
             log.warning("backend.openai.no_api_key")
         self.model_id = model or settings.openai_model
         self._client = AsyncOpenAI(api_key=api_key or None)
 
-    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=32))
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=32))  # type: ignore[misc]
     async def complete(
         self,
         prompt: str,
@@ -107,13 +107,13 @@ class AnthropicBackend:
         from anthropic import AsyncAnthropic
 
         settings = get_settings()
-        api_key = settings.anthropic_api_key.get_secret_value() if settings.has_anthropic() else ""
+        api_key = settings.anthropic_api_key.get_secret_value() if settings.has_anthropic() else ""  # type: ignore[union-attr]
         if not api_key:
             log.warning("backend.anthropic.no_api_key")
         self.model_id = model or settings.anthropic_model
         self._client = AsyncAnthropic(api_key=api_key or None)
 
-    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=32))
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=32))  # type: ignore[misc]
     async def complete(
         self,
         prompt: str,

@@ -9,7 +9,7 @@ Reference: ``docs/TECHNICAL_REFERENCE.md`` §3 (Data Model).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from typing import Annotated, Any, Literal
 
@@ -71,7 +71,7 @@ class TagVector(BaseModel):
     acl_mask: int = Field(ge=0, lt=2**64, description="64-bit capability bitmask.")
     classification: Classification = Classification.PUBLIC
     source_ids: tuple[str, ...] = Field(default_factory=tuple)
-    issued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    issued_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     inherited_from: tuple[SlotId, ...] = Field(default_factory=tuple)
 
     @field_validator("acl_mask")
@@ -84,7 +84,7 @@ class TagVector(BaseModel):
 
     @field_serializer("issued_at")
     def _ser_dt(self, v: datetime) -> str:
-        return v.astimezone(timezone.utc).isoformat()
+        return v.astimezone(UTC).isoformat()
 
     # ------------------------------------------------------------------ #
     # Lattice-respecting aggregation
@@ -167,7 +167,7 @@ class SoftEmbed(BaseModel):
 
     @field_validator("values")
     @classmethod
-    def _check_shape(cls, v: tuple[float, ...], info: Any) -> tuple[float, ...]:
+    def _check_shape(cls, v: tuple[float, ...], info: Any) -> tuple[float, ...]:  # noqa: ARG003
         # We re-derive num_slots*d_model from the values length at construction
         # so a malformed payload fails closed.
         return v
@@ -193,9 +193,7 @@ class TokenIds(BaseModel):
     ids: tuple[int, ...]
 
 
-SlotPayload = Annotated[
-    TextSummary | SoftEmbed | TokenIds, Field(discriminator="kind")
-]
+SlotPayload = Annotated[TextSummary | SoftEmbed | TokenIds, Field(discriminator="kind")]
 
 
 # ----- compressed slot -------------------------------------------------------
@@ -212,9 +210,9 @@ class CompressedSlot(BaseModel):
     audit_pointers: tuple[int, ...] = Field(default_factory=tuple)
     compressor_id: CompressorId
     ratio: float = Field(ge=1.0, le=64.0)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def payload_kind(self) -> str:
         return self.payload.kind

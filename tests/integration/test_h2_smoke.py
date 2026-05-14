@@ -17,11 +17,14 @@ from m6.experiments.base import ExperimentConfig
 from m6.experiments.h2_coordination_cliff import H2Runner
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_h2_smoke(tmp_path: Path) -> None:
     bench_cfg = BenchmarkConfig(
         version="c1-smoke",
-        seed=0, n_per_family=2, families=("a",), tag_distribution="uniform",
+        seed=0,
+        n_per_family=2,
+        families=("a",),
+        tag_distribution="uniform",
         out_dir=str(tmp_path / "bench"),
     )
     generate(bench_cfg)
