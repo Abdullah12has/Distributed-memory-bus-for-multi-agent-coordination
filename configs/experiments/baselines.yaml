@@ -1,0 +1,64 @@
+# Month-1 baseline reproduction — DEFAULT (no API keys required).
+#
+# Uses Ollama as both the QA backend (for the LLMLingua-2 calibration) and
+# the sanity-baseline backend (for the 5-prompt eval that LlamaCppBackend
+# compares against at 70B startup). An opt-in OpenAI variant lives at
+# configs/experiments/baselines-openai.yaml for users who want to use
+# gpt-4o-mini and have an OPENAI_API_KEY.
+#
+# Prerequisites:
+#   1. ollama is installed and running (`ollama serve`).
+#   2. The model below has been pulled:
+#        ollama pull llama3.1:8b-instruct-q4_K_M
+#   3. Optionally use a different local model by editing qa_model / sanity_model.
+#
+# To run:
+#   make baselines
+#   ./scripts/reproduce_baselines.sh
+
+compression_ratio: 4.0
+qa_backend: ollama
+qa_model: "llama3.1:8b-instruct-q4_K_M"
+seed: 0
+
+# 7B sanity baseline (consumed by LlamaCppBackend at 70B startup).
+# Using the same local model means the sanity baseline measures the 7B local
+# F1 directly — which is exactly what the 70B startup check wants to compare
+# against. (A heavier 7B fp16 via MLX would be better; pick whichever you have.)
+sanity_backend: ollama
+sanity_model: "llama3.1:8b-instruct-q4_K_M"
+sanity_out_path: results/sanity/llamacpp_baseline.json
+
+out_dir: results/baselines
+
+datasets:
+  - name: narrativeqa
+    hf_repo: deepmind/narrativeqa
+    hf_config: null
+    split: test
+    n_samples: 200
+    # Calibrated to llama3.1:8b-instruct-q4_K_M via Ollama (2026-05-14).
+    # Original LLMLingua-2 paper (GPT-4 QA backend): ~0.30; our Ollama run: 0.329.
+    target_f1: 0.31
+    tolerance_pp: 3.0
+    # NarrativeQA has nested fields. We use the document SUMMARY (~few KB)
+    # rather than the full document (whole books, >500 KB). The LLMLingua-2
+    # paper's NarrativeQA numbers are reported on the summary form.
+    text_key: document.summary.text
+    question_key: question.text
+    answer_key: answers           # list[{text, tokens}] → handled by _normalize_gold
+
+  - name: hotpotqa
+    hf_repo: hotpotqa/hotpot_qa
+    hf_config: distractor
+    split: validation
+    n_samples: 200
+    # Calibrated to llama3.1:8b-instruct-q4_K_M via Ollama (2026-05-14).
+    # Original LLMLingua-2 paper (GPT-4 QA backend): ~0.55; our Ollama run: 0.385.
+    target_f1: 0.36
+    tolerance_pp: 3.0
+    # HotpotQA's `context` is {title: [...], sentences: [[...]]}. The special
+    # sentinel below tells _extract_text to flatten that into a readable passage.
+    text_key: __hotpot_context__
+    question_key: question
+    answer_key: answer
