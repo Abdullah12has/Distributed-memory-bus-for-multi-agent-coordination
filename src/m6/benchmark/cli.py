@@ -14,7 +14,7 @@ app = typer.Typer(add_completion=False, help="C1 benchmark generation + validati
 log = get_logger(__name__)
 
 
-@app.command()
+@app.command()  # type: ignore[misc]
 def generate_cmd(
     config: Path = typer.Option(..., "--config", "-c", help="Path to YAML config."),
     out: Path | None = typer.Option(None, "--out", "-o", help="Override output dir."),
@@ -28,7 +28,7 @@ def generate_cmd(
     typer.echo(f"✓ wrote {out_dir}")
 
 
-@app.command()
+@app.command()  # type: ignore[misc]
 def validate(
     path: Path = typer.Option(..., "--path", "-p", help="Path to a generated benchmark dir."),
 ) -> None:

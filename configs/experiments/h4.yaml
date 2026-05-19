@@ -1,12 +1,16 @@
-# H4 — RAG pipeline placement.
+# H4 — tag preservation.
 hypothesis: h4
 benchmark_path: data/processed/c1-v0.1
-compressors: ["lingua2", "filter", "icae"]
-ratios: [4.0]
-seeds: [0, 1, 2, 3, 4]
-workload_families: ["a"]
+compressors: ["icae", "icae-tag"]
+ratios: [2.0, 4.0, 8.0]
+seeds: [0]
+workload_families: ["a", "b", "c"]
 model_size: "7b"
 backend: "mlx"
 out_dir: "results"
-include_no_compression_control: true
-notes: "Plan §3 H4; storage-bounded vs accuracy-bounded; effect size ≥5pp F1."
+include_no_compression_control: false
+notes: "Plan §3 H4; ≥85% preservation at 4×, ≤5pp accuracy drop."
+
+# Headline run: refuse to start if any ICAE-family compressor is in stub mode.
+# Flip to false to deliberately run with deterministic-hash stubs (dev only).
+require_trained_compressors: true

@@ -4,7 +4,7 @@
 > Master's thesis (M6) at the University of Oulu · Faculty of ITEE · CSE Research Unit, **Future Computing Group**.
 > Author: **Syed Abdullah Hassan**.  Supervisor: **Lauri Lovén**.  Industry: **TalentAdore** (Asim Nadeem, Oskari Valkama).
 
-This repository is the reference implementation and evaluation harness that accompanies the thesis manuscript described in [`plan.md`](plan.md). It is the deliverable. It is not, and is not intended as, a production deployment on the FCG platform — that is the doctoral phase (D7).
+This repository is the reference implementation and evaluation harness that accompanies the thesis manuscript described in [`plan.md`](plan.md). It is the deliverable. It is not, and is not intended as, a production deployment on the FCG platform.
 
 The single-machine compute envelope is fixed: one **Apple M4 Pro, 48 GB**. Every wallclock estimate in [`docs/TECHNICAL_REFERENCE.md`](docs/TECHNICAL_REFERENCE.md) is dimensioned for that machine.
 
@@ -14,8 +14,10 @@ The single-machine compute envelope is fixed: one **Apple M4 Pro, 48 GB**. Every
 # 1. Clone + create the project venv (Python 3.11).
 make venv install-dev
 
-# 2. Copy and edit env file (only OPENAI_API_KEY and ANTHROPIC_API_KEY are
-#    actually paid; everything else has sensible defaults).
+# 2. Copy the env file. No API keys are required for the default run; every
+#    headline experiment uses local backends (MLX/Ollama for 7B/13B).
+#    Optional paid arms exist under
+#    configs/experiments/*-openai.yaml.
 cp .env.example .env
 
 # 3. Run the memory bus reference service.
@@ -35,8 +37,8 @@ make reproduce-ch5
 |------|---------|
 | [`plan.md`](plan.md) | The thesis implementation plan (canonical scope). |
 | [`docs/TECHNICAL_REFERENCE.md`](docs/TECHNICAL_REFERENCE.md) | The technical document that grounds the codebase. **Read this before writing any code.** |
-| [`docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md`](docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md) | H1–H8: what the code has to compute, in what order, with what statistical protocol. |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System architecture, three-layer memory bus, scaling map to D7. |
+| [`docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md`](docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md) | H1–H4: what the code has to compute, in what order, with what statistical protocol. |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System architecture, three-layer memory bus. |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records for the major choices (compressor family, storage stack, agent runtime, inference backends). |
 | `src/m6/` | Importable library. See module map below. |
 | `configs/` | YAML configs per experiment, training run, model, and benchmark generation. |
@@ -56,7 +58,7 @@ m6/
 ├── agents/            # AutoGen planner-worker-critic loop and scratchpad bridge
 ├── inference/         # MLX / llama.cpp / Ollama / OpenAI / Anthropic backends
 ├── evaluation/        # QA, coordination, hallucination, tag-preservation, disclosure metrics + statistics
-├── experiments/       # One runner per hypothesis (H1–H8)
+├── experiments/       # One runner per hypothesis (H1–H4)
 ├── corpus/            # Institutional-subset loader + PII redaction
 ├── config/            # Pydantic settings, structured logging, OTel hooks
 ├── utils/             # Seed control, IO helpers, trace formatting
@@ -68,13 +70,12 @@ m6/
 Every headline figure has a single command:
 
 ```bash
-make reproduce-ch5   # Coordination cliff (H1, H2, H3)
-make reproduce-ch6   # RAG pipelines (H4) + cost analysis
-make reproduce-ch7   # Tag preservation (H5) + inference disclosure (H6)
-make reproduce-ch8   # Model-size scaling (H7) at {7B, 13B, 34B-int4, 70B-int4}
+make reproduce-ch5   # Coordination cliff (H1, H2)
+make reproduce-ch6   # RAG pipelines (H3) + cost analysis
+make reproduce-ch7   # Tag preservation (H4)
 ```
 
-Five seeds per condition, bootstrap CI, paired bootstrap for compressor-vs-compressor comparisons, Wilcoxon signed-rank for the cliff-detection test, Holm correction within hypothesis families. See [`docs/TECHNICAL_REFERENCE.md` §10](docs/TECHNICAL_REFERENCE.md) for the full protocol.
+Five seeds per condition, bootstrap CI, paired bootstrap for compressor-vs-compressor comparisons, Mann-Whitney U for the cliff-detection test, Holm correction within hypothesis families. See [`docs/TECHNICAL_REFERENCE.md` §10](docs/TECHNICAL_REFERENCE.md) for the full protocol.
 
 ## Citation
 

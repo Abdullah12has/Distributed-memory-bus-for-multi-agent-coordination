@@ -70,7 +70,7 @@ experiment runner. The same schema underlies every CSV under
 Column & Type & Notes \\
 \hline
 \texttt{experiment\_id} & str & unique per run \\
-\texttt{hypothesis} & str & one of \texttt{h1}\,\ldots\,\texttt{h8} \\
+\texttt{hypothesis} & str & one of \texttt{h1}\,\ldots\,\texttt{h4} \\
 \texttt{compressor} & str & e.g.\ \texttt{lingua2}, \texttt{filter},
 \texttt{icae}, \texttt{icae-tag}, \texttt{none} \\
 \texttt{ratio} & float & nominal compression ratio \\
@@ -78,8 +78,7 @@ Column & Type & Notes \\
 \texttt{pipeline} & str & one of \texttt{none}, \texttt{P1},
 \texttt{P2}, \texttt{P3} \\
 \texttt{model} & str & e.g.\ \texttt{llama-3.1-8b-instruct} \\
-\texttt{model\_size} & str & \texttt{7b}, \texttt{13b}, \texttt{34b-int4},
-\texttt{70b-int4} \\
+\texttt{model\_size} & str & \texttt{7b}, \texttt{13b} \\
 \texttt{workload\_family} & str & \texttt{a}, \texttt{b}, or \texttt{c} \\
 \texttt{workload\_id} & str & e.g.\ \texttt{c1-a-007} \\
 \texttt{seed} & int &  \\

@@ -1,6 +1,6 @@
 """Training dataset loaders.
 
-Two flavours used by H3 (training distribution):
+Two flavours for training distribution experiments:
 
 * :class:`QADataset` — ``(question, source, answer)`` triples. Source is the
   fragment to compress.

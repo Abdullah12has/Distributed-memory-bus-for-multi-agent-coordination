@@ -48,13 +48,9 @@ the per-report cost to about
 EUR~2.15~\cite{fcgusecase2026}. TalentAdore, the industry partner of this
 thesis, runs production workloads whose operating expenses are dominated
 by token cost; their interest is the
-cost-per-workflow story that compression makes possible. Doctoral track
-D7 at FCG (Federated Knowledge Orchestration) takes over after this
-thesis to scale the resulting memory-bus substrate across institutional
-boundaries~\cite{kokkonen2022autonomy, loven2025paper1, loven2025paper2,
-loven2025paper3}. The master's-scale problem this thesis carves out is
-the question of whether compression preserves \emph{coordination}, and at
-what point it breaks.
+cost-per-workflow story that compression makes possible. The
+master's-scale problem this thesis carves out is the question of whether
+compression preserves \emph{coordination}, and at what point it breaks.
 
 \section{Thesis statement and contributions}
 \label{sec:thesis_statement}
@@ -64,7 +60,7 @@ with a context-compression layer for multi-agent institutional systems.
 The empirical question is whether single-agent QA accuracy is a faithful
 predictor of multi-agent coordination success under compression, and the
 methodological question is whether such a coordination metric can be
-defined, measured, and shown to scale predictably with model size.
+defined and measured.
 
 The thesis contributes four artefacts, corresponding to the four research
 questions accepted at the project's inception:
@@ -79,17 +75,17 @@ through a shared scratchpad. Three workload families, configurable agent
 count, source-document characteristics, tag distributions, and
 coordination-quality metrics that go beyond per-turn correctness
 (planner-replan count, sub-task-assignment accuracy, rounds-to-completion,
-critic-flagged error rate, summary-level inference disclosure). Released
+critic-flagged error rate). Released
 alongside the thesis with documentation and seed configurations.
 
 \item \textbf{C2 --- Empirical characterisation of compression effects on
-multi-agent coordination across model size.}
+multi-agent coordination.}
 Three compressor families --- LLMLingua-2 as a token-level hard-prompt
 filter~\cite{pan2024llmlingua2}, an instruction-aware heuristic filter,
 and an ICAE-style soft-prompt compressor that is the trainable
 arm~\cite{ge2024icae, chevalier2023autocompressor} --- evaluated on the
-C1 benchmark at compression ratios from $1\times$ to $16\times$ and model
-sizes \{7B, 13B, 34B int4, 70B int4\}. The headline empirical result is
+C1 benchmark at compression ratios from $1\times$ to $16\times$ at
+7B, with a secondary 13B sanity arm. The headline empirical result is
 the existence and shape of a \emph{coordination cliff}~$\tau^{*}$: a
 compression ratio beyond which coordination success degrades sharply even
 when single-agent QA accuracy degrades smoothly.
@@ -111,12 +107,10 @@ A modification of the ICAE-style compressor that adds a per-slot
 tag-prediction head emitting an inherited provenance and
 access-control-list vector for each compressed
 fragment~\cite{park2025collaborative, nistairmf}. Evaluated on
-tag-preservation rate at ratios $\{2\times, 4\times, 8\times\}$, on
-accuracy delta relative to the unmodified variant, and on summary-level
-inference disclosure when a held-out reader is given compressed summaries
-with no quoted source text. Delivered with a reference memory-bus
-integration that exposes the read, write, subscribe, and audit interfaces
-the FCG platform team can adopt without rewriting the compression layer.
+tag-preservation rate at ratios $\{2\times, 4\times, 8\times\}$ and on
+accuracy delta relative to the unmodified variant. Delivered with a
+reference memory-bus integration that exposes the read, write, subscribe,
+and audit interfaces.
 
 \end{enumerate}
 
@@ -129,15 +123,15 @@ when compression carries metadata.
 \label{sec:scope}
 
 The thesis runs on a single Apple M4~Pro 48~GB workstation
-using MLX for training and 7B/13B inference, llama.cpp with GGUF Q4\_K\_M
-files for 34B and 70B inference, Ollama for developer-experience
+using MLX for training and 7B/13B inference,
+Ollama for developer-experience
 inference, HuggingFace Transformers with PEFT for fine-tuning, FAISS-CPU
 for vector search, LlamaIndex for RAG orchestration, AutoGen v0.4 for
 agent runtime, and SQLite for the audit log~\cite{mlxframework,
 llamacpp, ollama, huggingfacepeft, faiss, llamaindex, wu2023autogen}.
 Every wallclock estimate in the thesis is dimensioned for that envelope.
 
-Three items are explicitly out of scope and are deferred to D7:
+Three items are explicitly out of scope:
 production-grade governance enforcement (the tag-preserving compressor is
 a research prototype with measured properties, not a compliance tool);
 cross-tokenizer or cross-model-family compressed exchange; and a live
@@ -147,8 +141,8 @@ delivered as a reference implementation that the FCG team can adopt).
 \section{Hypotheses}
 \label{sec:hypotheses_intro}
 
-Eight hypotheses guide the empirical work; each is grounded in a specific
-measurable comparison with an explicit falsifiable claim. All eight are
+Four hypotheses guide the empirical work; each is grounded in a specific
+measurable comparison with an explicit falsifiable claim. All four are
 thesis hypotheses, and falsification of any one is itself reported as a
 thesis-worthy finding in the relevant chapter. The hypotheses are
 summarised in Chapter~\charef{experiments} and listed here only for
@@ -159,28 +153,16 @@ completeness:
 \item H1. Single-agent QA accuracy under compression is a poor predictor
 of multi-agent coordination success.
 \item H2. A coordination cliff $\tau^{*}$ exists and is task-dependent.
-\item H3. Training distribution matters: a compressor fine-tuned on
-planner-worker-critic dialogue traces outperforms one fine-tuned on
-monolithic QA, at matched single-agent QA accuracy.
-\item H4. RAG pipeline placement matters: P1 and P2 dominate in different
+A secondary 13B arm checks whether $\tau^{*}$ shifts with model size.
+\item H3. RAG pipeline placement matters: P1 and P2 dominate in different
 regimes, and P3 closes the gap on a combined accuracy-times-cost score.
-\item H5. A per-slot tag head preserves provenance tags at rate at least
+\item H4. A per-slot tag head preserves provenance tags at rate at least
 85\% at $4\times$ compression with accuracy degradation at most 5 pp.
-\item H6. Summary-level inference disclosure is measurable, and the
-tag-preserving variant reduces it relative to the baseline at matched
-compression.
-\item H7. The coordination cliff $\tau^{*}$ shifts toward higher
-compression ratios as model size grows.
-\item H8. Findings on synthetic Vignette-7 transfer to real M0/M1/M2
-traces.
 \end{itemize}
 
 The narrative arc is: standard metrics are incomplete (H1), so a
-coordination cliff exists and is measurable (H2); training distribution
-matters (H3); RAG pipeline placement matters (H4); governance metadata
-can ride along compression and the riding is measurable (H5, H6); the
-cliff scales with model size (H7); and the synthetic benchmark transfers
-to real deployment (H8).
+coordination cliff exists and is measurable (H2); RAG pipeline placement
+matters (H3); and governance metadata can ride along compression (H4).
 
 \section{Thesis structure}
 \label{sec:thesis_structure}
@@ -194,10 +176,10 @@ implementation: the three-layer memory-bus architecture, the compressor
 framework with its four variants, the C1 benchmark generator, the RAG
 pipeline catalogue, the agent runtime, and the inference-backend stack.
 Chapter~\charef{experiments} specifies the experimental protocol for
-each of the eight hypotheses, the metrics, and the statistical analysis
+each of the four hypotheses, the metrics, and the statistical analysis
 plan, with placeholder result sections marked clearly. The manuscript
-closes with Chapter~\charef{summary}, which discusses the limitations,
-the bridge to doctoral research, and the deliverables.
+closes with Chapter~\charef{summary}, which discusses the limitations
+and the deliverables.
 
 \section{Author's contributions and the role of artificial intelligence}
 \label{AI}

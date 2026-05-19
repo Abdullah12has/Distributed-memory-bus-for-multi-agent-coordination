@@ -25,8 +25,14 @@ from m6.memory_bus.schemas import Classification, Fragment
 
 # Vignette 7 institutional systems (use-case-university-ai-service-economy.pdf p. 2).
 _DEFAULT_SYSTEMS = (
-    "publication_db", "contract_db", "moodle", "patio",
-    "peppi", "crm", "tatu_sap", "sap_travel",
+    "publication_db",
+    "contract_db",
+    "moodle",
+    "patio",
+    "peppi",
+    "crm",
+    "tatu_sap",
+    "sap_travel",
 )
 
 _TEMPLATE = (
@@ -110,7 +116,7 @@ def _build_instance(
         )
         fragments.append(frag)
 
-        # Build a protected-fact entry for H6 if the fragment is confidential+.
+        # Build a protected-fact entry if the fragment is confidential+.
         if int(tag.classification) >= int(Classification.CONFIDENTIAL):
             protected_facts.append(
                 ProtectedFact(

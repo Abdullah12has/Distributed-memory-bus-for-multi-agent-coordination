@@ -48,7 +48,7 @@ class ExperimentConfig:
     Subclasses subclass this with extra fields.
     """
 
-    hypothesis: str  # "h1".."h8"
+    hypothesis: str  # "h1".."h4"
     benchmark_path: str = "data/processed/c1-v0.1"
     compressors: tuple[str, ...] = ("lingua2", "filter", "icae")
     ratios: tuple[float, ...] = (1.0, 2.0, 4.0, 8.0, 16.0)
@@ -82,7 +82,7 @@ class ExperimentResult:
 
 
 class ExperimentRunner(ABC):
-    """Abstract base for all H1..H8 runners.
+    """Abstract base for all H1..H4 runners.
 
     Concrete subclasses override :meth:`run` and optionally :meth:`prepare`.
     """
@@ -165,7 +165,7 @@ class ExperimentRunner(ABC):
         *,
         seed: int,
     ) -> dict[str, Any]:
-        """Run one (workload, compressor, ratio, seed) cell. Used by H1/H2/H7.
+        """Run one (workload, compressor, ratio, seed) cell. Used by H1/H2.
 
         The compressor is cached on ``self._compressor_cache`` so a trained
         ICAE/PEFT instance is constructed once per ``(name, ratio)`` pair, not
@@ -247,22 +247,14 @@ def configure_runner(hypothesis: str, config_path: Path | str) -> ExperimentRunn
 
     from m6.experiments.h1_qa_vs_coordination import H1Runner
     from m6.experiments.h2_coordination_cliff import H2Runner
-    from m6.experiments.h3_training_distribution import H3Runner
-    from m6.experiments.h4_rag_placement import H4Runner
-    from m6.experiments.h5_tag_preservation import H5Runner
-    from m6.experiments.h6_inference_disclosure import H6Runner
-    from m6.experiments.h7_model_size_scaling import H7Runner
-    from m6.experiments.h8_real_trace_transfer import H8Runner
+    from m6.experiments.h3_rag_placement import H3Runner
+    from m6.experiments.h4_tag_preservation import H4Runner
 
     runners: dict[str, type[ExperimentRunner]] = {
         "h1": H1Runner,
         "h2": H2Runner,
         "h3": H3Runner,
         "h4": H4Runner,
-        "h5": H5Runner,
-        "h6": H6Runner,
-        "h7": H7Runner,
-        "h8": H8Runner,
     }
     cls = runners[hypothesis.lower()]
     seed_all(cfg.seeds[0] if cfg.seeds else 0)

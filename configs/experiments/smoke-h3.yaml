@@ -1,12 +1,14 @@
-# H3 — RAG pipeline placement.
+# H3 smoke test — stub mode, minimal matrix.
 hypothesis: h3
 benchmark_path: data/processed/c1-v0.1
 compressors: ["lingua2", "filter", "icae"]
 ratios: [4.0]
-seeds: [0, 1, 2, 3, 4]
+seeds: [0]
 workload_families: ["a"]
 model_size: "7b"
-backend: "mlx"
+backend: "echo"
 out_dir: "results"
+n_workloads: 3
 include_no_compression_control: true
-notes: "Plan §3 H3; storage-bounded vs accuracy-bounded; effect size ≥5pp F1."
+require_trained_compressors: false
+notes: "Smoke test — stub compressors, echo backend, 3 workloads."

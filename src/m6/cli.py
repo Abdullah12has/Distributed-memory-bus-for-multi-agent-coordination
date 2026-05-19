@@ -18,16 +18,16 @@ from m6.memory_bus.cli import main as bus_main
 
 app = typer.Typer(add_completion=False, help="m6-thesis CLI")
 app.add_typer(benchmark_app, name="benchmark", help="C1 benchmark commands.")
-app.add_typer(experiment_app, name="experiment", help="H1..H8 runner commands.")
+app.add_typer(experiment_app, name="experiment", help="H1..H4 runner commands.")
 
 
-@app.command()
+@app.command()  # type: ignore[misc]
 def bus() -> None:
     """Run the memory bus FastAPI service."""
     bus_main()
 
 
-@app.command()
+@app.command()  # type: ignore[misc]
 def version() -> None:
     """Print the installed m6 version."""
     typer.echo(f"m6-thesis {__version__}")

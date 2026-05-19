@@ -39,7 +39,7 @@ class TagDistribution(StrEnum):
 
 
 class ProtectedFact(BaseModel):
-    """Used by H6 — a fact-recovery target for the held-out reader."""
+    """A fact-recovery target for governance evaluation (future work)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
     fragment_id: str

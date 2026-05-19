@@ -1,11 +1,10 @@
-This chapter specifies the experimental protocol for each of the eight
+This chapter specifies the experimental protocol for each of the four
 hypotheses, the metric suite, the statistical-analysis plan, and the
 schedule of arms. Each hypothesis section gives the falsifiable claim
 verbatim, the inputs the runner takes, the procedure, the decision rule
 that maps the run's output to a verdict, and the wallclock estimate.
 Result sections are explicit placeholders marked with the LaTeX comment
-\verb|% RESULTS|: they will be populated by the experimental runs of
-Months 3, 4, 6, 7, and 8 of the implementation plan and are
+\verb|% RESULTS|: they will be populated by the experimental runs and are
 intentionally empty in this submission. The empirical findings will be
 inserted into those slots verbatim from the
 \texttt{results/h\{N\}/<run\_id>/} directory and the corresponding
@@ -46,14 +45,17 @@ of Chapter~\charef{implementation}.
 \paragraph{Latency.} p50 and p95 milliseconds per query, computed
 separately for the compression step and end-to-end.
 
-\paragraph{Governance.} Tag-preservation rate (per the H5 definition)
-and inference-disclosure rate (per the H6 protocol).
+\paragraph{Governance.} Tag-preservation rate (per the H4 definition).
 
-\paragraph{LLM-as-judge.} A subset of metrics is scored by
-GPT-4o-mini as the judge model, with a $10$\% sample cross-checked by
-Claude Sonnet 4.6. Cohen's $\kappa$ below $0.85$ between the two
-judges triggers a recalibration. The judge sees a position-randomised
+\paragraph{LLM-as-judge.} A subset of metrics is scored by a local
+Llama-3.1-8B-Instruct (via Ollama) as the default judge model. The opt-in
+cost-comparison arm switches the judge to GPT-4o-mini with a $10$\% sample
+cross-checked by Claude Sonnet 4.6; Cohen's $\kappa$ below $0.85$ between
+the two judges triggers a recalibration. The judge sees a position-randomised
 pair of answers and never sees which compressor produced which answer.
+Every headline figure in this thesis is reproducible without any external
+API key; the paid judge is only used to populate the Chapter~6 cost-comparison
+panel.
 
 \section{Statistical Analysis Plan}
 \label{sec:stat_plan}
@@ -84,8 +86,7 @@ would be incorrect~\cite{mannwhitney1947, wilcoxon1945}.
 
 \paragraph{Multiple-comparison correction.} Holm-Bonferroni within
 each hypothesis family~\cite{holm1979bonferroni}. The families are
-$\{H_1, H_2, H_3\}$, $\{H_4\}$, $\{H_5, H_6\}$, $\{H_7\}$, and
-$\{H_8\}$.
+$\{H_1, H_2\}$, $\{H_3\}$, and $\{H_4\}$.
 
 \paragraph{Effect sizes.} Cliff's $\delta$ for ordinal
 comparisons~\cite{cliff1993dominance} and Cohen's $d$ for continuous
@@ -106,8 +107,8 @@ single-agent QA-accuracy delta and the multi-agent
 coordination-success delta across matched compression ratios is below
 $0.6$ on at least two of the three compressors at 7B.
 
-\paragraph{Inputs.} The C1 benchmark at version v0.1; the ICAE-style
-trained compressor checkpoint; the MLX-LM backend at the 7B size.
+\paragraph{Inputs.} The C1 benchmark at version v0.1; the three baseline
+compressors; the MLX-LM backend at the 7B size.
 
 \paragraph{Procedure.} For each
 $(\text{compressor } c, \text{ratio } r, \text{workload } w,
@@ -150,7 +151,9 @@ evolution under the constraint that the right-piece slope is at most
 the left-piece slope (the cliff drops). Run a Mann--Whitney U test on
 success-below-$\tau$ versus success-above-$\tau$ with the
 ``greater'' alternative, then apply Holm correction within the
-$\{H_1, H_2, H_3\}$ family.
+$\{H_1, H_2\}$ family. A secondary arm repeats the sweep at 13B
+on a 30-workload sub-sample to check whether $\tau^{*}$ shifts with
+model size.
 
 \paragraph{Decision.} A cliff exists at a cell if the relative drop is
 at least $0.30$ and the Holm-adjusted Mann--Whitney p-value is less
@@ -164,37 +167,8 @@ $0.20$.
 % RESULTS: H2 results, including the headline coordination-cliff figure,
 %          to be inserted from results/h2/7b/<run_id>/ and 13b/<run_id>/.
 
-\section{Hypothesis H3 --- Training Distribution Matters}
+\section{Hypothesis H3 --- RAG Pipeline Placement Matters}
 \label{sec:h3_design}
-
-\paragraph{Falsifiable claim.} An ICAE-style compressor fine-tuned on
-planner-worker-critic dialogue traces outperforms the same compressor
-fine-tuned on monolithic QA, at matched single-agent QA accuracy.
-
-\paragraph{Inputs.} Two ICAE checkpoints
-(\texttt{icae-7b-qa} and \texttt{icae-7b-dialogue}) trained on
-matched compute budgets (same optimiser, same LoRA configuration,
-same step count) but on different datasets; the C1 family-(a)
-workload subset.
-
-\paragraph{Procedure.} For each checkpoint, sweep ratios and find the
-operating ratio at which the two checkpoints' single-agent QA F1 are
-within $\pm 1$~pp of each other (the matched operating point). At
-that operating point, run the planner-worker-critic loop on the
-C1 family-(a) workloads with the five seeds and compare coordination
-success via the paired bootstrap.
-
-\paragraph{Decision.} Supported if the paired bootstrap mean
-$\text{coord}_\text{dialogue} - \text{coord}_\text{qa}$ is positive
-and the Holm-adjusted p-value is less than $0.05$.
-
-\paragraph{Wallclock.} Approximately two days; trainings can be
-scheduled in parallel.
-
-% RESULTS: H3 results to be inserted from results/h3/7b/<run_id>/.
-
-\section{Hypothesis H4 --- RAG Pipeline Placement Matters}
-\label{sec:h4_design}
 
 \paragraph{Falsifiable claim.} P1 dominates P2 on storage-bounded
 settings; P2 dominates P1 on accuracy-bounded settings; P3 closes the
@@ -219,17 +193,17 @@ Section~\ref{sec:rag_pipelines} of Chapter~\charef{implementation}.
 
 \paragraph{Decision.} P1-versus-P2 effect-size at least 5 pp F1 with
 paired-bootstrap CI excluding $0$ in both regimes (with the sign
-flipping per the H4 claim); P3 wins on a combined $F_1 / \text{EUR}$
+flipping per the H3 claim); P3 wins on a combined $F_1 / \text{EUR}$
 ranking with Holm-adjusted p less than $0.05$.
 
 \paragraph{Wallclock.} Approximately three days.
 
-% RESULTS: H4 results, including the headline RAG-pipeline figure and
+% RESULTS: H3 results, including the headline RAG-pipeline figure and
 %          the EUR/workflow cost table, to be inserted from
-%          results/h4/<run_id>/.
+%          results/h3/<run_id>/.
 
-\section{Hypothesis H5 --- Tag Preservation}
-\label{sec:h5_design}
+\section{Hypothesis H4 --- Tag Preservation}
+\label{sec:h4_design}
 
 \paragraph{Falsifiable claim.} At $4\times$ compression the tag
 head preserves at least 85\% of fragment tags, with at most 5~pp
@@ -258,114 +232,12 @@ the accuracy delta is at least $-5$~pp.
 
 \paragraph{Wallclock.} Approximately one day.
 
-% RESULTS: H5 results to be inserted from results/h5/<run_id>/.
-
-\section{Hypothesis H6 --- Inference Disclosure}
-\label{sec:h6_design}
-
-\paragraph{Falsifiable claim.} A held-out reader recovers protected
-facts from compressed summaries at a rate substantially above the
-priors-only chance baseline when the tag-preserving compressor is
-\emph{not} used (showing that the metric measures something real),
-and at a lower rate when it \emph{is} used at matched compression.
-
-\paragraph{Inputs.} The C1 fragments whose tag classification is at
-least \textsc{confidential}; the protected-fact list shipped with
-the benchmark (one or two yes/no questions per protected fragment with
-ground-truth answers); the GPT-4o-mini API as the held-out reader.
-
-\paragraph{Procedure.} Three conditions per workload. Under
-\emph{priors only}, the reader sees only the workload's public
-preamble, with no source fragments. Under \emph{baseline}, the reader
-sees the compressed summary produced by the unmodified ICAE
-compressor. Under \emph{C4}, the reader sees the compressed summary
-produced by the tag-preserving variant at matched compression. The
-reader answers each protected-fact question with yes/no/unknown, and
-the recall of the protected facts is reported.
-
-\paragraph{Decision.} The metric measures something real if
-$\text{recall}_\text{baseline} > \text{recall}_\text{priors}$ with
-paired-bootstrap p less than $0.05$. The C4 variant reduces disclosure
-if $\text{recall}_\text{c4} < \text{recall}_\text{baseline}$ with
-paired-bootstrap p less than $0.05$, both under Holm correction within
-$\{H_5, H_6\}$.
-
-\paragraph{Wallclock and cost.} Approximately one day; expected API
-spend approximately EUR~30.
-
-% RESULTS: H6 results to be inserted from results/h6/<run_id>/.
-
-\section{Hypothesis H7 --- Model-Size Scaling of the Coordination Cliff}
-\label{sec:h7_design}
-
-\paragraph{Falsifiable claim.} Across $\{7\text{B}, 13\text{B},
-34\text{B int4}, 70\text{B int4}\}$, $\tau^{*}$ increases monotonically
-with model size on at least two of the three workload families. 70B
-int4 is a single-point characterisation at the suspected $\tau^{*}$
-identified at 13B/34B; 7B and 13B are full sweeps; 34B int4 is a
-focused partial sweep.
-
-\paragraph{Inputs.} The H2 machinery with the backend factory varied
-across the four model sizes. The 70B GGUF Q4\_K\_M files are pulled via
-the \texttt{download\_models.sh} script; the llama.cpp backend's
-NarrativeQA-shaped sanity check is run at startup and the backend
-refuses to serve if F1 drops by more than $5$~pp from the recorded
-baseline.
-
-\paragraph{Procedure.} (i) 7B full sweep, already collected for H2.
-(ii) 13B full sweep on family (a) on a 30-workload sub-sample. (iii)
-34B int4 focused sweep at $r \in \{\tau_\text{13B}-2,
-\tau_\text{13B}, \tau_\text{13B}+2\}$ plus coarse sanity at
-$r \in \{1, 16\}$ on 15 workloads. (iv) 70B int4 single point at
-$r = \tau_\text{34B}$ with five seeds on 10 workloads, gated on the
-sanity-check pass.
-
-\paragraph{Decision.} Monotonically non-decreasing $\tau^{*}$ across
-$\{7\text{B}, 13\text{B}, 34\text{B int4}, 70\text{B int4}\}$ on at
-least two of three families; 70B is single-point on family (a) only.
-
-\paragraph{Wallclock.} Approximately three weeks, dominated by the 70B
-int4 throughput.
-
-% RESULTS: H7 results, including the model-size scaling figure, to
-%          be inserted from results/h7/{7b,13b,34b-int4,70b-int4}/.
-
-\section{Hypothesis H8 --- Real-Trace Transfer}
-\label{sec:h8_design}
-
-\paragraph{Falsifiable claim.} On a subset of multi-agent workflows
-reconstructed from real M0/M1/M2 traces, the qualitative shape of the
-coordination-versus-compression curve matches synthetic results within
-$\pm 15\%$ on $\tau^{*}$ and $\pm 10$ pp on coordination success.
-Gated on M0/M1/M2 connector readiness.
-
-\paragraph{Pre-condition.} The thesis ships with an
-\texttt{docs/agent\_readiness.yaml} that records whether each of the
-three sibling agents (Publication~DB / Contract~DB / Moodle--Patio) is
-ready. The runner short-circuits with a \texttt{documented-as-deferred}
-verdict if all three flags are \texttt{false}, per the scope-signoff
-with the supervisor.
-
-\paragraph{Procedure.} With the agent owners, identify two or three
-cross-system workflows reconstructable from the trace exports.
-Reformulate each as a \texttt{Workload} instance loadable by C1's
-runner. Run the H2 procedure on those workflows. Compare $\tau^{*}$
-and the coordination-success curve to the synthetic baseline.
-
-\paragraph{Decision.} Supported if both $\tau^{*}$ and the
-coordination-success curve are within the stated tolerances on at
-least one workflow.
-
-\paragraph{Wallclock.} Gated on connector readiness, not on compute.
-
-% RESULTS: H8 results to be inserted from results/h8/<run_id>/, or the
-%          deferred-arm statement from docs/agent_readiness.yaml if
-%          no agent is ready by Month 7.
+% RESULTS: H4 results to be inserted from results/h4/<run_id>/.
 
 \section{Headline Figures}
 \label{sec:figures}
 
-The four chapter-headline figures the manuscript will produce are
+The three chapter-headline figures the manuscript will produce are
 listed in Table~\ref{tab:figures}; each figure is a single command
 (\texttt{make reproduce-ch<N>}) that lands in
 \texttt{results/h\{X\}/<run\_id>/plots/}.
@@ -379,15 +251,14 @@ listed in Table~\ref{tab:figures}; each figure is a single command
 \hline
 Chapter & Figure & Reproduction \\
 \hline
-5 & Coordination cliff $\tau^{*}$ at 7B & \texttt{make reproduce-ch5} (H1, H2, H3) \\
-6 & RAG pipeline placement and cost & \texttt{make reproduce-ch6} (H4) \\
-7 & Tag preservation and inference disclosure & \texttt{make reproduce-ch7} (H5, H6) \\
-8 & Model-size scaling of $\tau^{*}$ & \texttt{make reproduce-ch8} (H7) \\
+5 & Coordination cliff $\tau^{*}$ at 7B (+ 13B sanity) & \texttt{make reproduce-ch5} (H1, H2) \\
+6 & RAG pipeline placement and cost & \texttt{make reproduce-ch6} (H3) \\
+7 & Tag preservation & \texttt{make reproduce-ch7} (H4) \\
 \hline
 \end{tabular}
 \end{table}
 
-% RESULTS-FIGURES: Insert the four headline figures here once the
+% RESULTS-FIGURES: Insert the headline figures here once the
 %                  experimental runs have produced their CSVs and
 %                  plot scripts.
 
@@ -395,9 +266,8 @@ Chapter & Figure & Reproduction \\
 \label{sec:threats}
 
 \paragraph{Construct validity.}
-The C1 benchmark is synthetic. The H8 arm is the construct-validity
-check, and the documented-as-deferred path is the honest fallback if
-M0/M1/M2 are not ready by Month~7.
+The C1 benchmark is synthetic. Real-trace transfer validation is listed
+as future work in Chapter~\charef{summary}.
 
 \paragraph{Internal validity.}
 The no-compression control condition guards against AutoGen-runtime
@@ -406,10 +276,9 @@ backend provides a second upper bound that any AutoGen run must
 match.
 
 \paragraph{External validity.}
-The 70B int4 single-point characterisation rests on the
-NarrativeQA-shaped sanity check passing at startup. The H8 transfer
-result, when available, anchors external validity against real
-deployment traces.
+The 13B sanity arm in H2 provides a secondary data point on model-size
+sensitivity. The primary evaluation is at 7B, which is the largest
+model that fits comfortably in fp16 on the M4~Pro 48~GB workstation.
 
 \paragraph{Statistical validity.}
 The recentred-null percentile-bootstrap p-value is more rigorous than

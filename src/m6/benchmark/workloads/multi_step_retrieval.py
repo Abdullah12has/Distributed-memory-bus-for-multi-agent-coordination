@@ -72,10 +72,9 @@ def _build_instance(
                 task_hint=f"Follow the entry chain starting at entry 0 of {instance_id}.",
             )
         )
-        # H6 signal: when the leaf fragment is at or above CONFIDENTIAL, its
-        # final answer is a natural "protected fact" — the question of whether
-        # the answer leaks through a compressed summary is exactly what H6
-        # measures. We construct a distractor wrong-answer drawn from a
+        # When the leaf fragment is at or above CONFIDENTIAL, its final answer
+        # is a natural "protected fact" — useful for governance evaluation
+        # (future work). We construct a distractor wrong-answer drawn from a
         # nearby slot in the FINAL-NNNN namespace so the yes/no question has
         # a well-defined ground-truth answer.
         if is_leaf and int(tags.classification) >= int(Classification.CONFIDENTIAL):

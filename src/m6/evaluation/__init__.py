@@ -6,7 +6,7 @@ Subpackages:
   cost, latency, tag preservation, inference disclosure.
 * :mod:`m6.evaluation.statistics` — bootstrap CI, paired bootstrap, Wilcoxon,
   Holm correction, effect sizes.
-* :mod:`m6.evaluation.cliff_fitting` — piecewise-linear cliff fitter (H2/H7).
+* :mod:`m6.evaluation.cliff_fitting` — piecewise-linear cliff fitter (H2).
 """
 
 from m6.evaluation.cliff_fitting import CliffFit, fit_piecewise
