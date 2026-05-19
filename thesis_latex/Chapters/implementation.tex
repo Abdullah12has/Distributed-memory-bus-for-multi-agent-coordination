@@ -29,16 +29,15 @@ hard-prompt baseline, the instruction-aware heuristic filter, the
 ICAE-style soft-prompt compressor, and the C4 tag-preserving variant.
 \item A \textbf{storage layer}, providing three protocols ---
 \texttt{AuditLog}, \texttt{Scratchpad}, and \texttt{VectorStore} ---
-implemented for the master's-scale evaluation by SQLite in WAL mode, an
+implemented for the thesis evaluation by SQLite in WAL mode, an
 in-memory time-to-live dictionary, and FAISS-CPU with an HNSW index.
 \end{enumerate}
 
 The three layers are summarised in
 Figure~\ref{fig:architecture}. Every component dependency in the source
 tree is one-directional: the compression layer does not import from the
-access layer, and the storage layer does not import from either. This is
-not stylistic; the goal is to allow the doctoral phase to swap the
-storage layer for Postgres, Redis Cluster, and Qdrant without touching
+access layer, and the storage layer does not import from either. This
+layering allows the storage backends to be replaced without touching
 the compression or access layers.
 
 \begin{figure}[h]
@@ -87,9 +86,8 @@ the compression or access layers.
 \caption{Three-layer architecture of the memory-bus reference
 implementation. Each layer depends only on the layer below it, and
 each storage component is hidden behind a \texttt{Protocol} so that
-the doctoral phase can swap SQLite for Postgres, the in-memory
-scratchpad for Redis Cluster, and FAISS for Qdrant without touching
-the access or compression layers.}
+the storage backends can be replaced without touching the access or
+compression layers.}
 \label{fig:architecture}
 \end{figure}
 
@@ -144,33 +142,16 @@ inflate the audit log either.
 \subsection{Boundary with the FCG platform}
 
 The FCG software architecture~\cite{fcgsoftwarearch2026} specifies a
-dual messaging topology: NATS for the real-time path with a 1--5~ms
-broadcast budget, and Kafka for the durable path as the source of truth
-and audit trail. The thesis collapses these into SQLite, an in-memory
+dual messaging topology: NATS for the real-time path and Kafka for the
+durable path. The thesis collapses these into SQLite, an in-memory
 dictionary, and an HTTP API for two reasons. First, the compute envelope
 is one machine: running NATS and Kafka on the same M4 Pro adds
 operational complexity without adding empirical signal. Second, the FCG
 architecture document budgets the total synchronous epoch path at
-$150$--$200$~ms end-to-end (pre-epoch $10$~ms, mechanism execution
-$50$--$100$~ms, commitment $20$~ms, procurement $50$~ms, settlement
-$20$~ms)~\cite{fcgsoftwarearch2026}, which SQLite and FastAPI sit
-comfortably under on a single host. The contract that
-FCG adopts is the FastAPI surface; whether the wire is NATS, Kafka, or
-HTTP is a layer-2 decision that the doctoral phase makes.
-
-What is preserved structurally from the FCG architecture so that
-doctoral-phase substitution is straightforward: the event-type taxonomy
-(\texttt{SliceRegistered}, \texttt{BidSubmitted},
-\texttt{EpochResult}, \texttt{TranscriptCommit},
-\texttt{AuditSignal}) is mirrored as a set of Pydantic models in the
-schema module; the audit-log table schema mirrors the
-\texttt{audit\_transcript} table from \cite{fcgsoftwarearch2026} with
-the auction-specific columns collapsed into a single
-\texttt{payload\_hash}; and the transcript hash chain
-$H_t = \textsc{SHA-256}(\texttt{epoch\_id} \mathbin\Vert
-\texttt{bids\_hash} \mathbin\Vert \texttt{alloc\_hash} \mathbin\Vert
-\texttt{payments\_hash} \mathbin\Vert H_{t-1})$ is implemented in the
-audit-log module with a tamper-detection unit test.
+$150$--$200$~ms end-to-end~\cite{fcgsoftwarearch2026}, which SQLite
+and FastAPI sit comfortably under on a single host. The contract that
+the FCG team can adopt is the FastAPI surface; the wire protocol is a
+separate concern.
 
 \section{Data Model}
 \label{sec:datamodel}
@@ -252,8 +233,8 @@ queried separately. The pricing table is a single Python module
 the financial analysis~\cite{fcgfinancial2026}: the frontier-cloud
 reference price is USD~3 per million input tokens and USD~15 per
 million output tokens, which corresponds to approximately
-EUR~2.76 and EUR~13.80 respectively; the on-premises ConfidentialMind
-amortised marginal cost is EUR~0.05 per million tokens. The
+EUR~2.76 and EUR~13.80 respectively; the on-premises amortised marginal
+cost is EUR~0.05 per million tokens. The
 GPT-4o-mini and Claude Haiku 4.5 prices are drawn from TalentAdore
 production accounts as of the writing of this thesis.
 
@@ -315,9 +296,9 @@ F1 to justify its training cost.
 \subsection{ICAE-style soft-prompt compressor}
 
 The trainable arm of the thesis follows the ICAE
-construction~\cite{ge2024icae} with the
-training objective extended to a dual-objective loss following
-AutoCompressor~\cite{chevalier2023autocompressor}:
+construction~\cite{ge2024icae} for the encoder--decoder architecture and
+adds a contrastive term inspired by the segment-level language-modelling
+objective of AutoCompressor~\cite{chevalier2023autocompressor}:
 \begin{equation}
 L = L_\text{recon} + \lambda \cdot L_\text{NCE}
 \label{eq:dual_objective}
@@ -339,9 +320,7 @@ computed on the frozen decoder.
 The contrastive loss $L_\text{NCE}$ is an InfoNCE
 loss~\cite{oord2018cpc} over positive and negative source-fragment
 pairs. Positive pairs are drawn from fragments of the same source
-document or from fragments observed during the same
-planner-worker-critic dialogue trace (the latter is the H3 dialogue
-variant). Negative pairs are other fragments in the same batch
+document. Negative pairs are other fragments in the same batch
 (in-batch negatives), and the temperature is $0.07$ following
 SimCLR~\cite{chen2020simclr}. The weight $\lambda$ is searched in
 $\{0.1, 0.3, 1.0\}$ on a validation split.
@@ -377,11 +356,10 @@ bitwise OR; the classification is recovered as the argmax of the
 softmax and aggregated by taking the maximum across slots. The
 aggregation is lattice-respecting by construction.
 
-The H5 evaluation defines a fragment's tag as \emph{preserved} when
+The H4 evaluation defines a fragment's tag as \emph{preserved} when
 either the recovered ACL is a superset of the source ACL or
 $|\text{recovered} \cap \text{source}| / |\text{source}| \geq 0.9$,
 and the recovered classification is at least the source classification.
-The threshold of $0.9$ is the H5 falsification target.
 
 \subsection{Training configuration}
 \label{sec:training}
@@ -390,20 +368,7 @@ Optimiser AdamW with learning rate $3 \times 10^{-4}$, weight decay
 $0$, $\beta_1 = 0.9$, $\beta_2 = 0.95$, cosine schedule with 200-step
 linear warmup. Batch size 4, gradient accumulation 8, sequence length
 512 (fragment) plus 128 (memory). Wallclock budget at most three days
-on the M4 Pro 48~GB for a 7B-parameter encoder at rank 16. A
-13B-parameter encoder at rank 8 is the upper limit and is treated as a
-stretch goal; the H7 (model-size scaling) results rely on
-inference-only scaling beyond 7B if the 13B fine-tune does not fit in
-memory.
-
-Training data for the H3 distribution-matters comparison consists of
-two datasets of approximately 5\,000 examples each: a question-answering
-distribution drawn from public NarrativeQA and HotpotQA-style data, and
-a multi-agent dialogue distribution synthesised by running the C1
-generator with the identity (no-compression) compressor and capturing
-clean planner-worker-critic traces. The two datasets are
-training-budget-matched so that the H3 comparison isolates the
-distribution variable.
+on the M4 Pro 48~GB for a 7B-parameter encoder at rank 16.
 
 \section{The C1 Benchmark}
 \label{sec:c1}
@@ -450,7 +415,7 @@ independently with probability $0.5$; \emph{skewed}, in which a handful
 of bits dominate via an exponential family chosen to mimic typical
 production ACL skews; and \emph{hierarchical}, in which higher
 classification levels imply strict supersets of the bits at lower
-classification levels. The H5 and H6 evaluations vary the distribution
+classification levels. The H4 evaluation varies the distribution
 to probe the governance-stringency dimension explicitly.
 
 \subsection{Coordination-quality metrics}
@@ -463,10 +428,7 @@ assigned to the worker the workload's ground truth expects),
 \emph{rounds to completion} (the number of planner-worker-critic
 cycles before the planner declares \texttt{DONE}), and
 \emph{critic-flagged error rate} (the fraction of rounds in which the
-critic returned \texttt{REVISE}). The summary-level inference disclosure
-proxy is computed by a separate path in
-Section~\ref{sec:h6_design} of Chapter~\charef{experiments} and
-involves a held-out reader model.
+critic returned \texttt{REVISE}).
 
 The success predicate for family (a) is an exact match on the
 aggregate, for family (b) is a constraint-satisfaction check against
@@ -491,7 +453,7 @@ compressed representation. P1 trades quality for storage efficiency:
 information dropped at compression time is gone, but the index is small.
 The pre-processing baseline against which P1 is informally compared is
 Anthropic's contextual-retrieval~\cite{anthropic2024contextualretrieval},
-which prepends an LLM-generated chunk-level context summary before
+which prepends LLM-generated chunk-level explanatory context before
 embedding.
 
 \subsection{P2: retrieve, then compress}
@@ -566,14 +528,13 @@ run).
 The unified \texttt{InferenceBackend} protocol exposes a single
 \texttt{complete(prompt, max\_tokens, temperature, stop)} method,
 together with an optional \texttt{embed(text)} method and a cost
-predicate that consults the pricing table. Five concrete backends ship:
-MLX-LM for $7$B and $13$B inference on Apple
-Silicon~\cite{mlxframework}; llama.cpp with GGUF Q4\_K\_M for $34$B
-and $70$B inference~\cite{llamacpp}; Ollama wrapping a localhost HTTP
+predicate that consults the pricing table. Four concrete backends ship:
+MLX-LM for 7B and 13B inference on Apple
+Silicon~\cite{mlxframework}; Ollama wrapping a localhost HTTP
 endpoint for developer-iteration speed~\cite{ollama}; OpenAI for
-GPT-4o-mini as the H6 judge and as the cost-arm comparator; and
+GPT-4o-mini as the cost-arm comparator; and
 Anthropic for Claude Haiku 4.5 as the cost-arm comparator and Claude
-Sonnet 4.6 as the cross-check on the 10\% sample. A sixth backend,
+Sonnet 4.6 as the cross-check on the 10\% sample. A fifth backend,
 \texttt{echo}, is a deterministic mock used in unit tests.
 
 The OpenAI backend dispatches between \texttt{max\_tokens}
@@ -581,24 +542,12 @@ The OpenAI backend dispatches between \texttt{max\_tokens}
 \texttt{max\_completion\_tokens} (o-series) on the model name; passing
 the wrong parameter is rejected by the API in some SDK versions.
 
-The llama.cpp backend runs a five-prompt NarrativeQA-shaped sanity
-check at construction and refuses to serve traffic if F1 drops by more
-than $5$~pp from a recorded baseline; the baseline lives in
-\texttt{results/sanity/llamacpp\_baseline.json}, must be populated by a
-Month-1 run, and the backend refuses to start if it is missing. This
-realises the kill-switch documented in the implementation plan's risk
-register as the mitigation for the 70B int4-output-quality risk.
-
 \section{Compute Envelope and Reproducibility}
 \label{sec:envelope}
 
 All training and evaluation is run on a single Apple M4 Pro 48~GB
 workstation. The breakdown of expected wallclocks is given in
-Table~\ref{tab:wallclock}. The 70B int4 evaluation is delivered as a
-\emph{single-point characterisation} at the suspected coordination
-cliff identified at 13B and 34B, not a full ratio sweep; the M4 Pro's
-$3$--$5$ tokens-per-second throughput at 70B int4 makes anything more
-infeasible within the 10-month schedule.
+Table~\ref{tab:wallclock}.
 
 \begin{table}[h]
 \centering
@@ -615,21 +564,18 @@ Experiment & Approach & Wallclock \\
 NarrativeQA/HotpotQA 7B baseline reproduction & MLX/PyTorch-MPS & 1--2 days \\
 C1 baseline at 7B: 3 compressors $\times$ 5 ratios $\times$ 5 seeds $\times$ 150 workflows & MLX, AutoGen & 5--10 days \\
 ICAE-style trainer, 7B LoRA rank 16 & MLX & $\leq 3$ days \\
-C1 at 13B fp16 inference & MLX-LM & 10--20 days \\
-13B LoRA rank 8 fine-tune (stretch) & MLX, aggressive mem mgmt & tight \\
-34B int4 focused partial sweep at suspected $\tau^{*}$ & llama.cpp + GGUF & 3--5 days \\
-70B int4 single-point at suspected $\tau^{*}$ & llama.cpp + GGUF, 3--5 t/s & 7--14 days \\
+H2 secondary arm: 13B fp16 on 30-workload subsample & MLX-LM & 3--5 days \\
+Tag-preserving ICAE training (C4) & MLX, rank 16 & $\leq 3$ days \\
+RAG pipeline benchmark (H3) & MLX inference + FAISS & 3 days \\
+Tag preservation sweep (H4) & MLX inference & 1 day \\
 Adversarial-robustness sweep (S2, stretch) & 7B & 1 week \\
-AgentBench OS/DB/LTP envs at 7B & off-the-shelf & 1 week \\
-Real-trace arm (H8) & gated on connector readiness & --- \\
 \hline
 \end{tabular}
 \end{table}
 
 The reproducibility package is the complete repository, a
 \texttt{docker-compose.yml} that brings the memory-bus reference
-service up, a HuggingFace hub release for the tag-preserving compressor
-weights, a GitHub release tag for the manuscript and code, model and
+service up, a GitHub release tag for the manuscript and code, model and
 data cards under \texttt{docs/}, and a \texttt{README.md} that exposes
 one-command reproduction for every chapter headline figure. The
 filesystem layout under \texttt{results/} is fixed: one CSV per

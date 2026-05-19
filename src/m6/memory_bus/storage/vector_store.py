@@ -16,12 +16,26 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
+from typing import Any
 
-import faiss  # type: ignore[import-not-found]
 import numpy as np
 
-from m6.config.logging import get_logger
-from m6.memory_bus.schemas import SlotId
+# Lazy-import faiss to avoid its native GPU library conflicting with MPS
+# when the training path (which doesn't need FAISS) shares the import tree.
+faiss: Any = None
+
+
+def _faiss() -> Any:
+    global faiss  # noqa: PLW0603
+    if faiss is None:
+        import faiss as _faiss  # type: ignore[import-not-found]
+
+        faiss = _faiss
+    return faiss
+
+
+from m6.config.logging import get_logger  # noqa: E402
+from m6.memory_bus.schemas import SlotId  # noqa: E402
 
 log = get_logger(__name__)
 
@@ -35,7 +49,7 @@ class FaissVectorStore:
         self._lock = threading.RLock()
         # We store unit-normalised vectors and use L2; recall is identical to
         # cosine on the unit sphere, and FAISS's flat indices support it.
-        self._index = faiss.IndexHNSWFlat(dim, hnsw_m, faiss.METRIC_L2)
+        self._index = _faiss().IndexHNSWFlat(dim, hnsw_m, _faiss().METRIC_L2)
         self._index.hnsw.efConstruction = 200
         self._index.hnsw.efSearch = 128
         self._ids: list[SlotId] = []
@@ -78,7 +92,7 @@ class FaissVectorStore:
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._lock:
-            faiss.write_index(self._index, str(self.path))
+            _faiss().write_index(self._index, str(self.path))
             (self.path.with_suffix(".ids.json")).write_text(json.dumps(self._ids), encoding="utf-8")
         log.info("vector_store.saved", path=str(self.path), n=len(self._ids))
 
@@ -86,7 +100,7 @@ class FaissVectorStore:
         with self._lock:
             if not self.path.exists():
                 return
-            self._index = faiss.read_index(str(self.path))
+            self._index = _faiss().read_index(str(self.path))
             ids_path = self.path.with_suffix(".ids.json")
             self._ids = (
                 json.loads(ids_path.read_text(encoding="utf-8")) if ids_path.exists() else []

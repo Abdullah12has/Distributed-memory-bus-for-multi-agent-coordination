@@ -1,0 +1,14 @@
+# H1 smoke test — stub mode, minimal matrix.
+hypothesis: h1
+benchmark_path: data/processed/c1-v0.1
+compressors: ["lingua2", "filter", "icae"]
+ratios: [1.0, 4.0]
+seeds: [0]
+workload_families: ["a"]
+model_size: "7b"
+backend: "echo"
+out_dir: "results"
+n_workloads: 3
+include_no_compression_control: true
+require_trained_compressors: false
+notes: "Smoke test — stub compressors, echo backend, 3 workloads."

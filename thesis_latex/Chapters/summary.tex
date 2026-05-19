@@ -1,21 +1,21 @@
 This chapter draws together the thesis as it stands at submission. The
-empirical narrative that connects the eight hypotheses, the quantitative
+empirical narrative that connects the four hypotheses, the quantitative
 findings, and the comparison against the falsification targets is the
 content of the discussion proper, and will be inserted here once the
-experimental runs of Months~3, 4, 6, 7, and~8 have finished and the
-verdicts are in. The structure of the discussion is fixed: the chapter
-revisits the four contributions in order, summarises the empirical
-findings or reports the falsifications, then moves to the limitations,
-the deliverables, the doctoral-phase bridge, and the closing remarks.
+experimental runs have finished and the verdicts are in. The structure
+of the discussion is fixed: the chapter revisits the four contributions
+in order, summarises the empirical findings or reports the
+falsifications, then moves to the limitations, the deliverables, and
+the closing remarks.
 
-% RESULTS: Insert the empirical-findings prose here once H1-H8 verdicts are in.
+% RESULTS: Insert the empirical-findings prose here once H1-H4 verdicts are in.
 %          The skeleton below is the structure the prose will populate; each
 %          paragraph is a placeholder.
 
 \section{Summary of Empirical Findings}
 \label{sec:findings}
 
-% RESULTS: One paragraph per hypothesis, in the H1-H8 order. Each paragraph
+% RESULTS: One paragraph per hypothesis, in the H1-H4 order. Each paragraph
 %          states the falsifiable claim, the verdict (supported / falsified /
 %          inconclusive), the headline effect size with its bootstrap CI, and
 %          a short interpretive sentence connecting back to the narrative arc
@@ -27,10 +27,6 @@ the deliverables, the doctoral-phase bridge, and the closing remarks.
 \paragraph{H2.} % to be inserted from results/h2/.../verdicts.json
 \paragraph{H3.} % to be inserted from results/h3/.../verdicts.json
 \paragraph{H4.} % to be inserted from results/h4/.../verdicts.json
-\paragraph{H5.} % to be inserted from results/h5/.../verdicts.json
-\paragraph{H6.} % to be inserted from results/h6/.../verdicts.json
-\paragraph{H7.} % to be inserted from results/h7/.../verdicts.json
-\paragraph{H8.} % to be inserted from results/h8/.../verdicts.json (or deferred)
 
 \section{Stretch Goals}
 \label{sec:stretch}
@@ -58,11 +54,6 @@ Chapter~\charef{relatedwork}.
 \item[S4 --- TalentAdore trace replication.] With Asim Nadeem and Oskari
 Valkama, replicate the C1 evaluation on an NDA-cleared TalentAdore
 production trace. Strengthens the industry-relevance arm.
-
-\item[S5 --- Compression and market mechanism.] Feed compression ratio
-into the polymatroid simulation harness of Paper~1~\cite{loven2025paper1}
-and report welfare under compression. Cleanest bridge to the doctoral-
-phase mechanism-design work.
 \end{description}
 
 % RESULTS-STRETCH: The two selected stretch goals' results will be inserted
@@ -72,17 +63,12 @@ phase mechanism-design work.
 \section{Limitations}
 \label{sec:limitations}
 
-\paragraph{Synthetic benchmark.} The C1 benchmark is synthetic. The H8
-arm is the construct-validity counterweight, but the documented-as-
-deferred path is honest about the possibility that no M0/M1/M2 trace is
-ready by Month~7. The synthetic-to-real transfer evidence will be as
-strong as the agents that are ready when the experiments run.
+\paragraph{Synthetic benchmark.} The C1 benchmark is synthetic.
+Real-trace transfer validation is listed as future work.
 
 \paragraph{Single workstation.} All training and evaluation fit a single
-Apple M4 Pro 48~GB workstation. The 70B int4 result is a
-\emph{single-point} characterisation, not a sweep; it relies on the
-NarrativeQA-shaped sanity check passing at startup, and the manuscript is
-explicit about this dependency.
+Apple M4 Pro 48~GB workstation. The primary evaluation is at 7B with a
+13B sanity check.
 
 \paragraph{Tag-preserving compressor as a research prototype.} The
 tag-preserving compressor is a research prototype with measured
@@ -95,58 +81,50 @@ vocabulary.
 for very small effect sizes. The Holm-Bonferroni correction is
 conservative on hypothesis families with many members. The thesis
 chooses both anyway: the alternative (under-correcting and
-over-reporting) would be worse for a manuscript that the doctoral phase
-has to build on.
+over-reporting) would be worse for a manuscript whose results must be
+defensible.
 
 \paragraph{Audit log.} The tamper-evident hash chain in the audit log
 detects in-process tampering but does not defend against file-level
-attacks on the SQLite database. This is the explicit subject of
-ADR-005 in the technical reference and is deferred to the doctoral phase
-for hardening via cryptographic commitment.
+attacks on the SQLite database.
 
 \paragraph{Agent runtime version pinning.} AutoGen v0.4 is pinned. A
 minor-version bump during the thesis window could change behaviour;
 the pinning is the documented mitigation and the no-compression
 control condition is the second.
 
-\section{Bridge to Doctoral Research (D7)}
-\label{sec:d7}
+\section{Future Work}
+\label{sec:future}
 
-The thesis is the substrate for doctoral track~7 (Federated Knowledge
-Orchestration). The four artefacts feed forward as follows:
+The thesis leaves several natural extensions open:
 
-\paragraph{Working benchmark.} The C1 benchmark is extensible to real-
-system traces (the H8 arm is the gentle on-ramp), to cross-institutional
-federation (D7's territory), and to richer adversarial governance
-scenarios (S2 hardening).
+\paragraph{Real-trace transfer.} The synthetic C1 benchmark could be
+validated against real deployment traces from institutional systems
+(M0/M1/M2 connectors at the University of Oulu) to confirm that the
+coordination-cliff findings transfer to production workloads.
 
-\paragraph{Empirical baseline.} The C2 characterisation gives D7 a
-single-institution reference against which federated, cross-tokenizer,
-or larger-institutional measurements can be compared.
+\paragraph{Model-size scaling.} The primary evaluation at 7B and the
+13B sanity arm leave open the question of how $\tau^{*}$ shifts at
+larger model sizes (34B, 70B). Quantised inference via llama.cpp would
+make this feasible on commodity hardware.
 
-\paragraph{RAG pipeline catalogue.} C3 is scaffolding for cross-
-institutional retrieval under bandwidth and privacy budgets. P3's
-score-conditional routing generalises naturally to a federated setting
-in which the relevance threshold becomes a per-institution policy
-variable.
+\paragraph{Training-distribution ablation.} The thesis trains the ICAE
+compressor on a mixed corpus. A controlled comparison between a
+dialogue-trace-trained variant and a QA-trained variant at matched
+accuracy would isolate the effect of training distribution on
+coordination quality.
 
-\paragraph{Memory-bus integration.} The C4 reference memory-bus
-integration is the contract D7 picks up. The doctoral phase replaces
-SQLite with Postgres, the in-memory scratchpad with Redis Cluster, FAISS
-with Qdrant, the HTTP interface with NATS plus Kafka, and the hash chain
-with the cryptographic commitment infrastructure of
-Paper~2~\cite{loven2025paper2} and Paper~3~\cite{loven2025paper3}. The
-storage-protocol seams documented in Chapter~\charef{implementation} are
-designed for that substitution.
+\paragraph{Distributed deployment.} The storage protocols
+(\texttt{AuditLog}, \texttt{Scratchpad}, \texttt{VectorStore}) are
+designed as pluggable interfaces. Replacing SQLite with Postgres, the
+in-memory scratchpad with Redis Cluster, and FAISS with Qdrant would
+enable a multi-machine deployment without changing the compression or
+access layers.
 
-The four doctoral-phase sub-questions the master's-scale work does not
-answer but its scaffolding makes tractable are: how the coordination
-cliff shifts under federation latency; whether tag-preservation rates
-survive federated aggregation; what governance properties the
-cryptographic commitment scheme adds over per-slot tags; and how C1
-extends to a cross-institutional benchmark suite with the governance
-constraints that federated settings impose. These sit waiting for D7
-and define the boundary at which the master's-scale work ends.
+\paragraph{Cross-tokenizer exchange.} The compressor interface carries a
+\texttt{tokenizer\_id} field to support future cross-tokenizer or
+cross-model-family compressed exchange, which is out of scope for this
+thesis.
 
 \section{Deliverables}
 \label{sec:deliverables}
@@ -154,10 +132,10 @@ and define the boundary at which the master's-scale work ends.
 The thesis is delivered together with: the open-source reference
 implementation hosted on GitHub at a release tag matching the manuscript
 version, the C1 benchmark v0.1 reproducible from a single command, the
-tag-preserving compressor weights released on the HuggingFace hub with
+tag-preserving compressor weights released with
 model and data cards, a Docker compose deployment for the memory-bus
 service, and a one-command reproduction target for each chapter-headline
-figure (\texttt{make reproduce-ch\{5..8\}}). The reproducibility package
+figure (\texttt{make reproduce-ch\{5..7\}}). The reproducibility package
 is the final deliverable; the manuscript is the second-final.
 
 \section{Closing}

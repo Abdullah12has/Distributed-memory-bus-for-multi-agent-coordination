@@ -1,4 +1,4 @@
-"""Institutional corpus loader + real-trace loader (H8).
+"""Institutional corpus loader.
 
 Reference: ``docs/TECHNICAL_REFERENCE.md`` §6.3.
 """
@@ -20,7 +20,7 @@ class CorpusDocument:
     """One document from the institutional subset."""
 
     doc_id: str
-    source: str                         # "m0" | "m1" | "m2" | "bookcorpus"
+    source: str  # "m0" | "m1" | "m2" | "bookcorpus"
     text: str
     redaction_counts: dict[str, int]
 
@@ -45,15 +45,18 @@ class InstitutionalCorpus:
                     source=source,
                     text=redacted,
                     redaction_counts={
-                        "emails": report.emails, "phones": report.phones,
-                        "ibans": report.ibans, "ips": report.ips,
-                        "persons": report.persons, "organizations": report.organizations,
+                        "emails": report.emails,
+                        "phones": report.phones,
+                        "ibans": report.ibans,
+                        "ips": report.ips,
+                        "persons": report.persons,
+                        "organizations": report.organizations,
                     },
                 )
 
 
 class RealTraceLoader:
-    """Loads real M0/M1/M2 traces for H8.
+    """Loads real M0/M1/M2 traces (future work).
 
     The exact wire format is decided by Mohammad / Faisal / Vu; we keep the
     interface narrow so a per-source adapter can be written without touching
@@ -67,8 +70,8 @@ class RealTraceLoader:
         """Yield :class:`m6.benchmark.schemas.Workload` instances. Stubbed for now.
 
         The real implementation parses the trace exports into the same
-        :class:`Workload` shape as the synthetic generator so the H2/H7
-        pipelines work unmodified.
+        :class:`Workload` shape as the synthetic generator so the H2
+        pipeline works unmodified.
         """
         if not self.root.exists():
             log.warning("corpus.real_trace_root_missing", path=str(self.root))

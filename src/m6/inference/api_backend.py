@@ -31,7 +31,7 @@ log = get_logger(__name__)
 # OpenAI
 # --------------------------------------------------------------------------- #
 class OpenAIBackend:
-    """OpenAI Chat Completions. Used for the H6 judge and the C3 cost arm."""
+    """OpenAI Chat Completions. Used for the C3 cost arm."""
 
     backend_id: str = "openai"
 

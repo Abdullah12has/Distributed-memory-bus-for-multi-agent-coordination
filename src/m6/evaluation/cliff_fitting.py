@@ -1,4 +1,4 @@
-"""Piecewise-linear cliff fitter for H2 / H7.
+"""Piecewise-linear cliff fitter for H2.
 
 Fits a two-piece linear function with a free breakpoint τ. Constraint: the
 right piece's slope is ≤ the left piece's slope (the "cliff" can only go down).
@@ -74,9 +74,9 @@ def fit_piecewise(
         return float(np.mean((preds - y) ** 2))
 
     param_bounds = [
-        bounds,                           # tau
+        bounds,  # tau
         (-2.0 / y_range, 2.0 / y_range),  # slope_left  (per ratio-unit)
-        (0.0, 4.0 / y_range),             # slope_drop  ≥ 0
+        (0.0, 4.0 / y_range),  # slope_drop  ≥ 0
         (float(y.min() - 1.0), float(y.max() + 1.0)),  # intercept
     ]
 

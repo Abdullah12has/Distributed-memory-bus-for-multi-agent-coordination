@@ -1,7 +1,7 @@
-"""H5 — tag preservation ≥85% at 4× with ≤5pp accuracy drop.
+"""H4 — tag preservation ≥85% at 4× with ≤5pp accuracy drop.
 
 Accuracy delta is computed via a **paired bootstrap across all seeds**, not a
-single-seed point estimate; the H5 falsification target (≤5 pp drop) needs a
+single-seed point estimate; the H4 falsification target (≤5 pp drop) needs a
 CI to be meaningfully checkable.
 """
 
@@ -17,8 +17,8 @@ from m6.evaluation.statistics import paired_bootstrap_diff
 from m6.experiments.base import ExperimentResult, ExperimentRunner
 
 
-class H5Runner(ExperimentRunner):
-    HYPOTHESIS = "h5"
+class H4Runner(ExperimentRunner):
+    HYPOTHESIS = "h4"
 
     async def run(self) -> ExperimentResult:
         workloads = self.load_workloads()
@@ -39,42 +39,70 @@ class H5Runner(ExperimentRunner):
                 recovered = [c4.recover_tags(s) for s in slots]
                 pres = preservation_rate(true_tags, recovered)
                 for s in self.cfg.seeds:
-                    rows.append(self.emit_row(
-                        compressor="icae-tag", ratio=r,
-                        workload_family=w.family.value, workload_id=w.workload_id, seed=s,
-                        metric="preservation_rate", value=pres.rate,
-                    ))
-                    rows.append(self.emit_row(
-                        compressor="icae-tag", ratio=r,
-                        workload_family=w.family.value, workload_id=w.workload_id, seed=s,
-                        metric="preservation_rate_acl", value=pres.acl_rate,
-                    ))
-                    rows.append(self.emit_row(
-                        compressor="icae-tag", ratio=r,
-                        workload_family=w.family.value, workload_id=w.workload_id, seed=s,
-                        metric="preservation_rate_class", value=pres.class_rate,
-                    ))
+                    rows.append(
+                        self.emit_row(
+                            compressor="icae-tag",
+                            ratio=r,
+                            workload_family=w.family.value,
+                            workload_id=w.workload_id,
+                            seed=s,
+                            metric="preservation_rate",
+                            value=pres.rate,
+                        )
+                    )
+                    rows.append(
+                        self.emit_row(
+                            compressor="icae-tag",
+                            ratio=r,
+                            workload_family=w.family.value,
+                            workload_id=w.workload_id,
+                            seed=s,
+                            metric="preservation_rate_acl",
+                            value=pres.acl_rate,
+                        )
+                    )
+                    rows.append(
+                        self.emit_row(
+                            compressor="icae-tag",
+                            ratio=r,
+                            workload_family=w.family.value,
+                            workload_id=w.workload_id,
+                            seed=s,
+                            metric="preservation_rate_class",
+                            value=pres.class_rate,
+                        )
+                    )
 
                 # Accuracy delta vs baseline at the same ratio — paired across
                 # seeds so each (workload, seed) pair contributes one matched
                 # observation to the bootstrap.
                 for s in self.cfg.seeds:
-                    base_res = await self.score_workload_with_compressor(
-                        w, "icae", ratio=r, seed=s
-                    )
+                    base_res = await self.score_workload_with_compressor(w, "icae", ratio=r, seed=s)
                     c4_res = await self.score_workload_with_compressor(
                         w, "icae-tag", ratio=r, seed=s
                     )
-                    rows.append(self.emit_row(
-                        compressor="icae", ratio=r,
-                        workload_family=w.family.value, workload_id=w.workload_id, seed=s,
-                        metric="coord_success_baseline", value=base_res["coord_success"],
-                    ))
-                    rows.append(self.emit_row(
-                        compressor="icae-tag", ratio=r,
-                        workload_family=w.family.value, workload_id=w.workload_id, seed=s,
-                        metric="coord_success_c4", value=c4_res["coord_success"],
-                    ))
+                    rows.append(
+                        self.emit_row(
+                            compressor="icae",
+                            ratio=r,
+                            workload_family=w.family.value,
+                            workload_id=w.workload_id,
+                            seed=s,
+                            metric="coord_success_baseline",
+                            value=base_res["coord_success"],
+                        )
+                    )
+                    rows.append(
+                        self.emit_row(
+                            compressor="icae-tag",
+                            ratio=r,
+                            workload_family=w.family.value,
+                            workload_id=w.workload_id,
+                            seed=s,
+                            metric="coord_success_c4",
+                            value=c4_res["coord_success"],
+                        )
+                    )
 
         df = pd.DataFrame(rows)
         verdict = self._verdict(df)
@@ -96,7 +124,7 @@ class H5Runner(ExperimentRunner):
             return {
                 "preservation_4x": pres_4x,
                 "accuracy_delta_pp_4x": None,
-                "h5_supported": False,
+                "h4_supported": False,
                 "note": "no matched baseline/C4 rows at ratio=4.0",
             }
 
@@ -112,6 +140,6 @@ class H5Runner(ExperimentRunner):
             "accuracy_delta_pp_4x": delta_pp,
             "accuracy_delta_pp_4x_ci": [ci_low_pp, ci_high_pp],
             "paired_bootstrap": boot.to_dict(),
-            # H5 supported ⟺ preservation ≥ 0.85 AND the CI's lower bound ≥ −5pp.
-            "h5_supported": bool(pres_4x >= 0.85 and ci_low_pp >= -5.0),
+            # H4 supported ⟺ preservation ≥ 0.85 AND the CI's lower bound ≥ −5pp.
+            "h4_supported": bool(pres_4x >= 0.85 and ci_low_pp >= -5.0),
         }

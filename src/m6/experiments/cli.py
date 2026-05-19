@@ -10,12 +10,12 @@ import typer
 from m6.config.logging import configure_logging
 from m6.experiments.base import configure_runner
 
-app = typer.Typer(add_completion=False, help="Experiment runners (H1–H8).")
+app = typer.Typer(add_completion=False, help="Experiment runners (H1–H4).")
 
 
-@app.command()
+@app.command()  # type: ignore[misc]
 def run(
-    hypothesis: str = typer.Option(..., "--hypothesis", "-h", help="h1..h8"),
+    hypothesis: str = typer.Option(..., "--hypothesis", "-h", help="h1..h4"),
     config: Path = typer.Option(..., "--config", "-c", help="YAML config path"),
 ) -> None:
     """Run one hypothesis end-to-end. Writes to ``results/<h>/<run_id>/``."""

@@ -1,4 +1,4 @@
-"""Experiment runners — one per hypothesis (H1..H8).
+"""Experiment runners — one per hypothesis (H1..H4).
 
 Each runner reads a YAML config, executes the protocol described in
 ``docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md``, and writes the canonical long-format

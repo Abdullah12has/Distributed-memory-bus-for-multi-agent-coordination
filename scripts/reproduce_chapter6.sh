@@ -3,5 +3,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-.venv/bin/python -m m6.experiments.cli run --hypothesis h4 --config configs/experiments/h4.yaml
+.venv/bin/python -m m6.experiments.cli run --hypothesis h3 --config configs/experiments/h3.yaml
 echo "✓ Chapter 6 reproduction complete."

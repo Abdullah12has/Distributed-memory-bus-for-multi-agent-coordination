@@ -41,12 +41,19 @@ class LLMLingua2Compressor:
 
         self.model_name = model_name
         self.target_ratio = target_ratio
-        # ``llmlingua`` picks the device itself when not explicit; we honour the
-        # caller's wish if set. MPS is supported as of llmlingua 0.2.2.
-        kwargs: dict[str, Any] = {"model_name": model_name, "use_llmlingua2": True}
-        if device != "auto":
-            kwargs["device_map"] = device
+        # Resolve "auto" ourselves rather than letting llmlingua/transformers
+        # default to "cuda" — on Apple Silicon they'll crash with
+        # "Torch not compiled with CUDA enabled" because the cpu-only torch
+        # wheel is installed. Preference order: explicit > CUDA > MPS > CPU.
+        resolved_device = self._resolve_device(device)
+        self.device = resolved_device
+        kwargs: dict[str, Any] = {
+            "model_name": model_name,
+            "use_llmlingua2": True,
+            "device_map": resolved_device,
+        }
         self._inner = PromptCompressor(**kwargs)
+        log.info("compressor.lingua2.device", requested=device, resolved=resolved_device)
 
         # Validate force_tokens against the wrapped tokenizer's vocab. The
         # default ("\n", ".", "!", "?") are not guaranteed to be in every
@@ -61,6 +68,33 @@ class LLMLingua2Compressor:
             force_tokens=self._force_tokens,
             dropped=tuple(set(requested) - set(self._force_tokens)),
         )
+
+    @staticmethod
+    def _resolve_device(requested: str) -> str:
+        """Map ``device="auto"`` to a concrete device that PyTorch can actually use.
+
+        The default behaviour of ``transformers`` and ``llmlingua`` is to pick
+        ``cuda`` when ``device_map`` is unset, which crashes on Apple Silicon
+        builds of PyTorch (no CUDA compiled in). We resolve explicitly:
+
+        * If the caller passed anything other than ``"auto"``, use it as-is.
+        * Else prefer CUDA if available, then MPS, else CPU.
+        """
+        if requested != "auto":
+            return requested
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                return "cuda"
+            if (
+                getattr(torch.backends, "mps", None) is not None
+                and torch.backends.mps.is_available()
+            ):
+                return "mps"
+        except ImportError:  # pragma: no cover - torch is a hard dep
+            pass
+        return "cpu"
 
     def _filter_force_tokens(self, requested: tuple[str, ...]) -> tuple[str, ...]:
         """Return only those force-tokens present in the wrapped tokenizer's vocab.

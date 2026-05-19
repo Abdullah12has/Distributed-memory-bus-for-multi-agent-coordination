@@ -17,23 +17,23 @@
 * [ ] Confirmed by Lauri.
 * Notes:
 
-### Decision 2 — Real M0/M1/M2 traces (H8)
+### Decision 2 — Synthetic benchmark carries the thesis
 
-> Real M0/M1/M2 traces (H8) are evaluated as a **parallel arm gated on M0/M1/M2 connector readiness**, with the synthetic Vignette-7 benchmark carrying the thesis evaluation regardless.
+> The synthetic Vignette-7 benchmark (C1) carries the thesis evaluation.
 
 * [ ] Confirmed by Lauri.
 * Notes:
 
 ### Decision 3 — Compute envelope
 
-> All training and evaluation runs on a **single M4 Pro 48 GB** workstation with MLX, llama.cpp, and Ollama. There are no contingent paths on external clusters. The 70B evaluation arm is delivered as a **single-point characterisation** at the suspected coordination cliff identified at 13B/34B, not a full ratio sweep.
+> All training and evaluation runs on a **single M4 Pro 48 GB** workstation with MLX, llama.cpp, and Ollama. There are no contingent paths on external clusters. The primary evaluation is at 7B with a 13B sanity arm.
 
 * [ ] Confirmed by Lauri.
 * Notes:
 
 ### Decision 4 — Out of scope
 
-The following are doctoral-phase (D7) work and **not** in scope for this thesis:
+The following are **not** in scope for this thesis:
 
 * Production-grade governance enforcement. C4 is a research prototype with measured properties.
 * Cross-tokenizer / cross-model-family compressed exchange.
@@ -44,7 +44,7 @@ The following are doctoral-phase (D7) work and **not** in scope for this thesis:
 
 ### Decision 5 — Stretch goals (Month 8)
 
-At most **TWO** of S1–S5 (plan §4.5) will be selected at end of Month 7 based on Lauri's input.
+At most **TWO** of S1–S4 (plan §4.5) will be selected at end of Month 7 based on Lauri's input.
 
 * [ ] Confirmed by Lauri.
 * Notes:

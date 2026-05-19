@@ -19,8 +19,8 @@ This document is the canonical system view for the `m6-thesis` codebase. It is s
 │  │  compress(...) → store(...) → audit(...) → publish_event(...)          │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────────────────────────┘
-                          │              │              │
-                          ▼              ▼              ▼
+                         │              │              │
+                         ▼              ▼              ▼
 ┌──────────────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐
 │   COMPRESSION LAYER      │  │  STORAGE LAYER   │  │  AGENT RUNTIME (AutoGen) │
 │                          │  │                  │  │                          │
@@ -30,15 +30,15 @@ This document is the canonical system view for the `m6-thesis` codebase. It is s
 │   ├─ icae                │  │                  │  │  bridge → memory_bus     │
 │   └─ icae-tag (C4)       │  │  CostLedger      │  │                          │
 └──────────────────────────┘  └──────────────────┘  └──────────────────────────┘
-              │
-              ▼
+             │
+             ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                        INFERENCE BACKEND (Protocol)                          │
-│   mlx_backend │ llamacpp_backend │ ollama_backend │ openai_backend │ anthropic │
+│          mlx_backend │ ollama_backend │ openai_backend                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Every arrow is a typed Python interface defined as a `typing.Protocol` in the importer's module. The storage layer can be replaced with Postgres + Redis + Qdrant without touching the access or compression layers (`software-architecture.pdf` Decision 6 trajectory).
+Every arrow is a typed Python interface defined as a `typing.Protocol` in the importer's module.
 
 ## 2. Data flow for one `POST /v1/write`
 
@@ -86,8 +86,8 @@ Every arrow is a typed Python interface defined as a `typing.Protocol` in the im
 | RAG P1/P2/P3 | `src/m6/pipelines/{p1_compress_retrieve,p2_retrieve_compress,p3_joint}.py` |
 | Cost model | `src/m6/pipelines/cost_model.py` |
 | Agent orchestration | `src/m6/agents/orchestrator.py` |
-| Inference backends | `src/m6/inference/{mlx,llamacpp,ollama,api}_backend.py` |
-| Experiment runners | `src/m6/experiments/h{1..8}_*.py` |
+| Inference backends | `src/m6/inference/{mlx,ollama,api}_backend.py` |
+| Experiment runners | `src/m6/experiments/h{1..4}_*.py` |
 | CLI | `src/m6/cli.py` |
 
 ## 5. Configuration sources of truth
@@ -98,22 +98,15 @@ configs/
 │   └── c1-v0.1.yaml             # canonical C1 v0.1 generator config
 ├── training/
 │   ├── icae-7b.yaml             # default ICAE training (dual-objective)
-│   ├── icae-7b-tags.yaml        # C4 variant
-│   └── icae-7b-dialogue.yaml    # H3 ablation
+│   └── icae-7b-tags.yaml        # C4 variant
 ├── experiments/
 │   ├── h1.yaml
 │   ├── h2.yaml
 │   ├── h3.yaml
-│   ├── h4.yaml
-│   ├── h5.yaml
-│   ├── h6.yaml
-│   ├── h7.yaml
-│   └── h8.yaml
+│   └── h4.yaml
 └── models/
     ├── llama-3.1-8b-instruct.yaml
-    ├── qwen2.5-14b-instruct.yaml
-    ├── qwen2.5-32b-instruct-q4_k_m.yaml
-    └── llama-3.1-70b-instruct-q4_k_m.yaml
+    └── qwen2.5-14b-instruct.yaml
 ```
 
 Resolved config = environment variables (`.env`) **overridden by** the YAML chosen at the CLI **overridden by** explicit `--<key>=<value>` arguments. The resolution happens in `m6.config.settings.resolve(...)` and produces a frozen `pydantic.BaseModel`.
@@ -134,6 +127,6 @@ Resolved config = environment variables (`.env`) **overridden by** the YAML chos
 | HuggingFace Hub release | trainer side; loaded at startup | Compressor artefacts. |
 | GitHub release tag | `vX.Y.Z` | Full repro of every chapter figure. |
 
-## 8. Where this architecture stops, and D7 begins
+## 8. Future work
 
-Anything that crosses **machine boundaries** or **institutional boundaries** is D7. The reference implementation lives on one M4 Pro. The contracts (FastAPI surface, event taxonomy, audit-log schema) are the seams D7 cuts on.
+The storage layer protocols (audit log, vector store, scratchpad) are designed to be replaceable. Any conforming implementation can be swapped in without changes to the access or compression layers.

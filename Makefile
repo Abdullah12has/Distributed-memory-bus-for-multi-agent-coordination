@@ -129,9 +129,48 @@ bench-release: bench-generate bench-validate ## Produce a release-ready C1 tarba
 	@echo "✓ wrote dist/c1-v0.1.tar.gz"
 
 # -----------------------------------------------------------------------------
+# Month-1 baseline reproduction (LLMLingua-2 calibration)
+#
+# Default target uses Ollama — no API key required. The opt-in OpenAI variant
+# is `make baselines-openai` and requires OPENAI_API_KEY.
+# -----------------------------------------------------------------------------
+.PHONY: baselines baselines-sanity-only baselines-calib-only \
+        baselines-openai baselines-openai-sanity-only baselines-openai-calib-only
+
+baselines: ## Reproduce LLMLingua-2 baselines + sanity JSON via local Ollama.         # WALLCLOCK 2-3h
+	./scripts/reproduce_baselines.sh
+
+baselines-smoke: ## Smoke check: 2 examples/dataset, tolerance off. Run THIS FIRST.    # WALLCLOCK ~2 min
+	./scripts/reproduce_baselines.sh --smoke
+
+baselines-sanity-only: ## Refresh only results/sanity/llamacpp_baseline.json (local).  # WALLCLOCK 1 min
+	./scripts/reproduce_baselines.sh --skip-calibration
+
+baselines-calib-only: ## Run only the LLMLingua-2 calibration (local Ollama).         # WALLCLOCK 2-3h
+	./scripts/reproduce_baselines.sh --skip-sanity
+
+# ---- Opt-in OpenAI variants (require OPENAI_API_KEY; ~EUR 1 total) ----
+baselines-openai: ## Reproduce baselines + sanity JSON via gpt-4o-mini.               # WALLCLOCK 1-2h
+	./scripts/reproduce_baselines.sh --config configs/experiments/baselines-openai.yaml
+
+baselines-openai-sanity-only: ## Refresh sanity JSON via gpt-4o-mini.                 # WALLCLOCK 1 min
+	./scripts/reproduce_baselines.sh --config configs/experiments/baselines-openai.yaml --skip-calibration
+
+baselines-openai-calib-only: ## LLMLingua-2 calibration only via gpt-4o-mini.         # WALLCLOCK 1-2h
+	./scripts/reproduce_baselines.sh --config configs/experiments/baselines-openai.yaml --skip-sanity
+
+# -----------------------------------------------------------------------------
+# Training data
+# -----------------------------------------------------------------------------
+.PHONY: train-data
+
+train-data: ## Generate QA training JSONL from HotpotQA (10k examples).
+	$(PY) scripts/generate_training_data.py --n 10000
+
+# -----------------------------------------------------------------------------
 # Training (compressors)
 # -----------------------------------------------------------------------------
-.PHONY: train-icae train-icae-tags train-dialogue
+.PHONY: train-icae train-icae-tags
 
 train-icae: ## Train ICAE-style soft-prompt compressor (7B LoRA, dual-objective). # WALLCLOCK ~3d
 	$(PY) -m m6.compressors.training.train_icae --config configs/training/icae-7b.yaml
@@ -139,13 +178,11 @@ train-icae: ## Train ICAE-style soft-prompt compressor (7B LoRA, dual-objective)
 train-icae-tags: ## Train tag-preserving ICAE variant (C4).                       # WALLCLOCK ~3d
 	$(PY) -m m6.compressors.training.train_icae --config configs/training/icae-7b-tags.yaml
 
-train-dialogue: ## H3 ablation: train on planner-worker-critic dialogue traces.   # WALLCLOCK ~3d
-	$(PY) -m m6.compressors.training.train_icae --config configs/training/icae-7b-dialogue.yaml
 
 # -----------------------------------------------------------------------------
 # Experiments per hypothesis
 # -----------------------------------------------------------------------------
-.PHONY: exp-h1 exp-h2 exp-h3 exp-h4 exp-h5 exp-h6 exp-h7 exp-h8 exp-all
+.PHONY: exp-h1 exp-h2 exp-h3 exp-h4 exp-all
 
 exp-h1: ## H1 — QA accuracy vs coordination success correlation (7B).             # WALLCLOCK ~2d
 	$(PY) -m m6.experiments.cli run --hypothesis h1 --config configs/experiments/h1.yaml
@@ -153,44 +190,50 @@ exp-h1: ## H1 — QA accuracy vs coordination success correlation (7B).         
 exp-h2: ## H2 — coordination cliff τ* (7B + 13B sub-sample).                       # WALLCLOCK ~5-10d
 	$(PY) -m m6.experiments.cli run --hypothesis h2 --config configs/experiments/h2.yaml
 
-exp-h3: ## H3 — training distribution: QA vs dialogue (matched compute).          # WALLCLOCK ~2d
+exp-h3: ## H3 — RAG pipeline placement (P1/P2/P3, storage vs accuracy bounded).   # WALLCLOCK ~3d
 	$(PY) -m m6.experiments.cli run --hypothesis h3 --config configs/experiments/h3.yaml
 
-exp-h4: ## H4 — RAG pipeline placement (P1/P2/P3, storage vs accuracy bounded).   # WALLCLOCK ~3d
+exp-h4: ## H4 — tag preservation ≥85% at 4× with ≤5pp accuracy drop.              # WALLCLOCK ~1d
 	$(PY) -m m6.experiments.cli run --hypothesis h4 --config configs/experiments/h4.yaml
 
-exp-h5: ## H5 — tag preservation ≥85% at 4× with ≤5pp accuracy drop.              # WALLCLOCK ~1d
-	$(PY) -m m6.experiments.cli run --hypothesis h5 --config configs/experiments/h5.yaml
-
-exp-h6: ## H6 — summary-level inference disclosure (held-out reader = gpt-4o-mini).# WALLCLOCK ~1d
-	$(PY) -m m6.experiments.cli run --hypothesis h6 --config configs/experiments/h6.yaml
-
-exp-h7: ## H7 — model-size scaling of τ* (13B fp16 + 34B int4 + 70B int4).        # WALLCLOCK ~3w
-	$(PY) -m m6.experiments.cli run --hypothesis h7 --config configs/experiments/h7.yaml
-
-exp-h8: ## H8 — real M0/M1/M2 trace transfer (gated on connector readiness).      # WALLCLOCK depends
-	$(PY) -m m6.experiments.cli run --hypothesis h8 --config configs/experiments/h8.yaml
-
-exp-all: exp-h1 exp-h2 exp-h3 exp-h4 exp-h5 exp-h6 exp-h7 exp-h8 ## Run every hypothesis (long).
+exp-all: exp-h1 exp-h2 exp-h3 exp-h4 ## Run every hypothesis.
 
 # -----------------------------------------------------------------------------
 # Reproduction (chapter headline figures)
 # -----------------------------------------------------------------------------
-.PHONY: reproduce-ch5 reproduce-ch6 reproduce-ch7 reproduce-ch8 reproduce-all
+.PHONY: reproduce-ch5 reproduce-ch6 reproduce-ch7 reproduce-all
 
-reproduce-ch5: ## Headline figure for Chapter 5 (coordination cliff).
+reproduce-ch5: ## Headline figure for Chapter 5 (coordination cliff, H1+H2).
 	./scripts/reproduce_chapter5.sh
 
-reproduce-ch6: ## Headline figure for Chapter 6 (RAG pipelines).
+reproduce-ch6: ## Headline figure for Chapter 6 (RAG pipelines, H3).
 	./scripts/reproduce_chapter6.sh
 
-reproduce-ch7: ## Headline figure for Chapter 7 (tag preservation + disclosure).
+reproduce-ch7: ## Headline figure for Chapter 7 (tag preservation, H4).
 	./scripts/reproduce_chapter7.sh
 
-reproduce-ch8: ## Headline figure for Chapter 8 (model-size scaling).
-	./scripts/reproduce_chapter8.sh
+reproduce-all: reproduce-ch5 reproduce-ch6 reproduce-ch7 ## Reproduce all chapter figures.
 
-reproduce-all: reproduce-ch5 reproduce-ch6 reproduce-ch7 reproduce-ch8 ## Reproduce all chapter figures.
+# -----------------------------------------------------------------------------
+# Thesis PDF
+# -----------------------------------------------------------------------------
+.PHONY: thesis thesis-docker thesis-open thesis-clean
+
+thesis: ## Build thesis PDF (requires BasicTeX: brew install --cask basictex).
+	./scripts/build_thesis.sh
+
+thesis-docker: ## Build thesis PDF via Docker (no local TeX install needed).
+	@mkdir -p thesis_latex/out
+	docker run --rm -v "$(CURDIR)/thesis_latex:/work" -w /work texlive/texlive:latest \
+		latexmk -pdf -interaction=nonstopmode -halt-on-error -output-directory=out main.tex
+	cp thesis_latex/out/main.pdf thesis.pdf
+	@echo "✓ Thesis built successfully: thesis.pdf"
+
+thesis-open: thesis ## Build and open the thesis PDF.
+	open thesis.pdf
+
+thesis-clean: ## Remove thesis build artifacts.
+	rm -rf thesis_latex/out thesis.pdf
 
 # -----------------------------------------------------------------------------
 # Docker

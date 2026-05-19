@@ -1,12 +1,12 @@
-"""H4 — RAG pipeline placement P1 vs P2 vs P3, storage-bounded vs accuracy-bounded.
+"""H3 — RAG pipeline placement P1 vs P2 vs P3, storage-bounded vs accuracy-bounded.
 
 Verdict computation:
 
 * For each budget regime, paired-bootstrap difference between P1's and P2's F1.
-  H4 expects the sign to flip between regimes: P1 > P2 on storage-bounded,
+  H3 expects the sign to flip between regimes: P1 > P2 on storage-bounded,
   P2 > P1 on accuracy-bounded. Effect-size threshold is 5 pp F1.
 * P3 is compared against the better of P1/P2 on a combined ``f1 / eur`` score
-  in each regime; H4 expects P3 to dominate or tie the leader.
+  in each regime; H3 expects P3 to dominate or tie the leader.
 
 Both tests use the recentred-null percentile bootstrap implemented in
 ``m6.evaluation.statistics.paired_bootstrap_diff``. Holm correction is applied
@@ -30,7 +30,7 @@ from m6.pipelines.cost_model import eur_for_call
 log = get_logger(__name__)
 
 # A coarse per-query token estimate for the cost ledger when we are not
-# actually invoking a paid backend in the H4 run. Real-experiment numbers
+# actually invoking a paid backend in the H3 run. Real-experiment numbers
 # replace these via the cost ledger; the estimate is used to compute the
 # combined f1/eur score so the verdict is still well-defined in stub runs.
 _STUB_INPUT_TOKENS = 1500
@@ -38,8 +38,8 @@ _STUB_OUTPUT_TOKENS = 200
 _STUB_MODEL = "gpt-4o-mini"
 
 
-class H4Runner(ExperimentRunner):
-    HYPOTHESIS = "h4"
+class H3Runner(ExperimentRunner):
+    HYPOTHESIS = "h3"
 
     async def run(self) -> ExperimentResult:
         workloads = [
@@ -112,7 +112,7 @@ class H4Runner(ExperimentRunner):
     # Verdict
     # ------------------------------------------------------------------ #
     def _compute_verdicts(self, df: pd.DataFrame) -> dict[str, object]:
-        """Compute the H4 verdict from the long-format dataframe.
+        """Compute the H3 verdict from the long-format dataframe.
 
         Returns a dict shaped roughly:
             {
@@ -121,7 +121,7 @@ class H4Runner(ExperimentRunner):
                                       "p3_vs_leader_score": ..., "leader": "P1"},
                  "accuracy_bounded": {... same shape ...},
               },
-              "h4_supported": bool,
+              "h3_supported": bool,
             }
         """
         out: dict[str, object] = {"regimes": {}}
@@ -174,7 +174,7 @@ class H4Runner(ExperimentRunner):
             cell["p1_vs_p2_p_holm"] = adj
             out["regimes"][cell["regime"]] = cell  # type: ignore[index]
 
-        # H4 supported iff: (a) effect-size threshold met in both regimes, (b)
+        # H3 supported iff: (a) effect-size threshold met in both regimes, (b)
         # the sign of (P1 - P2) flips between regimes, (c) P3 is the leader on
         # the combined score in both regimes, (d) all Holm-adjusted p's < 0.05.
         if len(per_regime) == 2:
@@ -186,7 +186,7 @@ class H4Runner(ExperimentRunner):
             )
             p3_wins = sb.get("leader_by_score") == "P3" and ab.get("leader_by_score") == "P3"
             sig = all((c.get("p1_vs_p2_p_holm") or 1.0) < 0.05 for c in per_regime)  # type: ignore[operator]
-            out["h4_supported"] = bool(sign_flip and effect and p3_wins and sig)
+            out["h3_supported"] = bool(sign_flip and effect and p3_wins and sig)
         else:
-            out["h4_supported"] = False
+            out["h3_supported"] = False
         return out

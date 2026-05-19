@@ -12,24 +12,24 @@ task, faithfulness on a retrieval task --- continue to predict the quality of
 introduces a regime in which coordination breaks faster than single-agent
 quality does.
 
-The thesis contributes a multi-agent coordination benchmark inspired by a
-period-end reporting workflow that spans eight university systems, an
-empirical characterisation of three compressor families across compression
-ratios from 1$\times$ to 16$\times$ and model sizes from 7B to 70B parameters,
-a catalogue of three retrieval-augmented generation pipelines combining
-retrieval and compression in different orders, and a tag-preserving
-compressor variant that lets provenance and access-control metadata travel
-alongside compressed memory slots. All four contributions are delivered with
-a single-machine reference implementation built on a 48~GB Apple Silicon
-workstation.
-
-The thesis is grounded in the Future Computing Group's institutional
-AI-service-economy programme at the University of Oulu and in industry need
-expressed by TalentAdore, whose production workloads are dominated by token
-costs. The empirical results sections are placeholders pending the
-experimental runs scheduled for Months 3, 4, 6, 7, and 8 of the
-ten-month implementation plan; the manuscript documents the benchmark,
-the system, the experimental protocol, and the falsification targets so
-that the empirical work can proceed against fixed hypotheses.
+The thesis contributes four artefacts. First, a multi-agent coordination
+benchmark inspired by a period-end reporting workflow that spans eight
+university systems, with three workload families and coordination-quality
+metrics that go beyond per-turn correctness. Second, an empirical
+characterisation of three compressor families --- LLMLingua-2, an
+instruction-aware heuristic filter, and an ICAE-style soft-prompt
+compressor --- across compression ratios from $1\times$ to $16\times$ at
+7B parameters, with a secondary 13B sanity arm, centred on the existence
+and shape of a \emph{coordination cliff}: a compression ratio beyond which
+coordination success degrades sharply even when single-agent QA accuracy
+degrades smoothly. Third, a catalogue of three retrieval-augmented
+generation pipelines combining retrieval and compression in different
+orders, benchmarked under matched retrieval quality with a cost model in
+EUR per query. Fourth, a tag-preserving compressor variant that lets
+provenance and access-control metadata travel alongside compressed memory
+slots, evaluated on preservation rate and accuracy delta. All four
+contributions are delivered with a single-machine reference implementation
+built on a 48~GB Apple Silicon workstation and an open-source repository
+with one-command reproduction of every headline figure.
 
 \end{thesisabstract}

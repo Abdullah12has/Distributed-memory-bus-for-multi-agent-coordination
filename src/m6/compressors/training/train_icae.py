@@ -100,6 +100,11 @@ class TrainerConfig:
 def main(argv: Sequence[str] | None = None) -> int:
     import argparse
 
+    # Must be set BEFORE any torch import (seed_all imports torch lazily).
+    # Lets the MPS allocator use all unified memory instead of the 50% default,
+    # which otherwise causes segfaults when loading 8B+ models.
+    os.environ.setdefault("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+
     parser = argparse.ArgumentParser(description="ICAE-style dual-objective trainer.")
     parser.add_argument("--config", required=True, help="Path to YAML training config.")
     parser.add_argument("--dry-run", action="store_true", help="Build everything but don't train.")
@@ -204,6 +209,14 @@ def _run_torch(cfg: TrainerConfig) -> int:
     )
     log.info("trainer.torch.device", device=device)
 
+    # MPS + float16 causes segfaults on Apple Silicon; use bfloat16 instead.
+    if device == "cuda":
+        model_dtype = torch.float16
+    elif device == "mps":
+        model_dtype = torch.bfloat16
+    else:
+        model_dtype = torch.float32
+
     # ---- model + tokenizer ----
     tokenizer = AutoTokenizer.from_pretrained(cfg.base_model)
     if tokenizer.pad_token is None:
@@ -212,9 +225,13 @@ def _run_torch(cfg: TrainerConfig) -> int:
         tokenizer.add_special_tokens({"additional_special_tokens": ["[MEM]"]})
     base = AutoModelForCausalLM.from_pretrained(
         cfg.base_model,
-        torch_dtype=torch.float16 if device != "cpu" else torch.float32,
+        dtype=model_dtype,
+        low_cpu_mem_usage=True,
     )
     base.resize_token_embeddings(len(tokenizer))
+    # Gradient checkpointing trades compute for memory — essential on MPS
+    # where output_hidden_states=True stores all 33 layers of activations.
+    base.gradient_checkpointing_enable()
     base.to(device)
 
     lora_cfg = LoraConfig(
@@ -236,16 +253,15 @@ def _run_torch(cfg: TrainerConfig) -> int:
     encoder = get_peft_model(base, lora_cfg)
     encoder.print_trainable_parameters()
 
-    # The decoder is frozen — same backbone, no LoRA. AutoCompressor pattern.
-    decoder = AutoModelForCausalLM.from_pretrained(
-        cfg.base_model,
-        torch_dtype=torch.float16 if device != "cpu" else torch.float32,
-    )
-    decoder.resize_token_embeddings(len(tokenizer))
-    decoder.to(device)
-    decoder.eval()
-    for p in decoder.parameters():
-        p.requires_grad = False
+    # The decoder is the SAME backbone with LoRA adapters disabled (ICAE
+    # AutoCompressor pattern). This avoids loading a second 16 GB copy —
+    # critical for fitting in 48 GB unified memory on M4 Pro.
+    decoder = encoder  # shared weights; use disable_adapter_layers() at forward time
+
+    # Access the underlying transformer (e.g. LlamaModel) to get
+    # last_hidden_state directly, avoiding output_hidden_states=True which
+    # stores all 33 intermediate layers and causes MPS OOM.
+    transformer = encoder.base_model.model.model
 
     # ---- data ----
     dataset = _load_dataset(cfg)
@@ -315,29 +331,37 @@ def _run_torch(cfg: TrainerConfig) -> int:
             a_in = _append_mem(anchor_inputs)
             p_in = _append_mem(positive_inputs)
 
-            a_out = encoder(**a_in, output_hidden_states=True, return_dict=True)
-            p_out = encoder(**p_in, output_hidden_states=True, return_dict=True)
+            # Use the underlying transformer (without LM head) to get
+            # last_hidden_state directly — avoids storing all 33 layers.
+            a_hidden = transformer(**a_in, return_dict=True).last_hidden_state
+            a_mem = a_hidden[:, -cfg.num_slots :, :]
+            del a_hidden
 
-            # Memory embeddings = last hidden, last num_slots positions.
-            a_mem = a_out.hidden_states[-1][:, -cfg.num_slots :, :]
-            p_mem = p_out.hidden_states[-1][:, -cfg.num_slots :, :]
+            # Positive encoding is detached: saves one full autograd graph
+            # (~16 GB on 8B) while keeping anchor-side InfoNCE gradient.
+            with torch.no_grad():
+                p_hidden = transformer(**p_in, return_dict=True).last_hidden_state
+                p_mem = p_hidden[:, -cfg.num_slots :, :]
+                del p_hidden
 
             # ---- L_recon ----
-            # Feed [MEM_slots ; anchor_input_ids] through the FROZEN decoder,
-            # cross-entropy on the anchor tokens.
-            with torch.no_grad():
-                dec_input_embeds = decoder.get_input_embeddings()(anchor_inputs["input_ids"])
-            # Prepend mem hidden states as soft-prompt embeddings.
-            soft_prompt = a_mem
-            full_embeds = torch.cat([soft_prompt, dec_input_embeds], dim=1)
-            labels = anchor_inputs["input_ids"].clone()
-            labels[anchor_inputs["attention_mask"] == 0] = -100
-            # Pad labels for the mem-slot prefix.
-            pad_lab = torch.full(
-                (labels.size(0), cfg.num_slots), -100, device=device, dtype=labels.dtype
-            )
-            labels_full = torch.cat([pad_lab, labels], dim=1)
-            dec_out = decoder(inputs_embeds=full_embeds, return_dict=True)
+            # Feed [MEM_slots ; anchor_input_ids] through the decoder (base
+            # model with LoRA disabled), cross-entropy on the anchor tokens.
+            with decoder.disable_adapter():
+                with torch.no_grad():
+                    dec_input_embeds = decoder.get_input_embeddings()(anchor_inputs["input_ids"])
+                # Prepend mem hidden states as soft-prompt embeddings.
+                # a_mem keeps grad so L_recon backprops into the encoder.
+                soft_prompt = a_mem
+                full_embeds = torch.cat([soft_prompt, dec_input_embeds], dim=1)
+                labels = anchor_inputs["input_ids"].clone()
+                labels[anchor_inputs["attention_mask"] == 0] = -100
+                # Pad labels for the mem-slot prefix.
+                pad_lab = torch.full(
+                    (labels.size(0), cfg.num_slots), -100, device=device, dtype=labels.dtype
+                )
+                labels_full = torch.cat([pad_lab, labels], dim=1)
+                dec_out = decoder(inputs_embeds=full_embeds, return_dict=True)
             l_recon = F.cross_entropy(
                 dec_out.logits.view(-1, dec_out.logits.size(-1)),
                 labels_full.view(-1),
@@ -379,10 +403,10 @@ def _run_torch(cfg: TrainerConfig) -> int:
                     "trainer.step",
                     epoch=epoch,
                     step=step,
-                    l_recon=float(l_recon),
-                    l_nce=float(l_nce),
-                    l_tag=float(l_tag),
-                    loss=float(loss),
+                    l_recon=float(l_recon.detach()),
+                    l_nce=float(l_nce.detach()),
+                    l_tag=float(l_tag.detach()),
+                    loss=float(loss.detach()),
                     lr=scheduler.get_last_lr()[0],
                 )
             if step > 0 and step % cfg.save_every == 0:

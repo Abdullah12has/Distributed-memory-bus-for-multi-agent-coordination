@@ -1,0 +1,58 @@
+# Month-1 baseline reproduction config.
+#
+# Targets are the F1 scores Pan et al. (LLMLingua-2, ACL Findings 2024) report
+# at ~4x compression on NarrativeQA / HotpotQA. EDIT THE TARGETS BEFORE FIRST
+# RUN: open the paper, transcribe the exact numbers from Table 2 (or whichever
+# table matches your compression ratio), and replace the placeholders below.
+#
+# The tolerance is from plan §4.1: 2 pp for NarrativeQA, 3 pp for HotpotQA.
+# If observed F1 falls more than `tolerance_pp` below `target_f1`, the run
+# exits non-zero and the driver script (`scripts/reproduce_baselines.sh`)
+# refuses to proceed.
+
+compression_ratio: 4.0
+qa_backend: openai
+qa_model: gpt-4o-mini
+seed: 0
+
+# 7B sanity baseline (consumed by LlamaCppBackend at 70B startup).
+# To use a real local 7B, set sanity_backend: "mlx" and sanity_model to the
+# MLX model id you downloaded with `make models-pull-7b`. The default uses
+# gpt-4o-mini so the calibration works without local MLX.
+sanity_backend: openai
+sanity_model: gpt-4o-mini
+sanity_out_path: results/sanity/llamacpp_baseline.json
+
+out_dir: results/baselines
+
+datasets:
+  - name: narrativeqa
+    hf_repo: deepmind/narrativeqa
+    hf_config: null
+    split: test
+    n_samples: 200
+    # ⚠️ TODO before first run: replace with the exact F1 from the LLMLingua-2 paper.
+    # Placeholder uses 0.30 (a reasonable order-of-magnitude for NarrativeQA at 4×).
+    target_f1: 0.30
+    tolerance_pp: 2.0
+    # NarrativeQA has nested fields. Use the document SUMMARY (~few KB) rather
+    # than the full document (whole books, >500 KB). The LLMLingua-2 paper's
+    # NarrativeQA numbers are reported on the summary form.
+    text_key: document.summary.text
+    question_key: question.text
+    answer_key: answers                 # list[{text, tokens}]
+
+  - name: hotpotqa
+    hf_repo: hotpotqa/hotpot_qa
+    hf_config: distractor
+    split: validation
+    n_samples: 200
+    # ⚠️ TODO before first run: replace with the exact F1 from the LLMLingua-2 paper.
+    # Placeholder uses 0.55 (a reasonable order-of-magnitude for HotpotQA at 4×).
+    target_f1: 0.55
+    tolerance_pp: 3.0
+    # HotpotQA's `context` is {title: [...], sentences: [[...]]}. The sentinel
+    # below tells _extract_text to flatten that into a readable passage.
+    text_key: __hotpot_context__
+    question_key: question
+    answer_key: answer

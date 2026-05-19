@@ -4,13 +4,13 @@ Inherits from :class:`m6.compressors.icae.ICAECompressor` and adds:
 
 * A per-slot tag-prediction head (``TagHead``) that predicts ``(acl_mask,
   classification)`` from each memory-slot embedding.
-* Tag-recovery logic for the H5 evaluation.
+* Tag-recovery logic for the H4 evaluation.
 * A separate model-card.
 
 The head's training is wired into :mod:`m6.compressors.training.train_icae`
 when ``--tag-head=true`` is set (config: ``configs/training/icae-7b-tags.yaml``).
 
-Reference: ``docs/TECHNICAL_REFERENCE.md`` §5.5 and §4.5 (H5).
+Reference: ``docs/TECHNICAL_REFERENCE.md`` §5.5 and §4.4 (H4).
 """
 
 from __future__ import annotations
@@ -86,14 +86,13 @@ class TagPreservingICAE(ICAECompressor):
             training_loss="L_recon + λ_NCE·L_NCE + λ_tag·L_tag (plan §2.4, §5.5)",
             target_ratio_default=self.target_ratio,
             notes=(
-                "ICAE + per-slot TagHead (C4 variant). H5 falsification "
-                "targets: ≥85% preservation at 4×, ≤5pp accuracy drop. H6 "
-                "evaluation uses gpt-4o-mini-as-reader."
+                "ICAE + per-slot TagHead (C4 variant). H4 falsification "
+                "targets: ≥85% preservation at 4×, ≤5pp accuracy drop."
             ),
         )
 
     # ------------------------------------------------------------------ #
-    # Tag recovery (H5)
+    # Tag recovery (H4)
     # ------------------------------------------------------------------ #
     def recover_tags(self, slot: CompressedSlot) -> TagVector:
         """Run the per-slot tag head over each memory slot and aggregate."""
@@ -121,7 +120,7 @@ class TagPreservingICAE(ICAECompressor):
     def _stub_recover_tags(self, slot: CompressedSlot) -> TagVector:
         """Stub: emit the original tags ⊕ a tiny deterministic perturbation.
 
-        Used in tests so the H5 metric path executes end-to-end without a
+        Used in tests so the H4 metric path executes end-to-end without a
         trained head.
         """
         seed = int.from_bytes(hashlib.sha256(slot.slot_id.encode()).digest()[:8], "big")

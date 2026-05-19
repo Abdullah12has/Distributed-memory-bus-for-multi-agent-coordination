@@ -1,6 +1,6 @@
-"""Tag-preservation metric for H5.
+"""Tag-preservation metric for H4.
 
-Defined in ``docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md`` (H5):
+Defined in ``docs/HYPOTHESIS_IMPLEMENTATION_PLAN.md`` (H4):
 
 A fragment's tag is "preserved" iff:
 * ``acl_recovered ⊇ acl_true``  *OR*
@@ -41,13 +41,13 @@ def preservation_rate(
     *,
     acl_overlap_threshold: float = 0.9,
 ) -> PreservationCounts:
-    """Return the H5 preservation rates.
+    """Return the H4 preservation rates.
 
     Args:
         true_tags: ground-truth tags from the source fragment.
         recovered_tags: tags recovered from the compressed slot.
         acl_overlap_threshold: fraction of true ACL bits that must be in the
-            recovered ACL bits. Default 0.9 per plan §3 H5.
+            recovered ACL bits. Default 0.9 per plan §3 H4.
     """
     if len(true_tags) != len(recovered_tags):
         msg = f"length mismatch: {len(true_tags)} vs {len(recovered_tags)}"

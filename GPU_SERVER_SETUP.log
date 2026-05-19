@@ -1,0 +1,42 @@
+# GPU Server Setup Log
+# Remote: Windows PC with RTX 5090 32GB, WSL2 Ubuntu 22.04
+# Date: 2026-05-19
+
+## SSH Access
+- Installed OpenSSH server on WSL2
+- Initial issue: port proxy pointed to localhost instead of WSL IP (172.30.125.153)
+- Fix: netsh portproxy updated to WSL internal IP
+- Issue: WSL IP changes on restart, breaking port proxy
+- Final fix: Installed Tailscale directly inside WSL
+  - WSL Tailscale IP: 100.70.160.59 (stable)
+  - SSH config on Mac: Host gpu -> 100.70.160.59, User gpu, Port 22
+  - No more port proxy needed
+- Passwordless sudo: /etc/sudoers.d/gpu -> gpu ALL=(ALL) NOPASSWD:ALL
+- SSH key auth: ed25519 key copied from Mac
+- Auto-start SSH on WSL boot: /etc/wsl.conf [boot] command=service ssh start
+- Start WSL headless from PowerShell: Start-Job { wsl -d Ubuntu-22.04 -- bash -c "sudo service ssh start; sleep infinity" }
+
+## GPU / CUDA
+- nvidia-smi location: /usr/lib/wsl/lib/nvidia-smi (WSL passthrough)
+- CUDA toolkit installed via: cuda-keyring + apt install cuda-toolkit
+- PATH fix: /etc/profile.d/cuda.sh exports /usr/lib/wsl/lib and /usr/local/cuda/bin
+- PyTorch CUDA verified: torch.cuda.is_available() = True, device = NVIDIA GeForce RTX 5090
+
+## Ollama
+- Required zstd to be installed first (apt install zstd)
+- Ollama v0.24.0 installed
+- Model: llama3.1:8b (4.9GB) pulled
+- Start command: nohup ollama serve &>/tmp/ollama.log &
+
+## Project Setup
+- Cloned: git@github.com:Abdullah12has/Distributed-memory-bus-for-multi-agent-coordination.git
+- Location: ~/Distributed-memory-bus-for-multi-agent-coordination
+- .env: copied from .env.example, M6_INFERENCE_BACKEND changed from mlx to ollama
+- make venv install-dev: completed successfully
+- GitHub SSH key configured for pushing (ed25519, gpu@DESKTOP-6DGK68F)
+
+## Known Issues / Notes
+- WSL conf syntax: no leading spaces in /etc/wsl.conf (caused parse error)
+- apt lock conflicts: parallel apt installs cause lock contention, run sequentially
+- nvidia-smi not in default PATH, needs /usr/lib/wsl/lib in PATH
+- Ollama needs to be started manually after WSL restart (add to wsl.conf boot command)
