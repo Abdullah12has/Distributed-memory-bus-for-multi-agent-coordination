@@ -2,7 +2,7 @@
 
 * Bootstrap CI (10 000 resamples).
 * Paired bootstrap for compressor-vs-compressor.
-* Wilcoxon signed-rank for the cliff-detection (H2) test.
+* Mann-Whitney U for the cliff-detection (H2) test (independent samples).
 * Holm correction within each hypothesis family.
 * Effect sizes — Cliff's δ for ordinal, Cohen's d for continuous.
 
@@ -313,11 +313,19 @@ def spearman_rho(
     for i in range(n_bootstrap):
         idx = rng.integers(0, n, size=n)
         rhos[i], _ = stats.spearmanr(x[idx], y[idx])
+    # Filter NaN values from bootstrap (constant resamples produce NaN rho).
+    rhos_clean = rhos[~np.isnan(rhos)]
+    if rhos_clean.size > 0:
+        ci_low = float(np.quantile(rhos_clean, 0.025))
+        ci_high = float(np.quantile(rhos_clean, 0.975))
+    else:
+        ci_low = float("nan")
+        ci_high = float("nan")
     return BootstrapResult(
-        statistic=float(rho),
-        p_value=float(p),
-        ci_low=float(np.quantile(rhos, 0.025)),
-        ci_high=float(np.quantile(rhos, 0.975)),
+        statistic=float(rho) if not np.isnan(rho) else 0.0,
+        p_value=float(p) if not np.isnan(p) else 1.0,
+        ci_low=ci_low,
+        ci_high=ci_high,
         effect_size=None,
         method="spearman_rho",
         n=n,

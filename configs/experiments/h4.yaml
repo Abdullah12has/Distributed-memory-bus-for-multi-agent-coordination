@@ -1,16 +1,14 @@
-# H4 — tag preservation.
+# H4 — Summary-level inference disclosure.
+# plan-v3 §6: held-out reader recovers protected facts, compression at 4x reduces disclosure.
 hypothesis: h4
 benchmark_path: data/processed/c1-v0.1
-compressors: ["icae", "icae-tag"]
-ratios: [2.0, 4.0, 8.0]
+compressors: ["lingua2", "phi3-extractive", "filter"]
+ratios: [4.0]
 seeds: [0]
 workload_families: ["a", "b", "c"]
-model_size: "7b"
-backend: "mlx"
+model_size: "8b"
+backend: "ollama"
 out_dir: "results"
 include_no_compression_control: false
-notes: "Plan §3 H4; ≥85% preservation at 4×, ≤5pp accuracy drop."
-
-# Headline run: refuse to start if any ICAE-family compressor is in stub mode.
-# Flip to false to deliberately run with deterministic-hash stubs (dev only).
-require_trained_compressors: true
+require_trained_compressors: false
+notes: "plan-v3 H4; priors vs baseline vs compressed_4x disclosure."

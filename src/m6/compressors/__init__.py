@@ -42,6 +42,10 @@ def make_compressor(name: str, **kwargs: Any) -> Compressor:
         from m6.compressors.filter import InstructionAwareFilter
 
         return InstructionAwareFilter(**kwargs)
+    if name in {"phi3-extractive", "phi3_extractive", "phi3"}:
+        from m6.compressors.phi3_extractive import Phi3ExtractiveCompressor
+
+        return Phi3ExtractiveCompressor(**kwargs)
     if name == "icae":
         from m6.compressors.icae import ICAECompressor
 

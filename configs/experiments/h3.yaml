@@ -1,12 +1,14 @@
-# H3 — RAG pipeline placement.
+# H3 — RAG pipeline placement P1/P2/P3.
+# plan-v3 §5: storage-bounded (8x) vs accuracy-bounded (2x), effect >= 5pp F1.
 hypothesis: h3
 benchmark_path: data/processed/c1-v0.1
-compressors: ["lingua2", "filter", "icae"]
-ratios: [4.0]
+compressors: ["lingua2", "phi3-extractive", "filter"]
+ratios: [2.0, 8.0]
 seeds: [0, 1, 2, 3, 4]
 workload_families: ["a"]
-model_size: "7b"
-backend: "mlx"
+model_size: "8b"
+backend: "ollama"
 out_dir: "results"
 include_no_compression_control: true
-notes: "Plan §3 H3; storage-bounded vs accuracy-bounded; effect size ≥5pp F1."
+require_trained_compressors: false
+notes: "plan-v3 H3; P1 vs P2 sign-flip between storage- and accuracy-bounded."
