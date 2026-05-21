@@ -46,15 +46,7 @@ def make_compressor(name: str, **kwargs: Any) -> Compressor:
         from m6.compressors.phi3_extractive import Phi3ExtractiveCompressor
 
         return Phi3ExtractiveCompressor(**kwargs)
-    if name == "icae":
-        from m6.compressors.icae import ICAECompressor
-
-        return ICAECompressor(**kwargs)
-    if name == "icae-tag":
-        from m6.compressors.tag_preserving import TagPreservingICAE
-
-        return TagPreservingICAE(**kwargs)
-    msg = f"Unknown compressor: {name!r}"
+    msg = f"Unknown compressor: {name!r}. Available: none, lingua2, filter, phi3-extractive"
     raise ValueError(msg)
 
 
