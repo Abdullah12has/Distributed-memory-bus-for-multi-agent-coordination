@@ -82,7 +82,7 @@ class H5Config:
 # ============================================================================
 # Ollama planner
 # ============================================================================
-def ollama_planner_solve(model: str, workload: Workload, compressed_texts: dict[str, str]) -> dict:
+def ollama_planner_solve(model: str, workload: Workload, compressed_texts: dict[str, str], seed: int = 0) -> dict:
     """Ask the Ollama planner to solve the workload given compressed fragments."""
     fragments_text = "\n\n".join(f"[{fid}] {text}" for fid, text in compressed_texts.items())
     prompt = f"""You are a planner in a multi-agent system. Your task:
@@ -106,7 +106,7 @@ Your response:"""
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"num_predict": 512, "temperature": 0.0},
+                "options": {"num_predict": 512, "temperature": 0.1, "seed": seed},
             },
             timeout=120.0,
         )
@@ -244,7 +244,7 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
                     compressed_texts[frag.fragment_id] = text
 
                 for seed in cfg.seeds:
-                    result = ollama_planner_solve(model_name, w, compressed_texts)
+                    result = ollama_planner_solve(model_name, w, compressed_texts, seed=seed)
                     rows.append(
                         {
                             "planner_model": model_label,
