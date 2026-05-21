@@ -25,12 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy import optimize, stats
 
-from m6.agents.orchestrator import (
-    AgentConfig,
-    PlannerWorkerCritic,
-)
-
-# --- Project imports (keep these minimal) ---
+from m6.agents.orchestrator import AgentConfig, PlannerWorkerCritic
 from m6.benchmark.generator import load as load_benchmark
 from m6.benchmark.schemas import Workload, WorkloadTrace
 from m6.compressors import make_compressor
@@ -185,7 +180,9 @@ def single_agent_qa(workload: Workload, compressor: Any) -> float:
     """Run a single-agent QA pass: compress every fragment, concatenate, F1."""
     parts = []
     for frag in workload.fragments:
-        slot = compressor.compress(frag)
+        # Set task_hint so Phi-3 extractive knows what to preserve
+        frag_with_hint = frag.model_copy(update={"task_hint": workload.initial_prompt})
+        slot = compressor.compress(frag_with_hint)
         text = compressor.decompress(slot) or frag.text
         parts.append(text)
     synthesized = " ".join(parts)
@@ -203,7 +200,7 @@ def run_multi_agent(workload: Workload, compressor: Any, seed: int) -> WorkloadT
         cfg=AgentConfig(backend="determ"),
         compressor=compressor,
     )
-    return asyncio.get_event_loop().run_until_complete(orchestrator.run(workload, seed=seed))
+    return asyncio.run(orchestrator.run(workload, seed=seed))
 
 
 # ============================================================================

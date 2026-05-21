@@ -134,16 +134,19 @@ def run_h4(cfg: H4Config) -> pd.DataFrame:
 
     rows: list[dict[str, Any]] = []
 
+    # Cache compressors (avoid reloading LLMLingua-2 / Phi-3 per question)
+    comp_cache: dict[str, Any] = {}
+    for comp_name in cfg.compressors:
+        print(f"  Loading compressor: {comp_name}...")
+        comp_cache[comp_name] = make_compressor(comp_name, target_ratio=cfg.ratio)
+
     for w in workloads:
         preamble = w.initial_prompt  # public info only
+        frag_lookup = {f.fragment_id: f for f in w.fragments}
 
         for pf in w.protected_facts:
-            # Find the fragment text
-            frag_text = ""
-            for frag in w.fragments:
-                if frag.fragment_id == pf.fragment_id:
-                    frag_text = frag.text
-                    break
+            frag_obj = frag_lookup.get(pf.fragment_id)
+            frag_text = frag_obj.text if frag_obj else ""
 
             for q, gt_answer in zip(pf.yesno_questions, pf.answers, strict=False):
                 # Condition 1: priors only
@@ -155,31 +158,28 @@ def run_h4(cfg: H4Config) -> pd.DataFrame:
                 baseline_correct = float(baseline_answer == gt_answer)
 
                 # Condition 3: compressed at 4x (per plan-v3, test all compressors)
-                frag_obj = next((f for f in w.fragments if f.fragment_id == pf.fragment_id), None)
                 if frag_obj is None:
                     continue
                 for comp_name in cfg.compressors:
-                    comp = make_compressor(comp_name, target_ratio=cfg.ratio)
+                    comp = comp_cache[comp_name]
                     slot = comp.compress(frag_obj)
                     compressed_text = comp.decompress(slot) or ""
                     comp_answer = ask_reader(cfg.reader_model, compressed_text, q)
                     comp_correct = float(comp_answer == gt_answer)
 
-                    rows.append(
-                        {
-                            "workload_id": w.workload_id,
-                            "fragment_id": pf.fragment_id,
-                            "question": q,
-                            "gt_answer": gt_answer,
-                            "compressor": comp_name,
-                            "ratio": cfg.ratio,
-                            "priors_correct": priors_correct,
-                            "baseline_correct": baseline_correct,
-                            "compressed_correct": comp_correct,
-                            "compressed_text_len": len(compressed_text),
-                            "original_text_len": len(frag_text),
-                        }
-                    )
+                    rows.append({
+                        "workload_id": w.workload_id,
+                        "fragment_id": pf.fragment_id,
+                        "question": q,
+                        "gt_answer": gt_answer,
+                        "compressor": comp_name,
+                        "ratio": cfg.ratio,
+                        "priors_correct": priors_correct,
+                        "baseline_correct": baseline_correct,
+                        "compressed_correct": comp_correct,
+                        "compressed_text_len": len(compressed_text),
+                        "original_text_len": len(frag_text),
+                    })
 
         print(f"  {w.workload_id}: {len(w.protected_facts)} protected facts processed")
 

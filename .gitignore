@@ -101,3 +101,10 @@ desktop.ini
 
 .claude/worktrees/
 .claude/*
+
+# Thesis LaTeX build artifacts
+thesis_latex/out/
+thesis.pdf
+
+# Downloaded papers (large PDFs, not source code)
+papers/*.pdf
