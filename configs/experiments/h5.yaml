@@ -1,0 +1,20 @@
+# H5 — Three-point model-size scaling.
+# plan-v3 §7: tau* shifts upward with 1.5B -> 3.8B -> 8B planner.
+# Fixed compressor: LLMLingua-2 (deterministic, tokenizer-independent).
+hypothesis: h5
+benchmark_path: data/processed/c1-v0.1
+compressors: ["lingua2"]
+ratios: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0]
+seeds: [0, 1, 2, 3, 4]
+workload_families: ["a", "b", "c"]
+n_workloads: 30
+model_size: "8b"
+backend: "ollama"
+out_dir: "results"
+include_no_compression_control: true
+require_trained_compressors: false
+planner_models:
+  - ["qwen2.5:1.5b-instruct-q4_K_M", "1.5B"]
+  - ["phi3:3.8b-mini-instruct-q4_K_M", "3.8B"]
+  - ["llama3.1:8b", "8B"]
+notes: "plan-v3 H5; monotonic tau* on >= 2/3 families, gap >= 1.5 ratio units."

@@ -157,6 +157,24 @@ class ExperimentRunner(ABC):
                 json.dump(verdicts, fh, indent=2, sort_keys=True, default=str)
         log.info("experiment.results_written", path=str(csv_path), n_rows=len(df))
 
+    def _get_compressor(self, compressor_name: str, ratio: float) -> Any:
+        """Return a (cached) compressor instance for the given name and ratio."""
+        key = (compressor_name, float(ratio))
+        comp = self._compressor_cache.get(key)
+        if comp is None:
+            comp = make_compressor(compressor_name, target_ratio=ratio)
+            if self.cfg.require_trained_compressors and compressor_name in {"icae", "icae-tag"}:
+                is_trained = getattr(comp, "is_trained", lambda: False)()
+                if not is_trained:
+                    msg = (
+                        f"require_trained_compressors=true but {compressor_name!r} "
+                        f"is in stub mode. Train via `make train-icae` or set "
+                        f"require_trained_compressors=false."
+                    )
+                    raise RuntimeError(msg)
+            self._compressor_cache[key] = comp
+        return comp
+
     async def score_workload_with_compressor(
         self,
         workload: Workload,
@@ -171,24 +189,7 @@ class ExperimentRunner(ABC):
         ICAE/PEFT instance is constructed once per ``(name, ratio)`` pair, not
         once per workload-seed call (which for H2 would be ~22 500 reloads).
         """
-        key = (compressor_name, float(ratio))
-        comp = self._compressor_cache.get(key)
-        if comp is None:
-            comp = make_compressor(compressor_name, target_ratio=ratio)
-            # If the user asked for strict-mode (trained-checkpoint required),
-            # refuse to run ICAE-family compressors that fell back to stub.
-            if self.cfg.require_trained_compressors and compressor_name in {"icae", "icae-tag"}:
-                is_trained = getattr(comp, "is_trained", lambda: False)()
-                if not is_trained:
-                    msg = (
-                        f"require_trained_compressors=true but {compressor_name!r} "
-                        f"is in stub mode (no checkpoint at the configured path). "
-                        f"Train via `make train-icae` or set "
-                        f"require_trained_compressors=false in the experiment "
-                        f"config to acknowledge the stub run."
-                    )
-                    raise RuntimeError(msg)
-            self._compressor_cache[key] = comp
+        comp = self._get_compressor(compressor_name, ratio)
         orchestrator = PlannerWorkerCritic(
             cfg=AgentConfig(backend="determ"),
             compressor=comp,

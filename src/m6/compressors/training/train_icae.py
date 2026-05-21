@@ -345,23 +345,53 @@ def _run_torch(cfg: TrainerConfig) -> int:
                 del p_hidden
 
             # ---- L_recon ----
-            # Feed [MEM_slots ; anchor_input_ids] through the decoder (base
-            # model with LoRA disabled), cross-entropy on the anchor tokens.
+            # The decoder receives ONLY the memory slots as input and must
+            # reconstruct the original text autoregressively. This forces the
+            # encoder to pack useful information into the memory slots.
+            #
+            # Architecture: [MEM_slots] -> decoder -> predict anchor tokens.
+            # We use teacher-forcing: at each position the decoder sees the
+            # memory slots + all previous ground-truth tokens, and predicts
+            # the next token. The memory slots are NOT allowed to attend to
+            # the original input — that would let the decoder cheat.
             with decoder.disable_adapter():
                 with torch.no_grad():
                     dec_input_embeds = decoder.get_input_embeddings()(anchor_inputs["input_ids"])
-                # Prepend mem hidden states as soft-prompt embeddings.
-                # a_mem keeps grad so L_recon backprops into the encoder.
-                soft_prompt = a_mem
-                full_embeds = torch.cat([soft_prompt, dec_input_embeds], dim=1)
+                # Teacher-forced input: [MEM_slots ; BOS ; tok_0 ; tok_1 ; ...]
+                # Labels:               [-100...   ; tok_0 ; tok_1 ; tok_2 ; ...]
+                # Shift right: the decoder input is the ground truth shifted
+                # by one position, so position i predicts token i.
+                B, seq_len = anchor_inputs["input_ids"].shape
+                # Create shifted decoder input: BOS + all tokens except last
+                bos_embed = decoder.get_input_embeddings()(
+                    torch.full((B, 1), tokenizer.bos_token_id, device=device, dtype=torch.long)
+                )
+                shifted_embeds = torch.cat([bos_embed, dec_input_embeds[:, :-1, :]], dim=1)
+                # Prepend memory slots as soft prompt
+                full_embeds = torch.cat([a_mem, shifted_embeds], dim=1)
+
+                # Build causal attention mask that prevents the text positions
+                # from attending to each other's future tokens, but allows all
+                # positions to attend to the memory slots (prefix).
+                total_len = cfg.num_slots + seq_len
+                causal_mask = torch.ones(total_len, total_len, device=device, dtype=model_dtype)
+                causal_mask = torch.tril(causal_mask)
+                # All positions can attend to the memory prefix
+                causal_mask[:, : cfg.num_slots] = 1.0
+                causal_mask = causal_mask.unsqueeze(0).expand(B, -1, -1).unsqueeze(1)
+
+                dec_out = decoder(
+                    inputs_embeds=full_embeds,
+                    attention_mask=causal_mask,
+                    return_dict=True,
+                )
+
+                # Labels: ignore memory prefix, predict original tokens
                 labels = anchor_inputs["input_ids"].clone()
                 labels[anchor_inputs["attention_mask"] == 0] = -100
-                # Pad labels for the mem-slot prefix.
-                pad_lab = torch.full(
-                    (labels.size(0), cfg.num_slots), -100, device=device, dtype=labels.dtype
-                )
+                pad_lab = torch.full((B, cfg.num_slots), -100, device=device, dtype=labels.dtype)
                 labels_full = torch.cat([pad_lab, labels], dim=1)
-                dec_out = decoder(inputs_embeds=full_embeds, return_dict=True)
+
             l_recon = F.cross_entropy(
                 dec_out.logits.view(-1, dec_out.logits.size(-1)),
                 labels_full.view(-1),

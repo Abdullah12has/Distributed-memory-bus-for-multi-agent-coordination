@@ -254,10 +254,23 @@ class ICAECompressor:
 
         log.info("compressor.icae.loading_checkpoint", path=str(self.checkpoint_path))
         self._tokenizer = AutoTokenizer.from_pretrained(self.base_model)
-        device_map = self.device or ("mps" if torch.backends.mps.is_available() else "cpu")
+        if self._tokenizer.pad_token is None:
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+        # The training script adds a [MEM] special token; we must do the same
+        # before loading the checkpoint so the embedding matrix shapes match.
+        if "[MEM]" not in self._tokenizer.get_vocab():
+            self._tokenizer.add_special_tokens({"additional_special_tokens": ["[MEM]"]})
+        device_map = self.device or (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
         base = AutoModelForCausalLM.from_pretrained(
             self.base_model, torch_dtype=torch.float16, device_map=device_map
         )
+        base.resize_token_embeddings(len(self._tokenizer))
         self._encoder = PeftModel.from_pretrained(base, str(self.checkpoint_path))
         self._encoder.eval()
 

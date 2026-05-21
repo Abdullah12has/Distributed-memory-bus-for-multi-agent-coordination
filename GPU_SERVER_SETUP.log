@@ -35,6 +35,32 @@
 - make venv install-dev: completed successfully
 - GitHub SSH key configured for pushing (ed25519, gpu@DESKTOP-6DGK68F)
 
+## Errors & Fixes
+- .env M6_DEFAULT_SEEDS=0,1,2,3,4 -> pydantic-settings JSON parse error
+  Fix: change to M6_DEFAULT_SEEDS=[0,1,2,3,4] (JSON array format)
+  Also fixed in .env.example upstream
+- Python 3.11.0rc1 (Ubuntu 22.04 default) too old for PyTorch 2.12
+  Error: sys.get_int_max_str_digits not found (needs 3.11.4+)
+  Fix: installed Python 3.12.13 via deadsnakes PPA, recreated venv
+
+## Smoke Tests (2026-05-19)
+- H1: PASSED (36 rows, results/h1/7b/)
+- H2: PASSED (36 rows, results/h2/7b/)
+- H3: PASSED (108 rows, results/h3/7b/)
+- H4: PASSED (45 rows, results/h4/7b/)
+- All run with stub compressors + echo backend
+
+## Training
+- Training data: 10k QA examples from HotpotQA -> data/processed/training/qa.jsonl
+- HF token set in ~/.cache/huggingface/token and .env
+- v1 (BROKEN): started 2026-05-19, killed 2026-05-20. Decoder cheated — received
+  original input tokens concatenated with memory slots. Old checkpoints at
+  checkpoints/icae-7b-broken-v1/
+- v2 (FIXED): started 2026-05-20 06:05 UTC, PID 12960. Decoder only receives
+  memory slots + teacher-forced shifted tokens with proper causal mask.
+  Also fixed checkpoint loader (vocab size mismatch for [MEM] token).
+- Monitor: ssh gpu "tail -5 /tmp/icae-training-v2.log"
+
 ## Known Issues / Notes
 - WSL conf syntax: no leading spaces in /etc/wsl.conf (caused parse error)
 - apt lock conflicts: parallel apt installs cause lock contention, run sequentially

@@ -94,9 +94,13 @@ def fit_piecewise(
     slope_right = slope_left - max(slope_drop, 0.0)
     preds = _piecewise(x, tau, slope_left, slope_right, intercept)
     rmse = float(np.sqrt(np.mean((preds - y) ** 2)))
-    left_mean = float(y[x <= tau].mean()) if (x <= tau).any() else 0.0
-    right_mean = float(y[x > tau].mean()) if (x > tau).any() else left_mean
-    drop_rel = (left_mean - right_mean) / max(left_mean, 1e-6)
+    # Evaluate the relative drop using the fitted model, not raw empirical means.
+    # The fitted value at x_min (left side) vs x_max (right side) reflects the
+    # model's characterisation of the cliff rather than being biased by the
+    # breakpoint position and sample clustering.
+    left_eval = float(intercept + slope_left * (x.min() - tau))
+    right_eval = float(intercept + slope_right * (x.max() - tau))
+    drop_rel = (left_eval - right_eval) / max(abs(left_eval), 1e-6)
 
     return CliffFit(
         tau=float(tau),

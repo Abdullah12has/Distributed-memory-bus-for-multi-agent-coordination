@@ -13,7 +13,7 @@ import pandas as pd
 from m6.compressors import make_compressor
 from m6.compressors.tag_preserving import TagPreservingICAE
 from m6.evaluation.metrics.tag_preservation import preservation_rate
-from m6.evaluation.statistics import paired_bootstrap_diff
+from m6.evaluation.statistics import bootstrap_mean_ci, paired_bootstrap_diff
 from m6.experiments.base import ExperimentResult, ExperimentRunner
 
 
@@ -110,8 +110,18 @@ class H4Runner(ExperimentRunner):
         return ExperimentResult(run_id=self.run_id, out_dir=self.out_dir, df=df, verdicts=verdict)
 
     def _verdict(self, df: pd.DataFrame) -> dict[str, object]:
-        pres_4x_series = df[(df["ratio"] == 4.0) & (df["metric"] == "preservation_rate")]["value"]
-        pres_4x = float(pres_4x_series.mean()) if not pres_4x_series.empty else 0.0
+        # Deduplicate preservation rows (same value across seeds) — one per workload.
+        pres_4x_df = df[(df["ratio"] == 4.0) & (df["metric"] == "preservation_rate")]
+        pres_4x_vals = pres_4x_df.drop_duplicates(subset=["workload_id"])["value"].to_numpy(
+            dtype=np.float64
+        )
+        if pres_4x_vals.size > 0:
+            pres_boot = bootstrap_mean_ci(pres_4x_vals)
+            pres_4x = pres_boot.statistic
+            pres_4x_ci_low = pres_boot.ci_low
+        else:
+            pres_4x = 0.0
+            pres_4x_ci_low = 0.0
 
         base = df[(df["ratio"] == 4.0) & (df["metric"] == "coord_success_baseline")]
         c4 = df[(df["ratio"] == 4.0) & (df["metric"] == "coord_success_c4")]
@@ -123,6 +133,7 @@ class H4Runner(ExperimentRunner):
         if merged.empty:
             return {
                 "preservation_4x": pres_4x,
+                "preservation_4x_ci_low": pres_4x_ci_low,
                 "accuracy_delta_pp_4x": None,
                 "h4_supported": False,
                 "note": "no matched baseline/C4 rows at ratio=4.0",
@@ -137,9 +148,11 @@ class H4Runner(ExperimentRunner):
 
         return {
             "preservation_4x": pres_4x,
+            "preservation_4x_ci_low": pres_4x_ci_low,
             "accuracy_delta_pp_4x": delta_pp,
             "accuracy_delta_pp_4x_ci": [ci_low_pp, ci_high_pp],
             "paired_bootstrap": boot.to_dict(),
-            # H4 supported ⟺ preservation ≥ 0.85 AND the CI's lower bound ≥ −5pp.
-            "h4_supported": bool(pres_4x >= 0.85 and ci_low_pp >= -5.0),
+            # H4 supported ⟺ preservation CI lower bound ≥ 0.85
+            # AND accuracy CI lower bound ≥ −5pp.
+            "h4_supported": bool(pres_4x_ci_low >= 0.85 and ci_low_pp >= -5.0),
         }

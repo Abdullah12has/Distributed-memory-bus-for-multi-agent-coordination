@@ -48,15 +48,24 @@ class H3Runner(ExperimentRunner):
             if w.family is WorkloadFamily.CROSS_DOC_FACT_AGGREGATION
         ]
         rows: list[dict[str, object]] = []
-        ratio = self.cfg.ratios[0] if self.cfg.ratios else 4.0
+
+        # The two regimes must use *different* compression ratios to produce
+        # genuinely different pipeline behaviour. Storage-bounded = high ratio
+        # (aggressive compression before indexing); accuracy-bounded = low ratio
+        # (retrieve full text, compress lightly post-retrieval).
+        ratios_sorted = sorted(self.cfg.ratios) if len(self.cfg.ratios) >= 2 else [2.0, 8.0]
+        regime_ratios = {
+            "storage_bounded": ratios_sorted[-1],  # high ratio
+            "accuracy_bounded": ratios_sorted[0],  # low ratio
+        }
 
         for c in self.cfg.compressors:
-            comp = make_compressor(c, target_ratio=ratio)
-            for budget_mode in ("storage_bounded", "accuracy_bounded"):
+            for budget_mode, regime_ratio in regime_ratios.items():
+                comp = make_compressor(c, target_ratio=regime_ratio)
                 pipelines = {
-                    "P1": Pipeline1(comp, target_ratio=ratio),
-                    "P2": Pipeline2(comp, target_ratio=ratio),
-                    "P3": Pipeline3(comp, target_ratio=ratio),
+                    "P1": Pipeline1(comp, target_ratio=regime_ratio),
+                    "P2": Pipeline2(comp, target_ratio=regime_ratio),
+                    "P3": Pipeline3(comp, target_ratio=regime_ratio),
                 }
                 for w in workloads:
                     corpus = list(w.fragments)
@@ -68,35 +77,36 @@ class H3Runner(ExperimentRunner):
                         eur_per_query = eur_for_call(
                             _STUB_MODEL, _STUB_INPUT_TOKENS, _STUB_OUTPUT_TOKENS
                         )
-                        for s in self.cfg.seeds:
-                            rows.append(
-                                self.emit_row(
-                                    compressor=c,
-                                    pipeline=p_name,
-                                    workload_family=w.family.value,
-                                    workload_id=w.workload_id,
-                                    seed=s,
-                                    metric="f1",
-                                    value=f1,
-                                    actual_ratio=ratio,
-                                    eur_cost=eur_per_query,
-                                    invalid_reason=budget_mode,  # piggyback the regime onto an existing column
-                                )
+                        # One observation per workload (pipelines are deterministic,
+                        # seeds would just duplicate identical rows). Use seed=0.
+                        rows.append(
+                            self.emit_row(
+                                compressor=c,
+                                pipeline=p_name,
+                                workload_family=w.family.value,
+                                workload_id=w.workload_id,
+                                seed=0,
+                                metric="f1",
+                                value=f1,
+                                actual_ratio=regime_ratio,
+                                eur_cost=eur_per_query,
+                                invalid_reason=budget_mode,
                             )
-                            rows.append(
-                                self.emit_row(
-                                    compressor=c,
-                                    pipeline=p_name,
-                                    workload_family=w.family.value,
-                                    workload_id=w.workload_id,
-                                    seed=s,
-                                    metric="eur_per_query",
-                                    value=eur_per_query,
-                                    actual_ratio=ratio,
-                                    eur_cost=eur_per_query,
-                                    invalid_reason=budget_mode,
-                                )
+                        )
+                        rows.append(
+                            self.emit_row(
+                                compressor=c,
+                                pipeline=p_name,
+                                workload_family=w.family.value,
+                                workload_id=w.workload_id,
+                                seed=0,
+                                metric="eur_per_query",
+                                value=eur_per_query,
+                                actual_ratio=regime_ratio,
+                                eur_cost=eur_per_query,
+                                invalid_reason=budget_mode,
                             )
+                        )
 
         df = pd.DataFrame(rows)
         verdicts = self._compute_verdicts(df)

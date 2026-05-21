@@ -1,16 +1,14 @@
-# H2 — coordination cliff τ* exists. Dense ratio sweep around the suspected cliff.
+# H2 — Coordination cliff tau* exists. Dense ratio sweep.
+# plan-v3 §4: >= 7/9 cells with drop >= 30% AND Mann-Whitney p < 0.05.
 hypothesis: h2
 benchmark_path: data/processed/c1-v0.1
-compressors: ["lingua2", "filter", "icae"]
+compressors: ["lingua2", "phi3-extractive", "filter"]
 ratios: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0]
 seeds: [0, 1, 2, 3, 4]
 workload_families: ["a", "b", "c"]
-model_size: "7b"
-backend: "mlx"
+model_size: "8b"
+backend: "ollama"
 out_dir: "results"
 include_no_compression_control: true
-notes: "Plan §3 H2; effect size threshold drop_rel ≥ 0.30."
-
-# Headline run: refuse to start if any ICAE-family compressor is in stub mode.
-# Flip to false to deliberately run with deterministic-hash stubs (dev only).
-require_trained_compressors: true
+require_trained_compressors: false
+notes: "plan-v3 H2; dense sweep for piecewise cliff fitting."
