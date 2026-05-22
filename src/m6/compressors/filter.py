@@ -192,22 +192,27 @@ class InstructionAwareFilter:
         keep = sorted(keep, key=lambda s: order.get(s, 0))
 
         # Stage 2: token-level trim to hit ratio.
+        # Use whitespace splitting to preserve punctuation attached to words
+        # (e.g., "hours:" stays as "hours:", not "hours :").
         joined = " ".join(keep)
-        tokens = _TOKEN_RE.findall(joined)
-        target_tokens = max(int(len(_TOKEN_RE.findall(text)) / target_ratio), 1)
-        kept_tokens: list[str] = []
-        for tok in tokens:
-            t_low = tok.lower()
-            if t_low in _STOPWORDS or (tok.isalpha() and len(tok) <= 2):
+        if target_ratio <= 1.0:
+            return joined
+        words = joined.split()
+        source_words = text.split()
+        target_word_count = max(int(len(source_words) / target_ratio), 1)
+        kept_words: list[str] = []
+        for word in words:
+            word_lower = word.lower().strip(".,;:!?()[]{}\"'")
+            if word_lower in _STOPWORDS or (word_lower.isalpha() and len(word_lower) <= 2):
                 continue
-            kept_tokens.append(tok)
-            if len(kept_tokens) >= target_tokens:
+            kept_words.append(word)
+            if len(kept_words) >= target_word_count:
                 break
         # If we over-pruned (very small fragments), fall back to the sentence
         # selection without token-level trim.
-        if len(kept_tokens) < max(target_tokens // 2, 8):
+        if len(kept_words) < max(target_word_count // 2, 8):
             return joined
-        return " ".join(kept_tokens)
+        return " ".join(kept_words)
 
 
 def _digest(s: str) -> str:
