@@ -52,7 +52,7 @@ class H5Config:
     ratios: list[float] | None = None
     seeds: list[int] | None = None
     families: list[str] | None = None  # plan-v3: family (a) only for H5
-    n_workloads: int = 30  # plan-v3 §2: 30 of the 50 family-(a) instances
+    n_workloads: int = 20  # per family (20 × 3 families = 60 total)
     out_dir: str = "results/h5"
     planner_models: dict[str, str] | None = None
 
@@ -135,15 +135,15 @@ Your response:"""
     if not answer:
         answer = response[:200]
 
-    # Extract assignments from full response (for subtask scoring)
+    # Extract assignments from the answer line (single source of truth)
     assignments = {}
-    for match in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", response, re.IGNORECASE):
+    for match in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", answer, re.IGNORECASE):
         assignments[match.group(1)] = match.group(2).lower()
 
     # Score using family-aware method
     coord_success, f1 = _score_answer(workload, answer)
 
-    # Subtask accuracy
+    # Subtask accuracy (uses same assignments extracted from answer line)
     subtask_acc = 0.0
     if workload.sub_tasks:
         correct = sum(
@@ -179,22 +179,13 @@ def _score_family_a(expected: str, answer: str) -> tuple[float, float]:
     """Family a: extract hours and budget numbers, score by relative error."""
     def _extract_nums(s: str) -> dict[str, int | None]:
         nums: dict[str, int | None] = {"hours": None, "budget": None}
-        # Try key=value format first
-        m = re.search(r"hours\s*[=:]\s*(\d[\d,]*)", s, re.IGNORECASE)
+        # Match "hours=X", "hours: X", "hours X", "total hours: X", etc.
+        m = re.search(r"hours\s*[=:]?\s*(\d[\d,]*)", s, re.IGNORECASE)
         if m:
             nums["hours"] = int(m.group(1).replace(",", ""))
-        m = re.search(r"budget\s*[=:]\s*(\d[\d,]*)", s, re.IGNORECASE)
+        m = re.search(r"budget\s*[=:]?\s*(?:EUR\s*)?(\d[\d,]*)", s, re.IGNORECASE)
         if m:
             nums["budget"] = int(m.group(1).replace(",", ""))
-        # Try "total hours: X" / "total budget: X" patterns
-        if nums["hours"] is None:
-            m = re.search(r"total\s+(?:recorded\s+)?hours\s*[=:]\s*(\d[\d,]*)", s, re.IGNORECASE)
-            if m:
-                nums["hours"] = int(m.group(1).replace(",", ""))
-        if nums["budget"] is None:
-            m = re.search(r"total\s+(?:approved\s+)?budget\s*[=:]\s*(?:EUR\s*)?(\d[\d,]*)", s, re.IGNORECASE)
-            if m:
-                nums["budget"] = int(m.group(1).replace(",", ""))
         return nums
 
     exp_nums = _extract_nums(expected)
@@ -213,7 +204,8 @@ def _score_family_a(expected: str, answer: str) -> tuple[float, float]:
     if not scores:
         return 0.0, 0.0
     f1 = sum(scores) / len(scores)
-    coord_success = float(f1 > 0.5)
+    # Require both values within 25% error (f1 > 0.75) for coordination success
+    coord_success = float(f1 > 0.75)
     return coord_success, f1
 
 
