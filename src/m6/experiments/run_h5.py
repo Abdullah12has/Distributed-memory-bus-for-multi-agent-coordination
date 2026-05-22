@@ -20,7 +20,6 @@ import argparse
 import json
 import re
 import time
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -82,9 +81,21 @@ class H5Config:
 # ============================================================================
 # Ollama planner
 # ============================================================================
+def _format_hint(workload: Workload) -> str:
+    """Return a family-specific format instruction for the ANSWER line."""
+    fam = workload.family.value
+    if fam == "a":
+        return 'Use exactly this format: "ANSWER: hours=<total_hours>;budget=<total_budget>" (integers only, no currency symbols).'
+    elif fam == "b":
+        return 'Use exactly this format: "ANSWER: sub-0=worker-X;sub-1=worker-Y;..." listing every sub-task assignment.'
+    else:  # family c
+        return 'Use exactly this format: "ANSWER: FINAL-<number>" with the leaf value.'
+
+
 def ollama_planner_solve(model: str, workload: Workload, compressed_texts: dict[str, str], seed: int = 0) -> dict:
     """Ask the Ollama planner to solve the workload given compressed fragments."""
     fragments_text = "\n\n".join(f"[{fid}] {text}" for fid, text in compressed_texts.items())
+    format_hint = _format_hint(workload)
     prompt = f"""You are a planner in a multi-agent system. Your task:
 
 {workload.initial_prompt}
@@ -94,8 +105,8 @@ Available information:
 
 Instructions:
 1. Read all fragments carefully.
-2. Provide your final answer on a line starting with "ANSWER: ".
-3. For each sub-task, assign it to a worker: "sub-X = worker-Y"
+2. Provide your final answer on a SINGLE line starting with "ANSWER: ".
+{format_hint}
 
 Your response:"""
 
@@ -124,33 +135,13 @@ Your response:"""
     if not answer:
         answer = response[:200]
 
-    # Extract assignments
+    # Extract assignments from full response (for subtask scoring)
     assignments = {}
     for match in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", response, re.IGNORECASE):
         assignments[match.group(1)] = match.group(2).lower()
 
-    # Score
-    expected_norm = " ".join(workload.expected_answer.lower().split())
-    answer_norm = " ".join(answer.lower().split())
-    success = float(expected_norm == answer_norm)
-
-    # F1 as softer metric
-    p_tok = _normalize(answer).split()
-    r_tok = _normalize(workload.expected_answer).split()
-    if p_tok and r_tok:
-        common = Counter(p_tok) & Counter(r_tok)
-        num_same = sum(common.values())
-        if num_same > 0:
-            prec = num_same / len(p_tok)
-            rec = num_same / len(r_tok)
-            f1 = 2 * prec * rec / (prec + rec)
-        else:
-            f1 = 0.0
-    else:
-        f1 = 0.0
-
-    # Use F1 > 0.5 as a softer success criterion for coordination
-    coord_success = float(f1 > 0.5)
+    # Score using family-aware method
+    coord_success, f1 = _score_answer(workload, answer)
 
     # Subtask accuracy
     subtask_acc = 0.0
@@ -171,13 +162,84 @@ Your response:"""
     }
 
 
-def _normalize(s: str) -> str:
-    import string
+def _score_answer(workload: Workload, answer: str) -> tuple[float, float]:
+    """Score answer with family-aware logic. Returns (coord_success, f1)."""
+    expected = workload.expected_answer
+    fam = workload.family.value
 
-    s = s.lower()
-    s = "".join(ch for ch in s if ch not in set(string.punctuation))
-    s = re.sub(r"\b(a|an|the)\b", " ", s)
-    return " ".join(s.split())
+    if fam == "a":
+        return _score_family_a(expected, answer)
+    elif fam == "b":
+        return _score_family_b(expected, answer)
+    else:
+        return _score_family_c(expected, answer)
+
+
+def _score_family_a(expected: str, answer: str) -> tuple[float, float]:
+    """Family a: extract hours and budget numbers, score by relative error."""
+    def _extract_nums(s: str) -> dict[str, int | None]:
+        nums: dict[str, int | None] = {"hours": None, "budget": None}
+        # Try key=value format first
+        m = re.search(r"hours\s*[=:]\s*(\d[\d,]*)", s, re.IGNORECASE)
+        if m:
+            nums["hours"] = int(m.group(1).replace(",", ""))
+        m = re.search(r"budget\s*[=:]\s*(\d[\d,]*)", s, re.IGNORECASE)
+        if m:
+            nums["budget"] = int(m.group(1).replace(",", ""))
+        # Try "total hours: X" / "total budget: X" patterns
+        if nums["hours"] is None:
+            m = re.search(r"total\s+(?:recorded\s+)?hours\s*[=:]\s*(\d[\d,]*)", s, re.IGNORECASE)
+            if m:
+                nums["hours"] = int(m.group(1).replace(",", ""))
+        if nums["budget"] is None:
+            m = re.search(r"total\s+(?:approved\s+)?budget\s*[=:]\s*(?:EUR\s*)?(\d[\d,]*)", s, re.IGNORECASE)
+            if m:
+                nums["budget"] = int(m.group(1).replace(",", ""))
+        return nums
+
+    exp_nums = _extract_nums(expected)
+    ans_nums = _extract_nums(answer)
+
+    scores = []
+    for key in ["hours", "budget"]:
+        ev = exp_nums.get(key)
+        av = ans_nums.get(key)
+        if ev is not None and av is not None and ev > 0:
+            rel_err = abs(ev - av) / ev
+            scores.append(max(0.0, 1.0 - rel_err))
+        elif ev is not None and av is None:
+            scores.append(0.0)
+
+    if not scores:
+        return 0.0, 0.0
+    f1 = sum(scores) / len(scores)
+    coord_success = float(f1 > 0.5)
+    return coord_success, f1
+
+
+def _score_family_b(expected: str, answer: str) -> tuple[float, float]:
+    """Family b: compare sub-task assignments."""
+    def _parse_assignments(s: str) -> dict[str, str]:
+        return {m.group(1).lower(): m.group(2).lower()
+                for m in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", s, re.IGNORECASE)}
+
+    exp_map = _parse_assignments(expected)
+    ans_map = _parse_assignments(answer)
+    if not exp_map:
+        return 0.0, 0.0
+    correct = sum(1 for k, v in exp_map.items() if ans_map.get(k) == v)
+    f1 = correct / len(exp_map)
+    coord_success = float(f1 > 0.5)
+    return coord_success, f1
+
+
+def _score_family_c(expected: str, answer: str) -> tuple[float, float]:
+    """Family c: extract FINAL-XXXX and compare."""
+    exp_m = re.search(r"FINAL-(\d+)", expected, re.IGNORECASE)
+    ans_m = re.search(r"FINAL-(\d+)", answer, re.IGNORECASE)
+    if exp_m and ans_m and exp_m.group(1) == ans_m.group(1):
+        return 1.0, 1.0
+    return 0.0, 0.0
 
 
 # ============================================================================
@@ -216,11 +278,14 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
 # ============================================================================
 def run_h5(cfg: H5Config) -> pd.DataFrame:
     print(f"Loading benchmark from {cfg.benchmark_path}...")
-    workloads = load_benchmark(cfg.benchmark_path)
+    all_workloads = load_benchmark(cfg.benchmark_path)
     family_set = set(cfg.families)
-    workloads = [w for w in workloads if w.family.value in family_set]
-    workloads = workloads[: cfg.n_workloads]
-    print(f"  {len(workloads)} workloads loaded")
+    # Sample n_workloads per family so all families are represented
+    workloads = []
+    for fam in sorted(family_set):
+        fam_ws = [w for w in all_workloads if w.family.value == fam]
+        workloads.extend(fam_ws[: cfg.n_workloads])
+    print(f"  {len(workloads)} workloads loaded ({cfg.n_workloads} per family)")
 
     rows: list[dict[str, Any]] = []
     comp_cache: dict[float, Any] = {}
