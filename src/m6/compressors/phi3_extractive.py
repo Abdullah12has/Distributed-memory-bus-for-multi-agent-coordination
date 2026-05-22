@@ -27,7 +27,7 @@ from m6.compressors.base import ModelCard
 from m6.memory_bus.schemas import CompressedSlot, Fragment, TextSummary
 
 OLLAMA_URL = "http://127.0.0.1:11434"
-DEFAULT_MODEL = "phi3:3.8b-mini-instruct-q4_K_M"
+DEFAULT_MODEL = "phi3:latest"
 
 # Frozen prompt per TECHNICAL_REFERENCE_V3 §2.
 EXTRACTIVE_PROMPT = """You are a passage selector, NOT a writer. Your job is to select the minimal set of contiguous spans from the PASSAGE that a downstream reader would need to answer the QUESTION.

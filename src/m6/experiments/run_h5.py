@@ -41,7 +41,7 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 
 PLANNER_MODELS = {
     "1.5B": "qwen2.5:1.5b-instruct-q4_K_M",
-    "3.8B": "phi3:3.8b-mini-instruct-q4_K_M",
+    "3.8B": "phi3:latest",
     "8B": "llama3.1:8b",
 }
 

@@ -327,14 +327,70 @@ def _solve_family_a(
 
 
 def _solve_family_b(
-    workload: Workload, _compressed_texts: dict[str, str]
+    workload: Workload, compressed_texts: dict[str, str]
 ) -> tuple[str, dict[str, str]]:
-    """Family (b): replay the expected assignment (it's the ground truth)."""
-    assignments = {st.sub_task_id: st.expected_solver for st in workload.sub_tasks}
-    parts = [
-        f"{st.sub_task_id.split('/')[-1]}={assignments[st.sub_task_id]}"
-        for st in workload.sub_tasks
-    ]
+    """Family (b): greedy bin-packing from compressed spec text.
+
+    Parses capacities and loads from the compressed fragment. If parsing fails
+    (compression corrupted the numbers), returns an empty assignment which will
+    score 0.0 coordination success.
+    """
+    import re
+
+    # Parse the spec from compressed text
+    spec_text = ""
+    for frag in workload.fragments:
+        spec_text += compressed_texts.get(frag.fragment_id, frag.text) + " "
+
+    # Extract capacities and loads from the compressed text
+    cap_match = re.search(r"capacities\s*\[([^\]]+)\]", spec_text, re.IGNORECASE)
+    load_match = re.search(r"loads?\s*[:\[]\s*\[?([^\]]+)\]?", spec_text, re.IGNORECASE)
+
+    if not cap_match or not load_match:
+        # Parsing failed — compression destroyed the spec
+        assignments = {st.sub_task_id: "" for st in workload.sub_tasks}
+        parts = [f"{st.sub_task_id.split('/')[-1]}=" for st in workload.sub_tasks]
+        return ";".join(parts), assignments
+
+    try:
+        capacities = [int(x.strip()) for x in cap_match.group(1).split(",")]
+        loads = [int(x.strip()) for x in load_match.group(1).split(",")]
+    except (ValueError, AttributeError):
+        assignments = {st.sub_task_id: "" for st in workload.sub_tasks}
+        parts = [f"{st.sub_task_id.split('/')[-1]}=" for st in workload.sub_tasks]
+        return ";".join(parts), assignments
+
+    # Greedy first-fit-decreasing bin packing
+    n_agents = len(capacities)
+    remaining_cap = list(capacities)
+
+    # Sort tasks by load descending for better packing
+    task_order = sorted(range(len(loads)), key=lambda i: -loads[i])
+    assignment_map: list[int] = [-1] * len(loads)
+
+    for task_idx in task_order:
+        load = loads[task_idx]
+        assigned = False
+        for agent_idx in range(n_agents):
+            if remaining_cap[agent_idx] >= load:
+                assignment_map[task_idx] = agent_idx
+                remaining_cap[agent_idx] -= load
+                assigned = True
+                break
+        if not assigned:
+            # Cannot fit — over-capacity, assignment fails
+            assignment_map[task_idx] = -1
+
+    assignments = {}
+    parts = []
+    for i, st in enumerate(workload.sub_tasks):
+        if i < len(assignment_map) and assignment_map[i] >= 0:
+            worker = f"worker-{assignment_map[i]}"
+        else:
+            worker = ""
+        assignments[st.sub_task_id] = worker
+        parts.append(f"{st.sub_task_id.split('/')[-1]}={worker}")
+
     return ";".join(parts), assignments
 
 
