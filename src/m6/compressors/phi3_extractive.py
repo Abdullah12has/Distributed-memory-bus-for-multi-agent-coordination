@@ -227,5 +227,5 @@ class Phi3ExtractiveCompressor:
             tags=fragment.tags,
             audit_pointers=(),
             compressor_id=self.compressor_id,
-            ratio=ratio,
+            ratio=max(ratio, 1.0),
         )
