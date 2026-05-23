@@ -239,18 +239,25 @@ def _score_answer(workload: Workload, answer: str) -> float:
 # ============================================================================
 # Single-agent QA (compress + concatenate, NO orchestrator)
 # ============================================================================
-def single_agent_qa(workload: Workload, compressor: Any) -> float:
+def single_agent_qa(
+    workload: Workload, compressor: Any, *, _precomputed: list[str] | None = None
+) -> float:
     """Run a single-agent QA pass: compress every fragment, aggregate, score.
 
     Uses family-aware scoring: for family-a, sums up hours/budget from
     compressed fragments and scores by relative error against expected answer.
+
+    If ``_precomputed`` is provided, skips compression (already cached).
     """
-    parts = []
-    for frag in workload.fragments:
-        frag_with_hint = frag.model_copy(update={"task_hint": workload.initial_prompt})
-        slot = compressor.compress(frag_with_hint)
-        text = compressor.decompress(slot) or frag.text
-        parts.append(text)
+    if _precomputed is not None:
+        parts = _precomputed
+    else:
+        parts = []
+        for frag in workload.fragments:
+            frag_with_hint = frag.model_copy(update={"task_hint": workload.initial_prompt})
+            slot = compressor.compress(frag_with_hint)
+            text = compressor.decompress(slot) or frag.text
+            parts.append(text)
     synthesized = " ".join(parts)
     # For family-a: the deterministic solver sums hours/budget via regex;
     # we do the same here and format as "hours=X;budget=Y" for scoring.
@@ -381,8 +388,20 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
 
     rows: list[dict[str, Any]] = []
     compressor_cache: dict[tuple[str, float], Any] = {}
+    # Cache compressed text per (compressor, ratio, fragment_id) — avoids
+    # redundant Ollama calls across seeds and between qa/coord/token_recall.
+    # At temp=0 same input always produces same output.
+    compressed_text_cache: dict[tuple[str, float, str], str] = {}
     done = 0
     t_start = time.time()
+
+    def _compress_fragment(comp: Any, comp_name: str, ratio: float, frag: Any) -> str:
+        cache_key = (comp_name, ratio, frag.fragment_id)
+        if cache_key not in compressed_text_cache:
+            frag_with_hint = frag.model_copy(update={"task_hint": frag.task_hint or ""})
+            slot = comp.compress(frag_with_hint)
+            compressed_text_cache[cache_key] = comp.decompress(slot) or frag.text
+        return compressed_text_cache[cache_key]
 
     for comp_name in cfg.compressors:
         for ratio in cfg.ratios:
@@ -393,19 +412,23 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
             comp = compressor_cache[key]
 
             for w in workloads:
+                # Compress all fragments once (cached across seeds)
+                compressed_parts = [
+                    _compress_fragment(comp, comp_name, ratio, frag)
+                    for frag in w.fragments
+                ]
+
                 # Single-agent QA (same for all seeds — deterministic)
-                qa_f1 = single_agent_qa(w, comp)
+                qa_f1 = single_agent_qa(w, comp, _precomputed=compressed_parts)
                 qa_em = em_score(
-                    " ".join(comp.decompress(comp.compress(f)) or f.text for f in w.fragments),
+                    " ".join(compressed_parts),
                     w.expected_answer,
                 )
 
                 # Token recall for compounding-error model (per tech ref §9)
                 tr = 0.0
-                for frag in w.fragments:
-                    slot = comp.compress(frag)
-                    compressed_text = comp.decompress(slot) or ""
-                    tr += token_recall(frag.text, compressed_text, gold_answer=w.expected_answer)
+                for frag, ct in zip(w.fragments, compressed_parts, strict=False):
+                    tr += token_recall(frag.text, ct)
                 avg_token_recall = tr / max(len(w.fragments), 1)
 
                 for seed in cfg.seeds:
