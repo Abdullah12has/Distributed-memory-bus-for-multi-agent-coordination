@@ -117,16 +117,21 @@ def _build_instance(
         fragments.append(frag)
 
         # Build a protected-fact entry if the fragment is confidential+.
+        # Questions are balanced: one "yes" (threshold below actual) and
+        # one "no" (threshold above actual) so priors-only baseline can't
+        # score 100% by always guessing the same answer.
         if int(tag.classification) >= int(Classification.CONFIDENTIAL):
+            budget_val = per_system_budget[s]
+            hours_val = per_system_hours[s]
             protected_facts.append(
                 ProtectedFact(
                     fragment_id=frag.fragment_id,
-                    fact=f"{s}.budget={per_system_budget[s]}",
+                    fact=f"{s}.budget={budget_val}",
                     yesno_questions=(
-                        f"Did {s} for project {project_id} exceed EUR {per_system_budget[s] + 5000} in budget?",
-                        f"Was {s}'s recorded hours for {project_id} more than {per_system_hours[s] + 30}?",
+                        f"Did {s} for project {project_id} record at least {hours_val - 5} hours?",
+                        f"Did {s} for project {project_id} exceed EUR {budget_val + 5000} in budget?",
                     ),
-                    answers=("no", "no"),
+                    answers=("yes", "no"),
                 )
             )
 

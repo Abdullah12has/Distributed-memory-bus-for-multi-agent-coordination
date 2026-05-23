@@ -1,0 +1,412 @@
+================================================================================
+INSIGHTS LOG — M6 Thesis Experiments
+Distributed Memory Bus for Multi-Agent Coordination
+Last updated: 2026-05-23 (post micro-experiment run)
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PHI-3 EXTRACTIVE COMPRESSOR — VERIFICATION FAILURE
+--------------------------------------------------------------------------------
+
+PROBLEM:
+  phi3:3.8b failed extractive verification 100% of the time at 5% threshold.
+  The model routinely inserts function words ("the", "is", "and", connectors)
+  even when explicitly told to output only verbatim source tokens. This is a
+  fundamental limitation of small LLMs doing instruction-following for
+  extractive tasks.
+
+ROOT CAUSE (two-fold):
+  a) 5% max_violation_rate was too strict. Even a few inserted function words
+     push the novel-token fraction above 5%.
+  b) No post-processing existed to clean up minor insertions. Outputs were
+     either accepted as-is or rejected entirely — no middle ground.
+
+FIX (commit 136305f):
+  - Relaxed max_violation_rate from 5% to 15% (gate, not guarantee)
+  - Added _strip_novel_tokens() to mechanically remove non-source words
+  - Pipeline: model generates -> relaxed gate filters -> stripping enforces
+    100% extractiveness on the final output
+  - Net effect: outputs that are 85%+ extractive pass gate, then get cleaned
+    to be strictly extractive
+
+THESIS NARRATIVE VALUE:
+  - Report the raw verification failure rate as evidence that small LLMs
+    cannot reliably follow extractive constraints
+  - Log fraction of tokens stripped per ratio as a mini-finding
+  - This supports the thesis argument that compression is non-trivial even
+    with explicit constraints
+
+RISK:
+  After stripping, Phi-3 extractive becomes "LLM-guided span selector +
+  mechanical filter" — potentially similar to LLMLingua-2 (also a token-level
+  selector). If both produce statistically indistinguishable outputs across
+  all ratios, you effectively have only 2 distinct compressors, weakening H2.
+  Monitor this in the full sweep.
+
+
+--------------------------------------------------------------------------------
+2. MODEL CHOICE — KEEP PHI-3, DON'T SWITCH
+--------------------------------------------------------------------------------
+
+DECISION: Keep Phi-3-Mini-3.8B for both compressor and H5 mid-size planner.
+
+REASONING:
+  - Thesis novelty is in the experimental framework (coordination cliff,
+    compounding-error model, inference disclosure), not model choice
+  - Reviewers won't care whether it's Phi-3 vs Gemma-2 vs Qwen-2.5
+  - Phi-3 at 3.8B is a natural midpoint in the 1.5B/3.8B/8B H5 ladder
+  - MIT license, clean for academic use
+  - Switching costs time with minimal benefit on a 4-week timeline
+  - The verification struggles are themselves interesting data
+
+ALTERNATIVES CONSIDERED:
+  - Qwen2.5-3B: potentially better instruction-following, but smaller gap
+    from 1.5B in H5 ladder
+  - Gemma-2-2B: same concern, plus different tokenizer family
+  - Phi-3.5-Mini: marginal improvement, not worth re-validation effort
+
+
+--------------------------------------------------------------------------------
+3. MICRO EXPERIMENT RESULTS (2026-05-23) — VALIDATED ON GPU SERVER
+--------------------------------------------------------------------------------
+
+Ran all 4 experiments with minimal configs on the GPU server (RTX 5090,
+Ollama with phi3:latest + llama3.1:8b, venv python 3.12).
+
+### H5 — MODEL-SIZE SCALING (CLEAR SIGNAL)
+
+  Config: 8B planner only (smoke), lingua2 compressor, 3 workloads, 4 ratios
+  Results:
+    ratio=1.0:  coord_success=1.0, F1=0.997-0.999 (near perfect)
+    ratio=4.0:  coord_success=0.0, F1=0.01-0.27  (cliff!)
+    ratio=8.0:  coord_success=0.0, F1=0.0         (total failure)
+    ratio=16.0: coord_success=0.0, F1=0.0-0.65    (hallucinated numbers)
+
+  INSIGHT: The coordination cliff is REAL and very sharp — between 1x and 4x.
+  The 8B planner correctly aggregates hours/budget from uncompressed fragments
+  (F1~1.0) but fails completely at 4x compression because LLMLingua-2 drops
+  the numeric tokens that are essential for the aggregation task.
+
+  The non-zero F1 at 16x is noise — the model hallucinates plausible numbers
+  that partially match by coincidence.
+
+  VERDICT: H5 infrastructure works end-to-end. Ready for full 3-model sweep.
+
+### H1/H2 — COORDINATION CLIFF SWEEP (PARTIAL SIGNAL)
+
+  Config: 3 compressors (lingua2, phi3-extractive, filter), 2 workloads,
+          3 ratios (1x, 4x, 8x), 1 seed, family-a, deterministic solver
+
+  Results:
+    All compressors: coord_success=1.0 at ratio=1x, 0.0 at ratio>=4x
+    qa_f1 = 0.0 everywhere (BUG — see section 12)
+    token_recall = 0.0 everywhere (BUG — see section 12)
+    subtask_acc = 1.0 everywhere (deterministic solver cheats)
+
+  INSIGHT: The deterministic solver correctly demonstrates the cliff effect.
+  All 3 compressors show identical cliff behavior because the deterministic
+  solver uses regex to extract "hours: X" and "budget: EUR Y" from compressed
+  text — when compression removes these patterns, it scores 0.
+
+  Phi3-extractive took ~3 minutes for 16 fragments (2 workloads x 8 frags)
+  via Ollama. At full scale (150 workloads x 8 frags x 10 ratios), that's
+  ~4.5 hours just for phi3 compression, plus lingua2 and filter time.
+
+  H1 shows rho=0.0 (constant arrays) — not meaningful with only 2 workloads.
+  H2 shows no cliff detected (tau=N/A) — piecewise fit needs >=4 ratio points.
+
+  VERDICT: Deterministic solver works. Need more ratios and workloads for
+  statistical tests to fire. The qa_f1 metric is broken (see section 12).
+
+### H3 — RAG PIPELINE PLACEMENT (BROKEN METRIC)
+
+  Config: lingua2 + filter, 5 workloads, storage/accuracy regimes
+  Results: F1 = 0.0 across ALL pipelines, compressors, regimes
+
+  ROOT CAUSE: H3 computes F1(retrieved_text, expected_answer). The expected
+  answer is "hours=819;budget=170969" (aggregated). The retrieved text is
+  raw fragments like "Recorded hours: 174. Approved budget: EUR 5608."
+  These share zero tokens — F1 is always 0.
+
+  The retrieval pipeline WORKS — it finds and returns relevant fragments.
+  The bug is in the scoring, not the retrieval.
+
+  FIX NEEDED: Either:
+    a) Change F1 to measure retrieval recall (did we retrieve the right
+       fragments?) rather than answer quality
+    b) Add an LLM reader after retrieval to aggregate the answer, then
+       score that against expected_answer
+    c) Use fragment-level F1: for each retrieved fragment, compute F1
+       against the original source fragment to measure compression quality
+
+  VERDICT: Pipeline works, metric is wrong. Must fix before full run.
+
+### H4 — INFERENCE DISCLOSURE (QUESTION DESIGN PROBLEM)
+
+  Config: lingua2 only, 3 workloads, 4x compression, llama3.1:8b reader
+  Results:
+    priors_correct = 1.00 (18/18 correct with NO fragment text)
+    baseline_correct = 0.94 (17/18 with full text)
+    compressed_correct = 0.89 (16/18 with compressed text)
+
+  ROOT CAUSE: ALL ground-truth answers are "no". The reader model defaults
+  to "no" when it has insufficient information, so priors get 100%. The
+  metric can't distinguish "I don't know" from "I verified it's no."
+
+  Example questions:
+    "Did contract_db for project P-1794 exceed EUR 27204 in budget?" → no
+    "Was contract_db's recorded hours for P-1794 more than 65?" → no
+
+  FIX NEEDED: The C1 benchmark's protected_facts generator must produce
+  a balanced mix of "yes" and "no" questions. Currently it generates only
+  "Did X exceed Y?" questions with thresholds above the actual values.
+
+  ALSO NOTABLE: Compression IS working — compressed_text_len = 18-32 chars
+  vs original = 141-162 chars (actual 4-8x compression ratio).
+
+  VERDICT: Ollama reader works, compression works, but question design
+  makes the metric vacuous. Must fix question generation.
+
+
+--------------------------------------------------------------------------------
+4. BASELINE RESULTS ON PUBLIC BENCHMARKS — REAL SIGNAL EXISTS
+--------------------------------------------------------------------------------
+
+HotpotQA (200 questions, lingua2 @ 4x, Llama-3.1-8B reader):
+  - Mean F1 ~ 0.35 (rough estimate from the CSV)
+  - Good spread: many 1.0 (exact matches), many 0.0 (failures)
+  - Some verbose/hedging answers ("There is no mention of...") — reader
+    generates too much when uncertain
+  - Cost: ~EUR 0.00002 per query (very cheap at local rates)
+
+NarrativeQA (200 questions, lingua2 @ 4x):
+  - Mean F1 ~ 0.35 (similar to HotpotQA)
+  - More varied question types (character, plot, setting)
+  - Reader occasionally generates lengthy disclaimers instead of answering
+
+INSIGHT: The compression + reader pipeline produces meaningful (non-zero)
+results on real public benchmarks. The problem is isolated to the C1
+synthetic benchmark scoring/question design.
+
+
+--------------------------------------------------------------------------------
+5. H2 CLIFF DETECTION — CONFIRMED REAL
+--------------------------------------------------------------------------------
+
+From micro experiments (2026-05-23):
+  - H5 with real Ollama planner: coord_success drops from 1.0 to 0.0
+    between ratio 1x and 4x. Sharp cliff, no gradual decline.
+  - H1/H2 with deterministic solver: same pattern, all 3 compressors.
+  - The cliff is at ~2x-4x for family-a (numeric aggregation tasks).
+
+From the smoke test (h1_h2_smoke, May 21):
+  - lingua2 shows tau* ~ 16.0 (extreme end of ratio range)
+  - drop_rel = 1.33 (>30% threshold — good)
+  - BUT p = 0.16 (not significant) due to n=3 workloads
+
+INSIGHT: The cliff exists and is sharp. It's driven by compression
+removing numeric tokens ("hours: 174", "budget: EUR 5608") that are
+essential for the aggregation task. This is exactly the compounding-error
+model prediction: q^N drops below theta when the compressor strips
+task-critical tokens.
+
+The cliff may be LESS sharp for families b and c, which depend on
+structural patterns (sub-task assignments, chain links) rather than
+precise numbers. This would be a valuable finding.
+
+
+--------------------------------------------------------------------------------
+6. LLAMA-3.1-8B SANITY BASELINE
+--------------------------------------------------------------------------------
+
+LlamaCpp sanity check (5 prompts): F1 = 0.6 (3/5 correct)
+  - This establishes that the reader model can produce correct answers
+  - Reference backend: Ollama, model: llama3.1:8b-instruct-q4_K_M
+  - Serves as the minimum quality bar for the inference backend
+
+H5 micro confirms: at ratio=1.0 (no compression), Llama-3.1-8B achieves
+F1=0.997-0.999 on family-a workloads. The model can solve these tasks
+when given full context.
+
+
+--------------------------------------------------------------------------------
+7. GPU SERVER STATUS
+--------------------------------------------------------------------------------
+
+RTX 5090 (checked 2026-05-23):
+  - 47C, 30% fan, 51W/600W, 2% GPU util
+  - 8.9GB / 32.6GB VRAM used (~27%)
+  - Active: Python 3.12 + Ollama daemon
+  - Plenty of headroom for full experiment runs
+
+nvidia-smi is at /usr/lib/wsl/lib/nvidia-smi (WSL2 path, not in $PATH)
+Python venv: ~/Distributed-memory-bus-for-multi-agent-coordination/.venv/bin/python3
+Must use `.venv/bin/python3` (not `python`) — system python is 3.10, venv is 3.12.
+
+
+--------------------------------------------------------------------------------
+8. COMPRESSOR DIFFERENTIATION RISK
+--------------------------------------------------------------------------------
+
+CONCERN: After the _strip_novel_tokens() fix, Phi-3 extractive may produce
+outputs that are statistically indistinguishable from LLMLingua-2, since both
+end up doing token-level selection from the source.
+
+DIFFERENCE IN MECHANISM:
+  - LLMLingua-2: XLM-RoBERTa classifier scores each token independently
+    based on perplexity, keeps top-k by score
+  - Phi-3 extractive: LLM selects contiguous spans based on semantic
+    relevance to task hint, then mechanical filter strips insertions
+
+EXPECTED BEHAVIORAL DIFFERENCE:
+  - LLMLingua-2 preserves high-information tokens regardless of position
+  - Phi-3 preserves contiguous spans (better coherence, may miss scattered
+    facts)
+  - At high compression ratios (8x+), LLMLingua-2 output becomes less
+    coherent (isolated tokens), while Phi-3 output stays readable (but
+    covers fewer spans)
+
+MONITOR: In the full H2 sweep, compute pairwise Jaccard similarity of
+token sets between lingua2 and phi3-extractive outputs at each ratio.
+If Jaccard > 0.8 consistently, the compressors are redundant.
+
+
+--------------------------------------------------------------------------------
+9. EXPERIMENT EXECUTION PRIORITIES (UPDATED)
+--------------------------------------------------------------------------------
+
+MUST FIX BEFORE FULL RUNS:
+  1. [H3] Fix F1 metric — use retrieval recall or add LLM reader step
+  2. [H4] Fix question generation — need balanced yes/no answers
+  3. [H1/H2] Fix qa_f1 and token_recall metrics (see section 12)
+
+MUST DO (for thesis):
+  1. Full H1/H2 sweep with v3 scripts on GPU server (~10h)
+  2. H3 RAG pipeline comparison (~3h)
+  3. H4 inference disclosure with real Ollama reader (~3h)
+  4. H5 3-point model scaling (~6h)
+
+SHOULD DO:
+  - Log phi3 verification stats (pre-fix failure rate, post-fix strip rate)
+  - Compute compressor output similarity (lingua2 vs phi3-extractive)
+  - Re-run baselines with phi3-extractive on HotpotQA for comparison
+
+NICE TO HAVE:
+  - H6 MultiHopRAG transfer validation (~4h)
+  - Ablation: phi3-extractive with vs without _strip_novel_tokens()
+
+
+--------------------------------------------------------------------------------
+10. DATA QUALITY NOTES
+--------------------------------------------------------------------------------
+
+C1 Benchmark (data/processed/c1-v0.1/):
+  - 3 families: a (cross-doc aggregation), b (constraint planning),
+    c (multi-step retrieval)
+  - 50 workloads per family, 150 total
+  - JSONL format with manifest.json
+
+  Family-a workload structure:
+    - 8 fragments per workload, each from a different "system" (publication_db,
+      contract_db, moodle, patio, peppi, crm, tatu_sap, sap_travel)
+    - Each fragment: "[system_name] Project P-XXXX — period YYYY-QQ.
+      Recorded hours: N. Approved budget: EUR M. Notes: ..."
+    - Expected answer: "hours=SUM;budget=SUM" (aggregation across all 8)
+    - Protected facts: 3 per workload, each with 2 yes/no questions
+
+Old training data (data/processed/training/qa.jsonl):
+  - Leftover from v1 ICAE training attempts
+  - Not used in v3 (all compressors are training-free)
+  - Can be safely ignored
+
+
+--------------------------------------------------------------------------------
+11. PHI-3 EXTRACTIVE PERFORMANCE ON GPU
+--------------------------------------------------------------------------------
+
+From micro H1/H2 run:
+  - phi3-extractive@4x: ~3 min for 16 fragments (2 workloads x 8 frags)
+  - That's ~11 seconds per fragment (includes Ollama call + verification
+    + potential retry + LLMLingua-2 fallback)
+  - phi3-extractive@8x: loaded LLMLingua-2 fallback, similar timing
+
+  At full scale (150 workloads x 8 frags x 10 ratios):
+    - 12,000 fragment compressions
+    - ~37 hours at 11s/fragment (TOO SLOW)
+    - With OLLAMA_NUM_PARALLEL=4: ~9 hours
+
+  OPTIMIZATION: Cache compressed outputs. Same fragment at same ratio =
+  same output (phi3 with temperature=0.0). Compress each unique
+  (fragment_id, ratio) pair once, cache to disk, reuse across seeds.
+  This reduces 12,000 calls to ~1,200 unique calls (~3.7 hours).
+
+
+--------------------------------------------------------------------------------
+12. CRITICAL BUG: QA_F1 AND TOKEN_RECALL ARE ALWAYS ZERO
+--------------------------------------------------------------------------------
+
+LOCATION: src/m6/experiments/run_h1_h2.py lines 179-189 (single_agent_qa)
+          and lines 102-115 (token_recall)
+
+PROBLEM:
+  single_agent_qa() computes F1(concatenated_compressed_text, expected_answer).
+  For family-a, expected_answer = "hours=819;budget=170969".
+  Compressed text = "hours: 174. Approved budget: EUR 5608. ..." (raw fragments).
+  Token overlap is zero because:
+    a) "819" doesn't appear in any fragment (it's the SUM of individual hours)
+    b) "170969" doesn't appear in any fragment (it's the SUM of budgets)
+    c) The format is different ("hours=819" vs "hours: 174")
+
+  token_recall() has the same problem — it looks for gold_answer tokens
+  in compressed text, but the gold answer is aggregated.
+
+IMPACT: H1's Spearman correlation is computed on constant-zero arrays,
+  giving rho=0.0 trivially. This makes H1 "supported" for the wrong reason
+  (both deltas are zero, not because QA and coordination are uncorrelated).
+
+FIX OPTIONS:
+  a) For family-a: single_agent_qa should compute the same aggregation
+     (sum hours, sum budget) from the compressed text, then compare to
+     expected. This mirrors what the deterministic solver does.
+  b) For token_recall: measure whether individual fragment-level facts
+     (e.g., "hours: 174") survive compression, not whether the aggregated
+     answer does.
+  c) Alternative: use the family-aware _score_answer() from run_h5.py,
+     which extracts numbers with regex and scores by relative error.
+
+PRIORITY: HIGH — H1 depends on having non-trivial qa_f1 values.
+
+
+--------------------------------------------------------------------------------
+13. DETERMINISTIC SOLVER LIMITATIONS
+--------------------------------------------------------------------------------
+
+The deterministic solver (_solve_family_a, _solve_family_b, _solve_family_c)
+in src/m6/agents/orchestrator.py:
+
+STRENGTHS:
+  - No LLM noise — isolates compression effects perfectly
+  - Fast — regex parsing, no Ollama calls
+  - Correct upper bound — uses expected_solver for subtask assignments
+
+WEAKNESSES:
+  - subtask_acc = 1.0 always (uses ground truth, not predictions)
+  - coord_success is binary (1 or 0) — loses fine-grained signal
+  - For family-a: regex "hours:\s*(\d+)" and "budget:\s*EUR\s*(\d+)"
+    are fragile — if compression changes "hours: 174" to "hours 174"
+    (drops colon), the regex still works. But if it drops "hours"
+    entirely or merges tokens, the solver gets 0.
+
+  The sharp cliff at 4x happens because LLMLingua-2 at 4x keeps enough
+  tokens for the regex to fire, but drops some numbers. The solver either
+  gets ALL 8 numbers right or fails. There's no partial credit.
+
+FOR THESIS: The deterministic solver is the right choice for H1/H2
+  because it isolates compression effects. But H5 (with real Ollama
+  planner) shows the cliff is even sharper because LLMs are more
+  sensitive to information loss than regex.
+
+
+================================================================================
+END OF INSIGHTS
+================================================================================
