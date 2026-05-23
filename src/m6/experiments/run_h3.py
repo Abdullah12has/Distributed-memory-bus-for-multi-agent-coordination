@@ -144,11 +144,20 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
             }
             for w in workloads:
                 corpus = list(w.fragments)
+                source_ids = {f.fragment_id for f in w.fragments}
                 for p_name, pipe in pipelines.items():
                     pipe.build(corpus)
                     hits = pipe.query(w.initial_prompt, k=5)
-                    synthesized = " ; ".join(h.fragment.text[:200] for h in hits)
-                    f1 = f1_score(synthesized, w.expected_answer)
+                    # Retrieval recall: fraction of source fragments retrieved
+                    retrieved_ids = {h.fragment.fragment_id for h in hits}
+                    retrieval_recall = len(retrieved_ids & source_ids) / max(len(source_ids), 1)
+                    # Per-fragment content F1: how much source text survives
+                    frag_f1s = []
+                    for h in hits:
+                        orig = next((f for f in w.fragments if f.fragment_id == h.fragment.fragment_id), None)
+                        if orig:
+                            frag_f1s.append(f1_score(h.fragment.text, orig.text))
+                    content_f1 = sum(frag_f1s) / len(frag_f1s) if frag_f1s else 0.0
                     eur = eur_for_call("local-ollama", 1500, 200)
                     rows.append(
                         {
@@ -157,9 +166,10 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                             "ratio": ratio,
                             "pipeline": p_name,
                             "workload_id": w.workload_id,
-                            "f1": f1,
+                            "f1": content_f1,
+                            "retrieval_recall": retrieval_recall,
                             "eur_per_query": eur,
-                            "f1_over_eur": f1 / max(eur, 1e-9),
+                            "f1_over_eur": content_f1 / max(eur, 1e-9),
                         }
                     )
 

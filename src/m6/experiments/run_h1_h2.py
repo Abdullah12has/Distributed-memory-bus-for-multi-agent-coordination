@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -100,15 +101,16 @@ def em_score(prediction: str, reference: str) -> float:
 
 
 def token_recall(source: str, compressed: str, gold_answer: str = "") -> float:
-    """Fraction of gold-answer tokens (or source tokens if no gold) preserved in compressed text.
+    """Fraction of source tokens preserved in compressed text.
 
     Used by the compounding-error model in Chapter 5: q = token_recall;
     surviving info after N rounds ~ q^N.
+
+    Measures how many of the *source* tokens survive compression, not
+    gold-answer tokens (which may be aggregated and not appear in any
+    single fragment).
     """
-    if gold_answer:
-        target_tokens = set(_normalize(gold_answer).split())
-    else:
-        target_tokens = set(_normalize(source).split())
+    target_tokens = set(_normalize(source).split())
     comp_tokens = set(_normalize(compressed).split())
     if not target_tokens:
         return 1.0
@@ -122,7 +124,9 @@ def score_coordination(workload: Workload, trace: WorkloadTrace) -> dict[str, fl
     """Compute coordination metrics. Returns dict with final_success, subtask_acc, etc."""
     family = workload.family.value
     if family == "a":
-        success = float(_norm(trace.final_answer) == _norm(workload.expected_answer))
+        # Use numeric scoring: success if both hours and budget within 25% error
+        f1 = _score_family_a(workload.expected_answer, trace.final_answer)
+        success = float(f1 > 0.75)
     elif family == "b":
         success = _success_b(workload, trace)
     else:
@@ -174,19 +178,93 @@ def _success_b(workload: Workload, trace: WorkloadTrace) -> float:
 
 
 # ============================================================================
+# Family-aware answer scoring (matches H5's _score_answer logic)
+# ============================================================================
+def _score_family_a(expected: str, answer: str) -> float:
+    """Extract hours and budget numbers, score by relative error."""
+    import re as _re
+
+    def _extract_nums(s: str) -> dict[str, int | None]:
+        nums: dict[str, int | None] = {"hours": None, "budget": None}
+        m = _re.search(r"hours\s*[=:]?\s*(\d[\d,]*)", s, _re.IGNORECASE)
+        if m:
+            nums["hours"] = int(m.group(1).replace(",", ""))
+        m = _re.search(r"budget\s*[=:]?\s*(?:EUR\s*)?(\d[\d,]*)", s, _re.IGNORECASE)
+        if m:
+            nums["budget"] = int(m.group(1).replace(",", ""))
+        return nums
+
+    exp_nums = _extract_nums(expected)
+    ans_nums = _extract_nums(answer)
+    scores = []
+    for key in ["hours", "budget"]:
+        ev, av = exp_nums.get(key), ans_nums.get(key)
+        if ev is not None and av is not None and ev > 0:
+            scores.append(max(0.0, 1.0 - abs(ev - av) / ev))
+        elif ev is not None and av is None:
+            scores.append(0.0)
+    return sum(scores) / len(scores) if scores else 0.0
+
+
+def _score_family_b(expected: str, answer: str) -> float:
+    """Compare sub-task assignments."""
+    def _parse(s: str) -> dict[str, str]:
+        return {m.group(1).lower(): m.group(2).lower()
+                for m in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", s, re.IGNORECASE)}
+    exp_map, ans_map = _parse(expected), _parse(answer)
+    if not exp_map:
+        return 0.0
+    return sum(1 for k, v in exp_map.items() if ans_map.get(k) == v) / len(exp_map)
+
+
+def _score_family_c(expected: str, answer: str) -> float:
+    """Extract FINAL-XXXX and compare."""
+    exp_m = re.search(r"FINAL-(\d+)", expected, re.IGNORECASE)
+    ans_m = re.search(r"FINAL-(\d+)", answer, re.IGNORECASE)
+    if exp_m and ans_m and exp_m.group(1) == ans_m.group(1):
+        return 1.0
+    return 0.0
+
+
+def _score_answer(workload: Workload, answer: str) -> float:
+    """Score answer using family-aware logic."""
+    fam = workload.family.value
+    if fam == "a":
+        return _score_family_a(workload.expected_answer, answer)
+    elif fam == "b":
+        return _score_family_b(workload.expected_answer, answer)
+    return _score_family_c(workload.expected_answer, answer)
+
+
+# ============================================================================
 # Single-agent QA (compress + concatenate, NO orchestrator)
 # ============================================================================
 def single_agent_qa(workload: Workload, compressor: Any) -> float:
-    """Run a single-agent QA pass: compress every fragment, concatenate, F1."""
+    """Run a single-agent QA pass: compress every fragment, aggregate, score.
+
+    Uses family-aware scoring: for family-a, sums up hours/budget from
+    compressed fragments and scores by relative error against expected answer.
+    """
     parts = []
     for frag in workload.fragments:
-        # Set task_hint so Phi-3 extractive knows what to preserve
         frag_with_hint = frag.model_copy(update={"task_hint": workload.initial_prompt})
         slot = compressor.compress(frag_with_hint)
         text = compressor.decompress(slot) or frag.text
         parts.append(text)
     synthesized = " ".join(parts)
-    return f1_score(synthesized, workload.expected_answer)
+    # For family-a: the deterministic solver sums hours/budget via regex;
+    # we do the same here and format as "hours=X;budget=Y" for scoring.
+    if workload.family.value == "a":
+        total_h, total_b = 0, 0
+        for part in parts:
+            m_h = re.search(r"hours:\s*(\d+)", part, re.IGNORECASE)
+            m_b = re.search(r"budget:\s*EUR\s*(\d+)", part, re.IGNORECASE)
+            if m_h:
+                total_h += int(m_h.group(1))
+            if m_b:
+                total_b += int(m_b.group(1))
+        synthesized = f"hours={total_h};budget={total_b}"
+    return _score_answer(workload, synthesized)
 
 
 # ============================================================================
