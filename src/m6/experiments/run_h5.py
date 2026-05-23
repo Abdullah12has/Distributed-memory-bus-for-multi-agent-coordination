@@ -281,24 +281,37 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
 
     rows: list[dict[str, Any]] = []
     comp_cache: dict[float, Any] = {}
+    # Cache compressed text per (ratio, fragment_id) — compression is
+    # deterministic (temp=0), so reuse across planner models and seeds.
+    compressed_cache: dict[tuple[float, str], str] = {}
     total = len(cfg.planner_models) * len(cfg.ratios) * len(workloads) * len(cfg.seeds)
     done = 0
     t_start = time.time()
 
+    # Pre-compress all fragments for all ratios (compressor is fixed in H5).
+    # This avoids redundant Ollama calls when iterating over planner models.
+    print(f"  Pre-compressing fragments for {len(cfg.ratios)} ratios...")
+    for ratio in cfg.ratios:
+        if ratio not in comp_cache:
+            comp_cache[ratio] = make_compressor(cfg.compressor, target_ratio=ratio)
+        comp = comp_cache[ratio]
+        for w in workloads:
+            for frag in w.fragments:
+                cache_key = (ratio, frag.fragment_id)
+                if cache_key not in compressed_cache:
+                    slot = comp.compress(frag)
+                    compressed_cache[cache_key] = comp.decompress(slot) or frag.text
+    print(f"  Cached {len(compressed_cache)} compressed fragments")
+
     for model_label, model_name in cfg.planner_models.items():
         print(f"\n  Planner: {model_label} ({model_name})")
         for ratio in cfg.ratios:
-            if ratio not in comp_cache:
-                comp_cache[ratio] = make_compressor(cfg.compressor, target_ratio=ratio)
-            comp = comp_cache[ratio]
-
             for w in workloads:
-                # Compress fragments
-                compressed_texts = {}
-                for frag in w.fragments:
-                    slot = comp.compress(frag)
-                    text = comp.decompress(slot) or frag.text
-                    compressed_texts[frag.fragment_id] = text
+                # Look up cached compressed fragments
+                compressed_texts = {
+                    frag.fragment_id: compressed_cache[(ratio, frag.fragment_id)]
+                    for frag in w.fragments
+                }
 
                 for seed in cfg.seeds:
                     result = ollama_planner_solve(model_name, w, compressed_texts, seed=seed)
