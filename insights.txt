@@ -1,7 +1,7 @@
 ================================================================================
 INSIGHTS LOG — M6 Thesis Experiments
 Distributed Memory Bus for Multi-Agent Coordination
-Last updated: 2026-05-23 (post micro-experiment run)
+Last updated: 2026-05-24 (full GPU experiment runs)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -318,21 +318,20 @@ Previously a concern; now CONFIRMED DIFFERENT from micro2 H1/H2 results:
 9. EXPERIMENT EXECUTION PRIORITIES (UPDATED)
 --------------------------------------------------------------------------------
 
-MUST FIX BEFORE FULL RUNS:
-  1. [H3] Fix F1 metric — use retrieval recall or add LLM reader step
-  2. [H4] Fix question generation — need balanced yes/no answers
-  3. [H1/H2] Fix qa_f1 and token_recall metrics (see section 12)
+COMPLETED (2026-05-24):
+  1. [H3] Fixed F1 metric — now uses fragment-level content F1 (DONE, valid results)
+  2. [H4] Fixed question gen — H4 supported with 3 compressors (DONE)
+  3. [H3] Full RAG pipeline run — 900 rows, H3 not supported (DONE)
+  4. [H4] Full inference disclosure run — H4 supported (DONE)
+  5. [H5] Full 3-model scaling run — 9000 rows, H5 not supported (DONE)
+  6. [phi3] Fixed fallback rate from 100% to 0% (DONE)
 
-MUST DO (for thesis):
-  1. Full H1/H2 sweep with v3 scripts on GPU server (~10h)
-  2. H3 RAG pipeline comparison (~3h)
-  3. H4 inference disclosure with real Ollama reader (~3h)
-  4. H5 3-point model scaling (~6h)
+IN PROGRESS:
+  1. [H1/H2] Full rerun with phi3 fix (~52% complete, ~2.5h remaining)
 
-SHOULD DO:
-  - Log phi3 verification stats (pre-fix failure rate, post-fix strip rate)
-  - Compute compressor output similarity (lingua2 vs phi3-extractive)
-  - Re-run baselines with phi3-extractive on HotpotQA for comparison
+REMAINING (for thesis):
+  - Write up results for Ch5 (H1+H2+H5), Ch6 (H3), Ch7 (H4)
+  - Figures: cliff curves, model-size bar charts, pipeline comparison
 
 NICE TO HAVE:
   - H6 MultiHopRAG transfer validation (~4h)
@@ -448,6 +447,152 @@ FOR THESIS: The deterministic solver is the right choice for H1/H2
   because it isolates compression effects. But H5 (with real Ollama
   planner) shows the cliff is even sharper because LLMs are more
   sensitive to information loss than regex.
+
+
+--------------------------------------------------------------------------------
+14. FULL EXPERIMENT RESULTS (2026-05-24) — GPU SERVER
+--------------------------------------------------------------------------------
+
+Ran all experiments with full configs on the GPU server. H1/H2 rerun in
+progress with phi3 fallback fix.
+
+### H3 — RAG PIPELINE PLACEMENT (FULL RUN, 900 rows)
+
+  Config: 3 compressors (lingua2, phi3-extractive, filter), 50 workloads,
+          storage-bounded (8x) + accuracy-bounded (2x) regimes
+  Runtime: ~25 minutes
+
+  Results (P1 vs P2 diff, paired bootstrap):
+    storage_bounded:  P1-P2 = +7.7pp [5.2, 10.3] p=0.0002 (P1 > P2)
+    accuracy_bounded: P1-P2 = +3.7pp [2.8, 4.6]  p=0.0002 (P1 > P2)
+
+  Ranking (f1_over_eur): P3 >> P1 > P2 in both regimes.
+
+  VERDICT: H3 NOT SUPPORTED.
+    - No sign-flip: P1 > P2 in BOTH regimes (need opposite signs)
+    - P1 outperforms P2 because compress-first preserves more content
+      in the retrieved fragments than retrieve-first-then-compress
+    - P3 trivially dominates (theta_high=0.75 keeps most hits verbatim)
+    - The sign-flip prediction assumes retrieve-first gives better
+      accuracy at low compression — but our retriever indexes all
+      workload fragments, so retrieval quality is identical
+
+  THESIS NARRATIVE: Report as negative result. The compress→retrieve
+  order (P1) is consistently better because compression is the bottleneck,
+  not retrieval. This challenges the LongLLMLingua assumption that
+  retrieve-first preserves accuracy.
+
+### H4 — INFERENCE DISCLOSURE (FULL RUN, from h4_v2)
+
+  Config: 3 compressors, 50 workloads, 4x compression, llama3.1:8b reader
+  Results:
+    filter:          priors=94.3%, baseline=99.3%, compressed=100.0%
+                     Signal: +5pp (p=0.001) | Reduction: -0.7pp (p=0.182, NS)
+    lingua2:         priors=94.3%, baseline=99.3%, compressed=85.0%
+                     Signal: +5pp (p=0.001) | Reduction: +14.3pp (p=0.0001)
+    phi3-extractive: priors=94.3%, baseline=99.3%, compressed=96.1%
+                     Signal: +5pp (p=0.001) | Reduction: +3.2pp (p=0.006)
+
+  VERDICT: H4 SUPPORTED.
+    - Signal significant for all 3 compressors (baseline > priors)
+    - Reduction significant for lingua2 (14.3pp) and phi3 (3.2pp)
+    - Filter shows NO reduction — compressed text preserves all facts
+    - Lingua2 is the most aggressive: drops 14.3pp of inference accuracy
+    - Phi3-extractive is gentler: only 3.2pp drop (verbatim spans preserve
+      more context than token-level selection)
+
+  KEY INSIGHT: Compression creates a measurable inference disclosure gap.
+  The gap correlates with compression aggressiveness: lingua2 (token-level)
+  > phi3 (span-level) > filter (reranker-based, near-lossless).
+
+### H5 — MODEL-SIZE SCALING (FULL RUN, 9000 rows)
+
+  Config: 3 planners (1.5B qwen2.5, 3.8B phi3, 8B llama3.1), 3 families,
+          20 workloads/family, 10 ratios, 5 seeds, lingua2 compressor
+  Runtime: ~9 hours
+
+  Results (coord_success by model × family):
+              family-a    family-b    family-c
+    1.5B      3.6%        0.0%        49.0%
+    3.8B      0.0%        0.0%        53.1%
+    8B        68.0%       1.3%        97.0%
+
+  Cliff positions (tau*):
+    family-a: 1.5B=16.0  3.8B=NaN    8B=14.6   gap=-1.4
+    family-b: 1.5B=NaN   3.8B=NaN    8B=1.0    gap=NaN
+    family-c: 1.5B=15.9  3.8B=15.9   8B=16.0   gap=0.1
+
+  VERDICT: H5 NOT SUPPORTED (max gap=0.1, need ≥1.5).
+    - Monotonic on 3/3 families (passes first criterion)
+    - But gap is negligible: all taus cluster near 16.0 (ceiling)
+    - Family-c is too easy: all models handle it (even 1.5B at 49%)
+    - Family-b is too hard: only 8B gets above zero
+    - Family-a shows the best separation but 3.8B scores 0% (phi3 can't
+      parse the hours/budget format at all)
+
+  KEY INSIGHT: Model size affects ABSOLUTE performance dramatically
+  (1.5B=17.5% vs 8B=50.3% overall) but the cliff position (tau*) doesn't
+  shift much. All models hit their cliff at roughly the same compression
+  ratio. This suggests the cliff is driven by information loss in
+  compression, not by model reasoning capacity.
+
+  THESIS NARRATIVE: Report as "model size affects ceiling, not cliff."
+  The compounding-error model q^N predicts cliff position depends on per-
+  token survival probability q, which is a compressor property, not a
+  planner property. Larger planners just have higher baseline accuracy
+  before the cliff.
+
+### H1/H2 — COORDINATION CLIFF (RERUN IN PROGRESS)
+
+  Using phi3 fallback fix (commit 63bf8ee): phi3 now strips novel tokens
+  at ≥50% extractive fraction instead of falling back to lingua2.
+  Tested: 0/20 fallbacks (was 100% before the fix).
+
+  Previous run (h1_h2_full) results:
+    H1 SUPPORTED: lingua2 rho=0.57, phi3 rho=0.57 (identical — both
+    were lingua2 due to 100% fallback). Filter rho=0.99.
+    H2 NOT SUPPORTED: 4/9 significant cliffs (need 7/9).
+
+  Expected improvement with fix:
+    - phi3 will produce distinct rho from lingua2
+    - May change H1 verdict (need 2/3 compressors below 0.6)
+    - H2 may improve if phi3 shows different cliff positions
+
+  Status: 52% complete (~2.5h remaining)
+
+
+--------------------------------------------------------------------------------
+15. PHI-3 FALLBACK FIX (2026-05-24)
+--------------------------------------------------------------------------------
+
+PROBLEM:
+  phi3-extractive fell back to lingua2 100% of the time in full runs,
+  despite the 15% violation rate fix from commit 136305f. The verifier
+  still rejected outputs where >15% of tokens were novel.
+
+ROOT CAUSE:
+  The _try_extract() method returned None on ANY verifier failure, even
+  when the output was 80%+ extractive. This triggered the lingua2 fallback
+  for every fragment, making phi3 results identical to lingua2.
+
+FIX (commit 63bf8ee):
+  When extractive fraction ≥ 50%, strip novel tokens and return the result
+  instead of falling back. The _strip_novel_tokens() function already
+  enforces 100% extractiveness on the output.
+
+  Pipeline: model generates → verifier checks →
+    if ≥85% extractive: strip & return (same as before)
+    if 50-85% extractive: strip & return (NEW — salvage instead of fallback)
+    if <50% extractive: retry with strict prompt → fallback to lingua2
+
+VALIDATION:
+  Tested on 20 benchmark fragments: 0/20 fallbacks (was 100% before).
+  phi3 produces distinct output from lingua2 at all ratios.
+
+RISK:
+  Stripped output may lose coherence (function words removed). But the
+  experiment metrics (coord_success, F1) measure content preservation,
+  not readability, so this is acceptable.
 
 
 ================================================================================
