@@ -172,6 +172,12 @@ def run_h4(cfg: H4Config) -> pd.DataFrame:
                     comp_answer = ask_reader(cfg.reader_model, compressed_text, q)
                     comp_correct = float(comp_answer == gt_answer)
 
+                    # Track errors so we can filter them before computing rates
+                    has_error = (
+                        priors_answer == "error"
+                        or baseline_answer == "error"
+                        or comp_answer == "error"
+                    )
                     rows.append({
                         "workload_id": w.workload_id,
                         "fragment_id": pf.fragment_id,
@@ -184,6 +190,7 @@ def run_h4(cfg: H4Config) -> pd.DataFrame:
                         "compressed_correct": comp_correct,
                         "compressed_text_len": len(compressed_text),
                         "original_text_len": len(frag_text),
+                        "has_error": has_error,
                     })
 
         print(f"  {w.workload_id}: {len(w.protected_facts)} protected facts processed")
@@ -194,6 +201,13 @@ def run_h4(cfg: H4Config) -> pd.DataFrame:
 def compute_h4_verdict(df: pd.DataFrame) -> dict:
     if df.empty:
         return {"h4_supported": False, "note": "no protected facts found"}
+
+    # Filter out rows where any condition errored
+    if "has_error" in df.columns:
+        n_errors = int(df["has_error"].sum())
+        if n_errors > 0:
+            print(f"  [info] Filtering {n_errors}/{len(df)} rows with reader errors")
+        df = df[~df["has_error"]].copy()
 
     # Aggregate per compressor — collect all p-values for Holm correction
     per_comp = {}

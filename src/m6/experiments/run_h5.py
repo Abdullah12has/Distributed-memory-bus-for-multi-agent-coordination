@@ -333,7 +333,8 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
             for frag in w.fragments:
                 cache_key = (ratio, frag.fragment_id)
                 if cache_key not in compressed_cache:
-                    slot = comp.compress(frag)
+                    frag_with_hint = frag.model_copy(update={"task_hint": w.initial_prompt})
+                    slot = comp.compress(frag_with_hint)
                     compressed_cache[cache_key] = comp.decompress(slot) or frag.text
     print(f"  Cached {len(compressed_cache)} compressed fragments")
 
@@ -412,7 +413,7 @@ def compute_h5_verdict(df: pd.DataFrame) -> dict:
             monotonic_families += 1
 
     # H5: monotonic on >= 2/3 families AND gap >= 1.5
-    max_gap = max((d["gap"] for d in per_family.values()), default=0)
+    max_gap = max((d["gap"] for d in per_family.values() if d["monotonic"]), default=0.0)
     return {
         "per_family": per_family,
         "monotonic_families": monotonic_families,

@@ -360,6 +360,9 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
     right_eval = float(intercept + sr * (x.max() - tau))
     drop_rel = (left_eval - right_eval) / max(abs(left_eval), 1e-6)
 
+    # Also fit logistic model for comparison: y = L / (1 + exp(k*(x - tau_l)))
+    logistic_fit = _fit_logistic(x, y)
+
     return {
         "tau": float(tau),
         "slope_left": float(sl),
@@ -367,7 +370,34 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
         "intercept": float(intercept),
         "drop_rel": float(drop_rel),
         "rmse": rmse,
+        "logistic_tau": logistic_fit["tau"],
+        "logistic_rmse": logistic_fit["rmse"],
+        "model_selected": "logistic" if logistic_fit["rmse"] < rmse else "piecewise",
     }
+
+
+def _fit_logistic(x: np.ndarray, y: np.ndarray) -> dict:
+    """Fit logistic cliff: y = floor + (ceil - floor) / (1 + exp(k*(x - tau)))."""
+    if len(x) < 4 or float(np.ptp(y)) < 1e-6:
+        return {"tau": float("nan"), "rmse": float("nan")}
+
+    def _obj(params):
+        tau, k, ceil_val, floor_val = params
+        preds = floor_val + (ceil_val - floor_val) / (1.0 + np.exp(k * (x - tau)))
+        return float(np.mean((preds - y) ** 2))
+
+    x_margin = (x.max() - x.min()) * 0.1
+    bounds = [
+        (float(x.min() + x_margin), float(x.max() - x_margin)),  # tau
+        (0.01, 10.0),    # k (steepness, positive = decreasing)
+        (0.0, 1.5),      # ceil
+        (-0.5, 1.0),     # floor
+    ]
+    result = optimize.differential_evolution(_obj, bounds=bounds, seed=0, maxiter=3000)
+    tau, k, ceil_val, floor_val = result.x
+    preds = floor_val + (ceil_val - floor_val) / (1.0 + np.exp(k * (x - tau)))
+    rmse = float(np.sqrt(np.mean((preds - y) ** 2)))
+    return {"tau": float(tau), "k": float(k), "rmse": rmse}
 
 
 def holm_correction(p_values: list[float]) -> list[float]:
@@ -543,7 +573,7 @@ def compute_h1_verdict(df: pd.DataFrame) -> dict:
 # H2 Verdict
 # ============================================================================
 def compute_h2_verdict(df: pd.DataFrame) -> dict:
-    """Piecewise cliff fit + Mann-Whitney U on 9 (compressor, family) cells."""
+    """Piecewise cliff fit + paired Wilcoxon signed-rank on 9 (compressor, family) cells."""
     cells = []
     tested_indices = []
     p_values = []
@@ -562,20 +592,25 @@ def compute_h2_verdict(df: pd.DataFrame) -> dict:
                     "drop_rel": 0.0,
                     "test_p": None,
                     "test_p_holm": None,
-                    "n_below": 0,
-                    "n_above": 0,
+                    "n_pairs": 0,
                 }
             )
             continue
 
         fit = fit_piecewise(ratios_arr, success_arr)
 
-        below = sub[sub["ratio"] < fit["tau"]]["coord_success"].to_numpy()
-        above = sub[sub["ratio"] >= fit["tau"]]["coord_success"].to_numpy()
+        # Paired test: for each workload, compare mean coord_success
+        # below vs above tau (same workload in both groups → paired design)
+        below_by_wl = sub[sub["ratio"] < fit["tau"]].groupby("workload_id")["coord_success"].mean()
+        above_by_wl = sub[sub["ratio"] >= fit["tau"]].groupby("workload_id")["coord_success"].mean()
+        paired = pd.DataFrame({"below": below_by_wl, "above": above_by_wl}).dropna()
 
         test_p = None
-        if below.size > 0 and above.size > 0:
-            u_stat, test_p = stats.mannwhitneyu(below, above, alternative="greater")
+        n_pairs = len(paired)
+        if n_pairs >= 10 and not np.allclose(paired["below"], paired["above"]):
+            _, test_p = stats.wilcoxon(
+                paired["below"], paired["above"], alternative="greater"
+            )
             tested_indices.append(len(cells))
             p_values.append(test_p)
 
@@ -588,8 +623,7 @@ def compute_h2_verdict(df: pd.DataFrame) -> dict:
                 "rmse": fit["rmse"],
                 "test_p": test_p,
                 "test_p_holm": None,
-                "n_below": int(below.size),
-                "n_above": int(above.size),
+                "n_pairs": n_pairs,
             }
         )
 
