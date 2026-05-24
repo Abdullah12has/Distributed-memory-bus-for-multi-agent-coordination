@@ -194,6 +194,12 @@ class Phi3ExtractiveCompressor:
             if passed:
                 # Strip any novel tokens to enforce strict extractiveness
                 return _strip_novel_tokens(source, raw)
+            # If reasonably extractive (>50%), salvage by stripping novel tokens
+            # instead of falling back to lingua2
+            if fraction >= 0.50:
+                stripped = _strip_novel_tokens(source, raw)
+                if stripped.strip():
+                    return stripped
             return None
         except Exception:
             return None
