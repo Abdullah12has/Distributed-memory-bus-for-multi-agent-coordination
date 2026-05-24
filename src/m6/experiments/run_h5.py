@@ -173,7 +173,7 @@ def _score_answer(workload: Workload, answer: str) -> tuple[float, float]:
     if fam == "a":
         return _score_family_a(expected, answer)
     elif fam == "b":
-        return _score_family_b(expected, answer)
+        return _score_family_b(workload, answer)
     else:
         return _score_family_c(expected, answer)
 
@@ -212,21 +212,50 @@ def _score_family_a(expected: str, answer: str) -> tuple[float, float]:
     return coord_success, f1
 
 
-def _score_family_b(expected: str, answer: str) -> tuple[float, float]:
-    """Family b: compare sub-task assignments."""
-    def _parse_assignments(s: str) -> dict[str, str]:
-        # Accept both "worker-X" and "agent-X", normalize to "worker-X"
-        return {m.group(1).lower(): f"worker-{m.group(2)}"
-                for m in re.finditer(r"(sub-\d+)\s*=\s*(?:worker|agent)-(\d+)", s, re.IGNORECASE)}
-
-    exp_map = _parse_assignments(expected)
-    ans_map = _parse_assignments(answer)
-    if not exp_map:
+def _score_family_b(workload: "Workload", answer: str) -> tuple[float, float]:
+    """Family b: check assignment feasibility (all tasks assigned, capacities respected)."""
+    # Parse capacities from metadata
+    cap_str = workload.metadata.get("capacities", "")
+    if not cap_str:
         return 0.0, 0.0
-    correct = sum(1 for k, v in exp_map.items() if ans_map.get(k) == v)
-    f1 = correct / len(exp_map)
-    coord_success = float(f1 > 0.5)
-    return coord_success, f1
+    capacities = [int(x) for x in str(cap_str).split(",")]
+    n_agents = len(capacities)
+
+    # Parse loads from sub_tasks
+    loads = {}
+    for st in workload.sub_tasks:
+        sub_id = st.sub_task_id.split("/")[-1]  # "c1-b-000/sub-0" -> "sub-0"
+        loads[sub_id] = int(st.constraints.get("load", 1) or 1)
+
+    # Parse assignments from answer (accept both worker-X and agent-X)
+    ans_map = {}
+    for m in re.finditer(r"(sub-\d+)\s*=\s*(?:worker|agent)-(\d+)", answer, re.IGNORECASE):
+        ans_map[m.group(1).lower()] = int(m.group(2))
+
+    # Check: all tasks assigned?
+    n_tasks = len(loads)
+    assigned = sum(1 for sub_id in loads if sub_id in ans_map)
+    if assigned == 0:
+        return 0.0, 0.0
+
+    # Check feasibility: no agent exceeds capacity
+    agent_load = [0] * n_agents
+    feasible = True
+    for sub_id, agent_idx in ans_map.items():
+        if sub_id not in loads:
+            continue
+        if agent_idx < 0 or agent_idx >= n_agents:
+            feasible = False
+            break
+        agent_load[agent_idx] += loads[sub_id]
+        if agent_load[agent_idx] > capacities[agent_idx]:
+            feasible = False
+            break
+
+    # f1 = fraction of tasks assigned; coord_success = all assigned AND feasible
+    coverage = assigned / n_tasks
+    coord_success = float(feasible and assigned == n_tasks)
+    return coord_success, coverage
 
 
 def _score_family_c(expected: str, answer: str) -> tuple[float, float]:
