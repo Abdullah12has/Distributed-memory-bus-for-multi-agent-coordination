@@ -199,14 +199,11 @@ def compute_h3_verdict(df: pd.DataFrame) -> dict:
         r = df[df["regime"] == regime]
         if r.empty:
             continue
-        # Paired P1 vs P2 on workload_id
-        p1 = r[r["pipeline"] == "P1"][["workload_id", "compressor", "f1"]].rename(
-            columns={"f1": "f1_p1"}
-        )
-        p2 = r[r["pipeline"] == "P2"][["workload_id", "compressor", "f1"]].rename(
-            columns={"f1": "f1_p2"}
-        )
-        paired = p1.merge(p2, on=["workload_id", "compressor"])
+        # Paired P1 vs P2 per workload (average across compressors to avoid
+        # inflating N — observations from same workload share documents)
+        p1 = r[r["pipeline"] == "P1"].groupby("workload_id")["f1"].mean().rename("f1_p1")
+        p2 = r[r["pipeline"] == "P2"].groupby("workload_id")["f1"].mean().rename("f1_p2")
+        paired = pd.DataFrame({"f1_p1": p1, "f1_p2": p2}).dropna()
         if paired.empty:
             continue
         a = paired["f1_p1"].to_numpy(dtype=np.float64)

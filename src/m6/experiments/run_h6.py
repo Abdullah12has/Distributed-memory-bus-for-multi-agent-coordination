@@ -312,21 +312,18 @@ def compute_h6_verdict(df: pd.DataFrame, synth_results_path: str | None) -> dict
     verdict["tau_diff_pct"] = tau_diff_pct
     verdict["tau_within_15pct"] = tau_passes
 
-    # Coord success comparison: max diff <= 10pp at overlapping ratios
+    # Coord success curve comparison (informational only — scoring differs
+    # between H6 token-F1>=0.5 and H5 numeric-error>0.75, so direct
+    # comparison of absolute values is not meaningful)
     overlapping = set(real_curve.keys()) & set(synth_curve.keys())
-    if not overlapping:
-        verdict["h6_supported"] = False
-        verdict["note"] = "No overlapping ratios between real and synthetic runs."
-        return verdict
-    max_diff_pp = 0.0
-    for r in overlapping:
-        diff = abs(real_curve[r] - synth_curve[r]) * 100
-        max_diff_pp = max(max_diff_pp, diff)
-    coord_passes = max_diff_pp <= 10.0
-    verdict["max_coord_diff_pp"] = max_diff_pp
-    verdict["coord_within_10pp"] = coord_passes
+    if overlapping:
+        max_diff_pp = max(abs(real_curve[r] - synth_curve[r]) * 100 for r in overlapping)
+        verdict["max_coord_diff_pp"] = max_diff_pp
+        verdict["coord_within_10pp"] = max_diff_pp <= 10.0
+        verdict["coord_note"] = "Informational only — scoring thresholds differ between H6 and H5."
 
-    verdict["h6_supported"] = tau_passes and coord_passes
+    # H6 supported: tau* comparison only (scale-independent)
+    verdict["h6_supported"] = tau_passes
     return verdict
 
 
