@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -40,6 +41,9 @@ class SweepConfig:
     benchmark_path: str = "data/processed/c1-v0.1"
     compressors: list[str] | None = None
     ratios: list[float] | None = None
+    # Per-compressor ratio overrides: phi3-extractive uses fewer ratios
+    # to keep runtime manageable (~12s/fragment vs ~0.01s for lingua2).
+    compressor_ratios: dict[str, list[float]] | None = None
     seeds: list[int] | None = None
     families: list[str] | None = None
     n_workloads: int | None = None  # None = all
@@ -50,16 +54,27 @@ class SweepConfig:
             self.compressors = ["lingua2", "phi3-extractive", "filter"]
         if self.ratios is None:
             self.ratios = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0]
+        if self.compressor_ratios is None:
+            self.compressor_ratios = {
+                "phi3-extractive": [1.0, 4.0, 8.0, 12.0, 16.0],
+            }
         if self.seeds is None:
             self.seeds = [0, 1, 2, 3, 4]
         if self.families is None:
             self.families = ["a", "b", "c"]
+
+    def ratios_for(self, compressor: str) -> list[float]:
+        """Return ratios for a given compressor (fewer for slow ones)."""
+        if self.compressor_ratios and compressor in self.compressor_ratios:
+            return self.compressor_ratios[compressor]
+        return self.ratios
 
     @classmethod
     def smoke(cls) -> SweepConfig:
         return cls(
             compressors=["lingua2", "filter"],
             ratios=[1.0, 4.0, 8.0, 16.0],
+            compressor_ratios={},
             seeds=[0],
             families=["a"],
             n_workloads=5,
@@ -383,7 +398,10 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
         workloads = workloads[: cfg.n_workloads]
     print(f"  {len(workloads)} workloads loaded")
 
-    total_cells = len(cfg.compressors) * len(cfg.ratios) * len(workloads) * len(cfg.seeds)
+    total_cells = sum(
+        len(cfg.ratios_for(c)) * len(workloads) * len(cfg.seeds)
+        for c in cfg.compressors
+    )
     print(f"  Total cells: {total_cells}")
 
     rows: list[dict[str, Any]] = []
@@ -395,6 +413,12 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
     done = 0
     t_start = time.time()
 
+    # Incremental save path — write partial results every 500 cells
+    # so progress survives crashes.
+    out_dir = Path(cfg.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    partial_csv = out_dir / "sweep_results.partial.csv"
+
     def _compress_fragment(comp: Any, comp_name: str, ratio: float, frag: Any) -> str:
         cache_key = (comp_name, ratio, frag.fragment_id)
         if cache_key not in compressed_text_cache:
@@ -404,7 +428,7 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
         return compressed_text_cache[cache_key]
 
     for comp_name in cfg.compressors:
-        for ratio in cfg.ratios:
+        for ratio in cfg.ratios_for(comp_name):
             key = (comp_name, ratio)
             if key not in compressor_cache:
                 print(f"  Building compressor {comp_name} @ {ratio}x...")
@@ -459,8 +483,15 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
                         elapsed = time.time() - t_start
                         eta = (elapsed / done) * (total_cells - done) if done > 0 else 0
                         print(f"  [{done}/{total_cells}] {elapsed:.0f}s elapsed, ETA {eta:.0f}s")
+                        sys.stdout.flush()
+                    # Incremental save every 500 cells
+                    if done % 500 == 0:
+                        pd.DataFrame(rows).to_csv(partial_csv, index=False)
 
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    # Remove partial file now that we have the full result
+    partial_csv.unlink(missing_ok=True)
+    return df
 
 
 # ============================================================================
