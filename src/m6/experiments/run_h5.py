@@ -89,7 +89,7 @@ def _format_hint(workload: Workload) -> str:
     if fam == "a":
         return 'Use exactly this format: "ANSWER: hours=<total_hours>;budget=<total_budget>" (integers only, no currency symbols).'
     elif fam == "b":
-        return 'Use exactly this format: "ANSWER: sub-0=worker-X;sub-1=worker-Y;..." listing every sub-task assignment.'
+        return 'Use exactly this format: "ANSWER: sub-0=worker-X;sub-1=worker-Y;..." listing every sub-task assignment. Use "worker-0", "worker-1", etc. as agent names.'
     else:  # family c
         return 'Use exactly this format: "ANSWER: FINAL-<number>" with the leaf value.'
 
@@ -138,9 +138,10 @@ Your response:"""
         answer = response[:200]
 
     # Extract assignments from the answer line (single source of truth)
+    # Accept both "worker-X" and "agent-X" (LLMs often say "agent" since fragments use that word)
     assignments = {}
-    for match in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", answer, re.IGNORECASE):
-        assignments[match.group(1)] = match.group(2).lower()
+    for match in re.finditer(r"(sub-\d+)\s*=\s*(?:worker|agent)-(\d+)", answer, re.IGNORECASE):
+        assignments[match.group(1)] = f"worker-{match.group(2)}"
 
     # Score using family-aware method
     coord_success, f1 = _score_answer(workload, answer)
@@ -214,8 +215,9 @@ def _score_family_a(expected: str, answer: str) -> tuple[float, float]:
 def _score_family_b(expected: str, answer: str) -> tuple[float, float]:
     """Family b: compare sub-task assignments."""
     def _parse_assignments(s: str) -> dict[str, str]:
-        return {m.group(1).lower(): m.group(2).lower()
-                for m in re.finditer(r"(sub-\d+)\s*=\s*(worker-\d+)", s, re.IGNORECASE)}
+        # Accept both "worker-X" and "agent-X", normalize to "worker-X"
+        return {m.group(1).lower(): f"worker-{m.group(2)}"
+                for m in re.finditer(r"(sub-\d+)\s*=\s*(?:worker|agent)-(\d+)", s, re.IGNORECASE)}
 
     exp_map = _parse_assignments(expected)
     ans_map = _parse_assignments(answer)
