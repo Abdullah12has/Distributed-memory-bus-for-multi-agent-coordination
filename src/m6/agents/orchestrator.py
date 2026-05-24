@@ -411,5 +411,7 @@ def _solve_family_c(
     return final_answer, assignments
 
 
-def _round_robin_assignments(sub_tasks: tuple[SubTask, ...]) -> dict[str, str]:
-    return {st.sub_task_id: st.expected_solver for st in sub_tasks}
+def _round_robin_assignments(
+    sub_tasks: tuple[SubTask, ...], n_workers: int = 8
+) -> dict[str, str]:
+    return {st.sub_task_id: f"worker-{i % n_workers}" for i, st in enumerate(sub_tasks)}
