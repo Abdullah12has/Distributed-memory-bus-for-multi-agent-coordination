@@ -17,24 +17,22 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
-import string
 import sys
 import time
-from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 import numpy as np
 import pandas as pd
-from scipy import optimize
 
 from m6.benchmark.generator import load as load_benchmark
 from m6.benchmark.schemas import Workload
 from m6.compressors import make_compressor
+from m6.experiments.run_h1_h2 import f1_score as token_f1
+from m6.experiments.run_h1_h2 import _normalize  # noqa: PLC2701
+from m6.experiments.run_h5 import fit_piecewise
 
 # ============================================================================
 # Config
@@ -70,29 +68,8 @@ class H6Config:
 
 
 # ============================================================================
-# QA metrics (inline)
+# QA metrics
 # ============================================================================
-def _normalize(s: str) -> str:
-    s = s.lower()
-    s = "".join(ch for ch in s if ch not in set(string.punctuation))
-    s = re.sub(r"\b(a|an|the)\b", " ", s)
-    return " ".join(s.split())
-
-
-def token_f1(prediction: str, reference: str) -> float:
-    p_tokens = _normalize(prediction).split()
-    r_tokens = _normalize(reference).split()
-    if not p_tokens or not r_tokens:
-        return float(p_tokens == r_tokens)
-    common = Counter(p_tokens) & Counter(r_tokens)
-    num_same = sum(common.values())
-    if num_same == 0:
-        return 0.0
-    precision = num_same / len(p_tokens)
-    recall = num_same / len(r_tokens)
-    return 2 * precision * recall / (precision + recall)
-
-
 def exact_match(prediction: str, reference: str) -> float:
     return float(_normalize(prediction) == _normalize(reference))
 
@@ -134,7 +111,8 @@ Your response:"""
         )
         resp.raise_for_status()
         response = resp.json().get("response", "")
-    except Exception:
+    except Exception as e:
+        print(f"  [warn] planner exception: {e}", file=sys.stderr)
         response = ""
 
     # Extract answer
@@ -157,39 +135,6 @@ Your response:"""
         "exact_match": em,
         "raw_response": response[:500],
     }
-
-
-# ============================================================================
-# Cliff fitting (inline, from run_h5.py)
-# ============================================================================
-def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
-    x = np.asarray(ratios, dtype=np.float64)
-    y = np.asarray(success, dtype=np.float64)
-    if len(x) < 4 or float(np.ptp(y)) < 1e-6:
-        return {"tau": float("nan"), "drop_rel": 0.0}
-    y_range = float(max(np.max(y) - np.min(y), 1e-6))
-
-    def _obj(params):
-        tau, sl, sd, intercept = params
-        sr = sl - max(sd, 0.0)
-        preds = np.where(
-            x <= tau, intercept + sl * (x - tau), intercept + sr * (x - tau)
-        )
-        return float(np.mean((preds - y) ** 2))
-
-    bounds = [
-        (float(x.min()), float(x.max())),
-        (-2 / y_range, 2 / y_range),
-        (0.0, 4 / y_range),
-        (float(y.min() - 1), float(y.max() + 1)),
-    ]
-    result = optimize.differential_evolution(_obj, bounds=bounds, seed=0, maxiter=3000)
-    tau, sl, sd, intercept = result.x
-    sr = sl - max(sd, 0.0)
-    left_eval = float(intercept + sl * (x.min() - tau))
-    right_eval = float(intercept + sr * (x.max() - tau))
-    drop_rel = (left_eval - right_eval) / max(abs(left_eval), 1e-6)
-    return {"tau": float(tau), "drop_rel": float(drop_rel)}
 
 
 # ============================================================================
@@ -369,6 +314,10 @@ def compute_h6_verdict(df: pd.DataFrame, synth_results_path: str | None) -> dict
 
     # Coord success comparison: max diff <= 10pp at overlapping ratios
     overlapping = set(real_curve.keys()) & set(synth_curve.keys())
+    if not overlapping:
+        verdict["h6_supported"] = False
+        verdict["note"] = "No overlapping ratios between real and synthetic runs."
+        return verdict
     max_diff_pp = 0.0
     for r in overlapping:
         diff = abs(real_curve[r] - synth_curve[r]) * 100
