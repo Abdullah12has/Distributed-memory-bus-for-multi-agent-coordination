@@ -252,10 +252,10 @@ def _score_family_b(workload: "Workload", answer: str) -> tuple[float, float]:
             feasible = False
             break
 
-    # f1 = fraction of tasks assigned; coord_success = all assigned AND feasible
-    coverage = assigned / n_tasks
+    # f1 = task coverage (fraction assigned); coord_success = all assigned AND feasible
+    f1 = assigned / n_tasks
     coord_success = float(feasible and assigned == n_tasks)
-    return coord_success, coverage
+    return coord_success, f1
 
 
 def _score_family_c(expected: str, answer: str) -> tuple[float, float]:
