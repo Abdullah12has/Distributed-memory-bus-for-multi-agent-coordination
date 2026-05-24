@@ -1,0 +1,153 @@
+# M6 Thesis — Distributed Memory Bus for Multi-Agent Coordination
+
+Master's thesis by Syed Abdullah Hassan, University of Oulu.
+Context compression + coordination quality + policy-aware sharing.
+
+## IMPORTANT: Insight Logging Rule
+
+**Every new insight, finding, bug, fix, or decision MUST be appended to `insights.txt`** in the project root. This includes:
+- Experiment results and their interpretation
+- Bugs found and how they were fixed
+- Design decisions and their rationale
+- Performance observations
+- Hypothesis verdict changes
+
+Format: numbered section with heading, date, and clear description. See existing entries in `insights.txt` for style.
+
+---
+
+## Project Structure
+
+| Path | Purpose |
+|------|---------|
+| `src/m6/` | Main package (pip-installable as `m6`) |
+| `configs/experiments/h{1-6}.yaml` | Experiment configs |
+| `results/` | Local results (auto-created) |
+| `data/processed/c1-v0.1/` | C1 benchmark (150 instances, 3 families) |
+| `plan-v3.md` | Active plan (v1 and v2 are dead) |
+| `docs/TECHNICAL_REFERENCE_V3.md` | Technical spec |
+| `insights.txt` | Running log of all findings and decisions |
+
+## Compressors (all training-free)
+
+1. **LLMLingua-2** (`lingua2.py`) — token-level XLM-RoBERTa classifier
+2. **Phi-3-Mini extractive** (`phi3_extractive.py`) — verbatim span selection via Ollama, with novel-token stripping + LLMLingua-2 fallback
+3. **Instruction-aware filter** (`filter.py`) — TF-IDF + cross-encoder reranker
+4. **Identity** (`__init__.py`) — no-compression control
+
+## Experiment Scripts (v3, self-contained)
+
+```bash
+# Smoke tests (local)
+python -m m6.experiments.run_h1_h2 --smoke
+python -m m6.experiments.run_h3 --smoke
+python -m m6.experiments.run_h4 --smoke
+python -m m6.experiments.run_h5 --smoke
+python -m m6.experiments.run_h6 --smoke
+
+# Full runs (on GPU server: ssh gpu)
+python -m m6.experiments.run_h1_h2
+python -m m6.experiments.run_h3
+python -m m6.experiments.run_h4
+python -m m6.experiments.run_h5
+python -m m6.experiments.run_h6 --synth-results results/h5_full
+```
+
+## GPU Server
+
+- Access: `ssh gpu` (Tailscale 100.70.160.59, WSL2 Ubuntu 22.04)
+- Hardware: RTX 5090 32GB, Python 3.12, CUDA, Ollama
+- Venv: `~/Distributed-memory-bus-for-multi-agent-coordination/.venv/`
+- Must use `.venv/bin/python3` (system python is 3.10)
+- `OLLAMA_NUM_PARALLEL=4` set in `~/.bashrc`
+- nvidia-smi at `/usr/lib/wsl/lib/nvidia-smi`
+
+## Hypotheses & Current Verdicts
+
+### H1: QA vs Coordination Decorrelation
+- **Criterion**: Spearman rho < 0.6, CI excluding 0.6, on >= 2/3 compressors
+- **Status: SUPPORTED** (h1_h2_v3_quick2, 2026-05-24)
+  - filter: rho=-0.287 [-0.331, -0.240]
+  - lingua2: rho=0.256 [0.211, 0.298]
+  - phi3-extractive: rho=0.284 [0.230, 0.336]
+  - All 3/3 below 0.6 with CIs excluding 0.6
+
+### H2: Coordination Cliff
+- **Criterion**: Cliff >= 30% drop + Mann-Whitney p < 0.05 on >= 7/9 cells
+- **Status: SUPPORTED** (h1_h2_v3_quick2, 2026-05-24, 8/9 cells significant)
+  - Only failure: filter/c (tau=N/A, no cliff detected)
+  - All tau* cluster near 15.9-16.0 (piecewise fit boundary bias — real drops but tau position unreliable)
+
+### H3: RAG Pipeline Placement
+- **Criterion**: P1/P2 sign-flip between storage/accuracy regimes, 5pp effect
+- **Status: NOT SUPPORTED** (P1 > P2 in both regimes, no sign-flip; P3 dominates)
+- Narrative: compress-first (P1) consistently better; challenges LongLLMLingua assumption
+
+### H4: Inference Disclosure
+- **Criterion**: baseline > priors AND compressed < baseline
+- **Status: SUPPORTED**
+  - Signal: +5pp (p=0.001) for all 3 compressors
+  - Reduction: lingua2 -14.3pp (p=0.0001), phi3 -3.2pp (p=0.006), filter NS
+  - Key insight: compression aggressiveness correlates with disclosure gap
+
+### H5: Model-Size Scaling
+- **Criterion**: tau* monotonic across 1.5B/3.8B/8B on >= 2/3 families, gap >= 1.5
+- **Status: NOT SUPPORTED** (confirmed across 5 diagnostic configs, 2026-05-24)
+  - Family-a: 8B cliff at 3x, all models cliff at same ratio. Gap negligible.
+  - Family-c: gradual decline, no model-size dependence. Non-monotonic tau*.
+  - Family-b: 0% everywhere due to agent/worker naming bug in scoring
+  - 14B (Qwen2.5) tested: same cliff position as 8B, confirming cliff is compressor-driven
+- Narrative: "model size affects ceiling, not cliff position" — more interesting than support
+
+### H6: MultiHopRAG Transfer (Optional)
+- **Criterion**: tau* within +/-15% of C1 family-a, coord_success within +/-10pp
+- **Status: PENDING** — implementation ready, needs GPU run
+- Runner: `python -m m6.experiments.run_h6 --synth-results results/h5_full`
+- Data: 30 MultiHopRAG examples reformulated as C1 family-a workloads
+- Wallclock: ~65 min on GPU
+
+## Completed Experiment Runs (GPU Server)
+
+| Run | Directory | Date | Status | Notes |
+|-----|-----------|------|--------|-------|
+| H3 full | `h3_full` | 2026-05-24 | Done | 900 rows, H3 not supported |
+| H4 full | `h4_v2` | 2026-05-22 | Done | H4 supported, 3 compressors |
+| H5 full | `h5_full` | 2026-05-24 | Done | 9000 rows, H5 not supported |
+| H1/H2 full | `h1_h2_full` | 2026-05-21 | Done | phi3=lingua2 fallback bug |
+| H1/H2 v2 | `h1_h2_v2` | 2026-05-24 | Done | intermediate fix attempt |
+| H1/H2 rerun | `h1_h2_v3_quick2` | 2026-05-24 | Done | phi3 fix + qa_f1 fix confirmed. H1+H2 SUPPORTED |
+| H3 quick | `quick_h3` | 2026-05-24 | Done | smoke test validation |
+| H4 quick | `quick_h4` | 2026-05-24 | Done | smoke test validation |
+| H5 quick | `quick_h5` | 2026-05-24 | Done | smoke test validation |
+| H5 diagnostic | `h5_diagnostic` | 2026-05-24 | Done | 3 models x 3 families x 4 ratios x 2 seeds x 10 wl |
+| H5 diag1 cliff | `h5_diag1_cliff` | 2026-05-24 | Done | Family-a, 8 ratios, cliff shape |
+| H5 diag2 famc | `h5_diag2_famc` | 2026-05-24 | Done | Family-c, 8 ratios, non-monotonic investigation |
+| H5 diag4 14B | `h5_diag4_14b` | 2026-05-24 | Done | 4 models incl 14B, family-a |
+| H5 diag5 combined | `h5_diag5_combined` | 2026-05-24 | Done | A+C, 3 models, 6 ratios |
+
+## Key Bugs Fixed
+
+1. **qa_f1 always zero**: was comparing compressed fragments against aggregated answer; fixed to measure information preservation
+2. **phi3 100% fallback**: verifier too strict, now salvages at >= 50% extractive fraction (commit 63bf8ee)
+3. **H4 question bias**: all ground-truth answers were "no"; fixed to balanced yes/no
+4. **H3 F1 metric**: was comparing retrieved text vs aggregated answer; fixed to fragment-level content F1
+5. **H5 family-b agent/worker mismatch**: LLMs output `agent-X`, scoring expected `worker-X`; now accepts both (commit f6b942b)
+6. **H5 family-b exact-match scoring**: replaced with feasibility checker — any valid bin-packing scores 1.0 (commit 9d006f7)
+7. **H5 vacuous monotonicity**: all-NaN families no longer pass `all()` on empty iterator (commit 0da542b)
+8. **H2/H5 tau boundary bias**: tau constrained to interior 10% margin, prevents parking at x.max (commit 0da542b)
+9. **H4 missing Holm correction**: added Holm-Bonferroni across all 2N tests (commit 0da542b)
+10. **H3 P1=P2 cost model**: P1 now uses compressed corpus tokens for retrieval cost (commit 0da542b)
+11. **Smoke tests missing phi3**: added phi3-extractive to H1/H2, H3, H4 smoke configs (commit 0da542b)
+
+## Chapter Mapping
+
+- **Ch5**: H1 + H2 + H5 (coordination cliff + scaling)
+- **Ch6**: H3 (RAG pipelines + cost)
+- **Ch7**: H4 + H6 (inference disclosure + memory bus + transfer validation)
+
+## Remaining Work
+
+- Full production runs with all fixes applied
+- H6 MultiHopRAG transfer validation (implementation ready, needs GPU run ~65min)
+- Thesis writing: Ch5, Ch6, Ch7 results sections
+- Figures: cliff curves, model-size bar charts, pipeline comparison
