@@ -329,10 +329,10 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
     if n < 4:
         return {"tau": float("nan"), "drop_rel": 0.0, "rmse": float("nan")}
 
-    y_range = float(max(np.max(y) - np.min(y), 1e-6))
     # If no variation in y, no cliff to detect
     if float(np.ptp(y)) < 1e-6:
         return {"tau": float("nan"), "drop_rel": 0.0, "rmse": float("nan")}
+    y_range = float(np.ptp(y))
 
     def _objective(params):
         tau, sl, sd, intercept = params
@@ -418,10 +418,10 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
     out_dir.mkdir(parents=True, exist_ok=True)
     partial_csv = out_dir / "sweep_results.partial.csv"
 
-    def _compress_fragment(comp: Any, comp_name: str, ratio: float, frag: Any) -> str:
+    def _compress_fragment(comp: Any, comp_name: str, ratio: float, frag: Any, hint: str = "") -> str:
         cache_key = (comp_name, ratio, frag.fragment_id)
         if cache_key not in compressed_text_cache:
-            frag_with_hint = frag.model_copy(update={"task_hint": frag.task_hint or ""})
+            frag_with_hint = frag.model_copy(update={"task_hint": hint})
             slot = comp.compress(frag_with_hint)
             compressed_text_cache[cache_key] = comp.decompress(slot) or frag.text
         return compressed_text_cache[cache_key]
@@ -437,7 +437,7 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
             for w in workloads:
                 # Compress all fragments once (cached across seeds)
                 compressed_parts = [
-                    _compress_fragment(comp, comp_name, ratio, frag)
+                    _compress_fragment(comp, comp_name, ratio, frag, hint=w.initial_prompt)
                     for frag in w.fragments
                 ]
 
@@ -504,10 +504,17 @@ def compute_h1_verdict(df: pd.DataFrame) -> dict:
     verdicts = {}
     n_below = 0
     for comp, sub in df.groupby("compressor"):
+        # Average coord_success across seeds to avoid inflating N
+        # (qa_f1 is seed-invariant, so duplicates would tighten CI artificially)
+        agg = sub.groupby(["workload_id", "ratio"]).agg(
+            qa_f1=("qa_f1", "first"),  # same across seeds
+            coord_success=("coord_success", "mean"),  # average across seeds
+        ).reset_index()
+
         # Get reference (ratio=1) values per workload
-        ref = sub[sub["ratio"] == 1.0][["workload_id", "seed", "qa_f1", "coord_success"]]
+        ref = agg[agg["ratio"] == 1.0][["workload_id", "qa_f1", "coord_success"]]
         ref = ref.rename(columns={"qa_f1": "qa_ref", "coord_success": "coord_ref"})
-        merged = sub.merge(ref, on=["workload_id", "seed"], how="left")
+        merged = agg.merge(ref, on=["workload_id"], how="left")
         merged = merged[merged["ratio"] != 1.0].dropna(
             subset=["qa_f1", "coord_success", "qa_ref", "coord_ref"]
         )
@@ -520,7 +527,8 @@ def compute_h1_verdict(df: pd.DataFrame) -> dict:
         delta_coord = (merged["coord_success"] - merged["coord_ref"]).to_numpy()
         result = spearman_with_ci(delta_qa, delta_coord)
         # Plan-v3 criterion: rho < 0.6 AND 95% CI upper bound < 0.6
-        supported = result["rho"] < 0.6 and (np.isnan(result["ci_high"]) or result["ci_high"] < 0.6)
+        # NaN CI means insufficient data — do not count as supported
+        supported = result["rho"] < 0.6 and not np.isnan(result["ci_high"]) and result["ci_high"] < 0.6
         result["supported"] = supported
         verdicts[comp] = result
         if supported:

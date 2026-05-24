@@ -87,26 +87,16 @@ Answer (yes/no):"""
         if "yes" in answer:
             return "yes"
         return "no"
-    except Exception:
-        return "no"
+    except Exception as e:
+        import sys
+        print(f"  [warn] reader exception: {e}", file=sys.stderr)
+        return "error"
 
 
 # ============================================================================
 # Statistics (inline)
 # ============================================================================
-def _holm_correction(p_values: list[float]) -> list[float]:
-    """Holm-Bonferroni step-down correction for multiple testing."""
-    n = len(p_values)
-    if n == 0:
-        return []
-    order = sorted(range(n), key=lambda i: p_values[i])
-    adj = [0.0] * n
-    running = 0.0
-    for rank, idx in enumerate(order):
-        candidate = (n - rank) * p_values[idx]
-        running = max(running, candidate)
-        adj[idx] = min(running, 1.0)
-    return adj
+from m6.experiments.run_h1_h2 import holm_correction as _holm_correction
 
 
 def paired_bootstrap(a: np.ndarray, b: np.ndarray, n_boot: int = 10000) -> dict:
