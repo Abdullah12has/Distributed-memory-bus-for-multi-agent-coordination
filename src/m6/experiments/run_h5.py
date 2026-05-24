@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -334,6 +335,12 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
                         elapsed = time.time() - t_start
                         eta = (elapsed / done) * (total - done)
                         print(f"    [{done}/{total}] {elapsed:.0f}s elapsed, ETA {eta:.0f}s")
+                        sys.stdout.flush()
+                    # Incremental save every 200 cells
+                    if done % 200 == 0:
+                        out_dir = Path(cfg.out_dir)
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        pd.DataFrame(rows).to_csv(out_dir / "results.partial.csv", index=False)
 
     return pd.DataFrame(rows)
 

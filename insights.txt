@@ -276,12 +276,19 @@ c) Avoid model switching:
    model load/unload cycles (~5s each). H5 pre-compresses all fragments
    before iterating over planner models.
 
+d) Run experiments sequentially, not in parallel:
+   Running multiple experiments simultaneously on the same GPU causes
+   Ollama model thrashing (phi3 ↔ llama3.1 swaps, ~5s each). The
+   OLLAMA_NUM_PARALLEL=4 helps within a single experiment (concurrent
+   requests to the SAME model), not across experiments using DIFFERENT
+   models. Full runs should chain: H1/H2 → H5 → H4 → H3.
+
 ESTIMATED SAVINGS:
   H1/H2: ~10h baseline → ~4h (caching cuts phi3 calls 10x)
   H5: ~6h baseline → ~2h (pre-compression + parallel planner calls)
   H3: ~3h baseline → ~3h (no Ollama calls, already fast)
   H4: ~3h baseline → ~1.5h (parallel reader calls via NUM_PARALLEL)
-  Total: ~22h → ~10.5h
+  Total: ~22h → ~10.5h (sequential execution, no GPU contention)
 
 
 --------------------------------------------------------------------------------
