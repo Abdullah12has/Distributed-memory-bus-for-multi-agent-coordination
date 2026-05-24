@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """H5 — Model-size scaling: does tau* shift upward with larger planner LLMs?
 
-Tests 3 planner sizes (1.5B / 3.8B / 8B) with LLMLingua-2 as fixed compressor.
-The deterministic orchestrator is replaced with a direct Ollama planner call
-so the LLM quality actually affects the coordination outcome.
+Tests 4 planner sizes (1.5B / 3.8B / 8B / 14B) with LLMLingua-2 as fixed
+compressor. The deterministic orchestrator is replaced with a direct Ollama
+planner call so the LLM quality actually affects the coordination outcome.
 
 H5 supported iff:
-  tau*_8B >= tau*_3.8B >= tau*_1.5B on >= 2/3 families,
+  tau* monotonically non-decreasing across model sizes on >= 2/3 families,
   with largest-vs-smallest gap >= 1.5 ratio units.
 
 Run:
@@ -43,6 +43,7 @@ PLANNER_MODELS = {
     "1.5B": "qwen2.5:1.5b-instruct-q4_K_M",
     "3.8B": "phi3:latest",
     "8B": "llama3.1:8b",
+    "14B": "qwen2.5:14b",
 }
 
 
