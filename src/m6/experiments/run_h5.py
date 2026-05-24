@@ -283,8 +283,9 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
         preds = np.where(x <= tau, intercept + sl * (x - tau), intercept + sr * (x - tau))
         return float(np.mean((preds - y) ** 2))
 
+    x_margin = (x.max() - x.min()) * 0.1
     bounds = [
-        (float(x.min()), float(x.max())),
+        (float(x.min() + x_margin), float(x.max() - x_margin)),
         (-2 / y_range, 2 / y_range),
         (0.0, 4 / y_range),
         (float(y.min() - 1), float(y.max() + 1)),
@@ -393,12 +394,15 @@ def compute_h5_verdict(df: pd.DataFrame) -> dict:
     per_family = {}
     for fam in families:
         fam_taus = [taus.get((m, fam), float("nan")) for m in model_sizes]
-        is_monotonic = all(
-            fam_taus[i] <= fam_taus[i + 1]
+        # Need at least 2 non-NaN taus to assess monotonicity
+        valid_pairs = [
+            (fam_taus[i], fam_taus[i + 1])
             for i in range(len(fam_taus) - 1)
             if not np.isnan(fam_taus[i]) and not np.isnan(fam_taus[i + 1])
-        )
-        gap = fam_taus[-1] - fam_taus[0] if len(fam_taus) >= 2 else 0
+        ]
+        is_monotonic = len(valid_pairs) >= 1 and all(a <= b for a, b in valid_pairs)
+        non_nan = [t for t in fam_taus if not np.isnan(t)]
+        gap = non_nan[-1] - non_nan[0] if len(non_nan) >= 2 else 0.0
         per_family[fam] = {
             "taus": dict(zip(model_sizes, fam_taus, strict=False)),
             "monotonic": is_monotonic,

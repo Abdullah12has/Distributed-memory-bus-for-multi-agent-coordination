@@ -46,7 +46,7 @@ class H3Config:
 
     @classmethod
     def smoke(cls) -> H3Config:
-        return cls(compressors=["lingua2", "filter"], n_workloads=5, out_dir="results/h3_smoke")
+        return cls(compressors=["lingua2", "phi3-extractive", "filter"], n_workloads=3, out_dir="results/h3_smoke")
 
 
 # ============================================================================
@@ -161,11 +161,14 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                     # Cost model: estimate tokens actually processed per pipeline
                     corpus_tokens = sum(len(f.text) // 4 for f in corpus)
                     retrieved_tokens = sum(len(h.fragment.text) // 4 for h in hits)
+                    compressed_corpus_tokens = int(corpus_tokens / max(ratio, 1.0))
                     if p_name == "P1":
-                        # compress all → retrieve compressed
-                        input_tokens = corpus_tokens + retrieved_tokens
+                        # compress full corpus → retrieve from compressed
+                        # Cost = compress(full) + retrieve(compressed)
+                        input_tokens = corpus_tokens + compressed_corpus_tokens
                     elif p_name == "P2":
-                        # retrieve full → compress top-k
+                        # retrieve from full corpus → compress top-k only
+                        # Cost = retrieve(full) + compress(top-k)
                         input_tokens = corpus_tokens + retrieved_tokens
                     else:  # P3
                         # retrieve full → conditionally compress subset
