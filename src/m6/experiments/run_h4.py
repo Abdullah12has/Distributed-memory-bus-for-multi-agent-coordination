@@ -54,7 +54,7 @@ class H4Config:
 
     @classmethod
     def smoke(cls) -> H4Config:
-        return cls(compressors=["lingua2"], n_workloads=3, out_dir="results/h4_smoke")
+        return cls(compressors=["lingua2", "phi3-extractive"], n_workloads=3, out_dir="results/h4_smoke")
 
 
 # ============================================================================
@@ -94,6 +94,21 @@ Answer (yes/no):"""
 # ============================================================================
 # Statistics (inline)
 # ============================================================================
+def _holm_correction(p_values: list[float]) -> list[float]:
+    """Holm-Bonferroni step-down correction for multiple testing."""
+    n = len(p_values)
+    if n == 0:
+        return []
+    order = sorted(range(n), key=lambda i: p_values[i])
+    adj = [0.0] * n
+    running = 0.0
+    for rank, idx in enumerate(order):
+        candidate = (n - rank) * p_values[idx]
+        running = max(running, candidate)
+        adj[idx] = min(running, 1.0)
+    return adj
+
+
 def paired_bootstrap(a: np.ndarray, b: np.ndarray, n_boot: int = 10000) -> dict:
     diff = a - b
     observed = float(diff.mean())
@@ -190,8 +205,9 @@ def compute_h4_verdict(df: pd.DataFrame) -> dict:
     if df.empty:
         return {"h4_supported": False, "note": "no protected facts found"}
 
-    # Aggregate per compressor
+    # Aggregate per compressor — collect all p-values for Holm correction
     per_comp = {}
+    all_p_values = []  # (compressor, test_type, p_value)
     for comp, sub in df.groupby("compressor"):
         priors = sub["priors_correct"].to_numpy(dtype=np.float64)
         baseline = sub["baseline_correct"].to_numpy(dtype=np.float64)
@@ -206,11 +222,22 @@ def compute_h4_verdict(df: pd.DataFrame) -> dict:
             "priors_rate": float(priors.mean()),
             "baseline_rate": float(baseline.mean()),
             "compressed_rate": float(compressed.mean()),
-            "signal_test": test_signal,  # baseline - priors > 0?
-            "reduction_test": test_reduction,  # baseline - compressed > 0?
-            "signal_significant": test_signal["p"] < 0.05 and test_signal["diff"] > 0,
-            "reduction_significant": test_reduction["p"] < 0.05 and test_reduction["diff"] > 0,
+            "signal_test": test_signal,
+            "reduction_test": test_reduction,
         }
+        all_p_values.append((comp, "signal", test_signal["p"]))
+        all_p_values.append((comp, "reduction", test_reduction["p"]))
+
+    # Holm-Bonferroni correction across all tests
+    raw_ps = [p for _, _, p in all_p_values]
+    adjusted = _holm_correction(raw_ps)
+    for (comp, test_type, _), p_adj in zip(all_p_values, adjusted):
+        per_comp[comp][f"{test_type}_test"]["p_holm"] = p_adj
+
+    # Apply significance using Holm-corrected p-values
+    for comp, d in per_comp.items():
+        d["signal_significant"] = d["signal_test"]["p_holm"] < 0.05 and d["signal_test"]["diff"] > 0
+        d["reduction_significant"] = d["reduction_test"]["p_holm"] < 0.05 and d["reduction_test"]["diff"] > 0
 
     # H4 supported: at least one compressor shows both signal AND reduction
     any_supported = any(

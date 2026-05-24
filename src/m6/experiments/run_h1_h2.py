@@ -72,12 +72,12 @@ class SweepConfig:
     @classmethod
     def smoke(cls) -> SweepConfig:
         return cls(
-            compressors=["lingua2", "filter"],
+            compressors=["lingua2", "phi3-extractive", "filter"],
             ratios=[1.0, 4.0, 8.0, 16.0],
-            compressor_ratios={},
+            compressor_ratios={"phi3-extractive": [1.0, 4.0]},
             seeds=[0],
             families=["a"],
-            n_workloads=5,
+            n_workloads=3,
             out_dir="results/h1_h2_smoke",
         )
 
@@ -257,13 +257,15 @@ def _score_answer(workload: Workload, answer: str) -> float:
 def single_agent_qa(
     workload: Workload, compressor: Any, *, _precomputed: list[str] | None = None
 ) -> float:
-    """Information-preservation QA: token F1 of compressed text vs original.
+    """Information-preservation metric (column: qa_f1): token F1 of compressed
+    text vs original source text.
 
-    Measures how much of the original source content survives compression.
-    This is deliberately different from coord_success (which uses
-    family-specific deterministic solvers and is binary) so that H1 can
-    test whether information quality and coordination success degrade at
-    different rates under compression.
+    NOTE: Despite the column name "qa_f1", this is NOT QA accuracy against
+    gold answers. It measures how much source content survives compression
+    (token recall/precision). This is deliberately different from coord_success
+    (family-specific deterministic solver, binary) so that H1 can test whether
+    information preservation and coordination success degrade at different
+    rates under compression.
 
     If ``_precomputed`` is provided, skips compression (already cached).
     """
@@ -328,6 +330,9 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
         return {"tau": float("nan"), "drop_rel": 0.0, "rmse": float("nan")}
 
     y_range = float(max(np.max(y) - np.min(y), 1e-6))
+    # If no variation in y, no cliff to detect
+    if float(np.ptp(y)) < 1e-6:
+        return {"tau": float("nan"), "drop_rel": 0.0, "rmse": float("nan")}
 
     def _objective(params):
         tau, sl, sd, intercept = params
@@ -335,8 +340,10 @@ def fit_piecewise(ratios: np.ndarray, success: np.ndarray) -> dict:
         preds = np.where(x <= tau, intercept + sl * (x - tau), intercept + sr * (x - tau))
         return float(np.mean((preds - y) ** 2))
 
+    # Constrain tau to interior: need data points on both sides of the breakpoint
+    x_margin = (x.max() - x.min()) * 0.1  # 10% margin from edges
     bounds = [
-        (float(x.min()), float(x.max())),
+        (float(x.min() + x_margin), float(x.max() - x_margin)),
         (-2.0 / y_range, 2.0 / y_range),
         (0.0, 4.0 / y_range),
         (float(y.min() - 1.0), float(y.max() + 1.0)),
