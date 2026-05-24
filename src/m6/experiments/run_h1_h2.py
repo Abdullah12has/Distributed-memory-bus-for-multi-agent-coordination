@@ -257,10 +257,13 @@ def _score_answer(workload: Workload, answer: str) -> float:
 def single_agent_qa(
     workload: Workload, compressor: Any, *, _precomputed: list[str] | None = None
 ) -> float:
-    """Run a single-agent QA pass: compress every fragment, aggregate, score.
+    """Information-preservation QA: token F1 of compressed text vs original.
 
-    Uses family-aware scoring: for family-a, sums up hours/budget from
-    compressed fragments and scores by relative error against expected answer.
+    Measures how much of the original source content survives compression.
+    This is deliberately different from coord_success (which uses
+    family-specific deterministic solvers and is binary) so that H1 can
+    test whether information quality and coordination success degrade at
+    different rates under compression.
 
     If ``_precomputed`` is provided, skips compression (already cached).
     """
@@ -274,19 +277,8 @@ def single_agent_qa(
             text = compressor.decompress(slot) or frag.text
             parts.append(text)
     synthesized = " ".join(parts)
-    # For family-a: the deterministic solver sums hours/budget via regex;
-    # we do the same here and format as "hours=X;budget=Y" for scoring.
-    if workload.family.value == "a":
-        total_h, total_b = 0, 0
-        for part in parts:
-            m_h = re.search(r"hours:\s*(\d+)", part, re.IGNORECASE)
-            m_b = re.search(r"budget:\s*EUR\s*(\d+)", part, re.IGNORECASE)
-            if m_h:
-                total_h += int(m_h.group(1))
-            if m_b:
-                total_b += int(m_b.group(1))
-        synthesized = f"hours={total_h};budget={total_b}"
-    return _score_answer(workload, synthesized)
+    source_text = " ".join(frag.text for frag in workload.fragments)
+    return f1_score(synthesized, source_text)
 
 
 # ============================================================================
