@@ -158,7 +158,19 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                         if orig:
                             frag_f1s.append(f1_score(h.fragment.text, orig.text))
                     content_f1 = sum(frag_f1s) / len(frag_f1s) if frag_f1s else 0.0
-                    eur = eur_for_call("local-ollama", 1500, 200)
+                    # Cost model: estimate tokens actually processed per pipeline
+                    corpus_tokens = sum(len(f.text) // 4 for f in corpus)
+                    retrieved_tokens = sum(len(h.fragment.text) // 4 for h in hits)
+                    if p_name == "P1":
+                        # compress all → retrieve compressed
+                        input_tokens = corpus_tokens + retrieved_tokens
+                    elif p_name == "P2":
+                        # retrieve full → compress top-k
+                        input_tokens = corpus_tokens + retrieved_tokens
+                    else:  # P3
+                        # retrieve full → conditionally compress subset
+                        input_tokens = corpus_tokens + int(retrieved_tokens * 0.7)
+                    eur = eur_for_call("local-ollama", input_tokens, 200)
                     rows.append(
                         {
                             "compressor": comp_name,
