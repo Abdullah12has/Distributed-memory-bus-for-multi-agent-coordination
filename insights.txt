@@ -915,6 +915,166 @@ INSIGHT: Models assign tasks (high coverage) but VIOLATE capacity
   Family-b remains hard for H5 but the scoring is now correct.
 
 
+--------------------------------------------------------------------------------
+22. H6 MULTIHOPRAG TRANSFER — IMPLEMENTATION COMPLETE (2026-05-25)
+--------------------------------------------------------------------------------
+
+IMPLEMENTED: Optional H6 hypothesis (plan-v3 §7) — MultiHopRAG transfer
+validation. Tests whether the coordination cliff found on synthetic C1
+transfers to real multi-hop QA data.
+
+FILES CREATED:
+  - src/m6/corpus/multihoprag.py: loader + reformulator (30 examples)
+  - src/m6/experiments/run_h6.py: self-contained runner (H5 pattern)
+  - configs/experiments/h6.yaml: documentation config
+
+DESIGN DECISIONS:
+  1. Ollama planner (not deterministic solver) — MultiHopRAG answers are
+     free-text, not structured hours/budget
+  2. Token F1 scoring with coord_success threshold at F1 >= 0.5
+  3. Single compressor (lingua2) for apples-to-apples comparison with H5
+  4. Workloads persisted to data/processed/multihoprag-30/ for reproducibility
+
+VERIFICATION:
+  - MultiHopRAG dataset loads correctly (2,556 examples, sampled 30)
+  - Fragment lengths: 200-370 chars (good range for compression)
+  - Persist/reload cycle verified (JSONL format matches C1)
+  - Scoring functions verified: exact match, partial match, wrong answer
+  - Verdict computation works with mock data
+
+ESTIMATED WALLCLOCK: ~65 min on GPU (1,500 Ollama calls)
+
+TO RUN:
+  python -m m6.experiments.run_h6 --smoke  # local test
+  python -m m6.experiments.run_h6 --synth-results results/h5_full  # full run
+
+COMPARISON: H6 compares against H5 family-a results (8B planner + lingua2).
+Tolerance: tau* within +/-15%, coord_success within +/-10pp.
+
+
+--------------------------------------------------------------------------------
+23. COMPREHENSIVE CODE AUDIT (2026-05-25)
+--------------------------------------------------------------------------------
+
+Full audit of all experiment runners, compressors, orchestrator, pipelines,
+and statistical procedures. Cross-verified against plan-v3 and tech ref.
+
+### ACTIVE BUGS FOUND
+
+a) H1 NaN CI ACCEPTANCE (run_h1_h2.py:523):
+   `np.isnan(ci_high) or ci_high < 0.6` accepts NaN CIs as "supported".
+   Fix: change to just `ci_high < 0.6` (NaN comparison → False → fail-safe).
+   Impact: smoke tests only; full runs produce valid CIs.
+
+b) PIECEWISE FIT BOUNDARY INCONSISTENCY (run_h5.py:286, run_h6.py:180):
+   H1/H2 uses interior-constrained bounds (10% margin from edges).
+   H5 and H6 allow tau to reach x.min/x.max, causing boundary bias.
+   Fix: propagate the 10% margin from run_h1_h2.py to H5/H6. 4 lines.
+   Impact: explains why H5 tau* clusters at 15.9-16.0.
+
+c) qa_em COLUMN IS GARBAGE (run_h1_h2.py:444-449):
+   `qa_em = em_score(" ".join(compressed_parts), w.expected_answer)`.
+   Compressed text never exactly matches a short aggregated answer.
+   This column is always ~0. Not used in any verdict but misleading.
+   Fix: either drop it or compute EM of compressed vs source text.
+
+d) TASK HINT INCONSISTENCY — QA vs COORD (run_h1_h2.py:421-427):
+   `_compress_fragment` uses `frag.task_hint or ""` as the hint.
+   `single_agent_qa` at line 277 passes `workload.initial_prompt`.
+   For hint-sensitive compressors (filter reranks by hint, phi3 uses
+   it as the QUESTION), the two code paths compress DIFFERENTLY.
+   This means delta_qa and delta_coord are computed on subtly different
+   compressed texts, partially confounding the H1 correlation test.
+   Fix: use the same task hint in both paths.
+
+e) H1 CI INFLATION FROM SEED DUPLICATION (run_h1_h2.py:508-511):
+   qa_f1 is seed-independent (deterministic compression) but the
+   merge includes seeds, duplicating the same qa_f1 value 5× per
+   workload. The bootstrap CI is artificially tight. The rho estimate
+   itself is unaffected (duplicated pairs don't change rank correlation)
+   but the reported n and CI width are anti-conservative.
+   Impact: CIs are tighter than they should be. Doesn't change the
+   H1 verdict (rho values are far from 0.6) but is methodologically wrong.
+
+f) H4 SILENT "no" ON EXCEPTION (run_h4.py:90-91):
+   `except Exception: return "no"` silently defaults to "no" if Ollama
+   fails. With balanced yes/no questions, failures would appear as ~50%
+   accuracy, creating phantom signal. Should log the exception.
+
+g) PHI3 _verify_failures DOUBLE-COUNTED (phi3_extractive.py:164-173):
+   When both attempts fail and fallback triggers, _verify_failures is
+   incremented twice. model_card() reports 2x the true failure count.
+
+### CODE-DOCUMENTATION MISMATCHES
+
+a) qa_f1 column name says "QA F1" but measures information preservation
+   (token F1 of compressed vs source text). Thesis MUST clarify this.
+
+b) Tech ref §9 token_recall uses gold_answer tokens; code uses source
+   tokens. Code is correct (gold answers are aggregated). Update tech ref.
+
+c) Plan says 10 ratios; h1_h2_v3_quick2 used 5. Document the deviation.
+
+d) CLAUDE.md known issue 3 (H5 vacuous monotonicity) is STALE — the
+   `len(valid_pairs) >= 1` guard was already added, fixing the bug.
+
+### MISSING FEATURES (vs plan-v3)
+
+a) Effect sizes (Cliff's delta, Cohen's d) — specified in plan §5.4
+   but not computed in any runner.
+
+b) Compounding-error prediction — tech ref §9 describes predicted_tau()
+   but it is never called. Computing predicted tau from token_recall
+   data and comparing to empirical cliff would be a major contribution.
+
+c) Cross-hypothesis Holm correction — plan says {H1,H2,H5} is one
+   family, but each runner applies Holm only within its own tests.
+
+d) Figure generation scripts — no plotting code exists.
+
+
+--------------------------------------------------------------------------------
+24. LITERATURE GAP ANALYSIS (2026-05-25)
+--------------------------------------------------------------------------------
+
+Read all papers in papers_markdown/. Key gaps the thesis fills:
+
+GAP 1: COMPRESSION × COORDINATION QUALITY (H1-H2)
+  No paper studies the coupling between compression ratio and multi-agent
+  coordination success. Compression papers measure QA F1; multi-agent papers
+  assume full context. M6 is the first to measure the cliff.
+
+GAP 2: PIPELINE PLACEMENT (H3)
+  RECOMP and SARA compare compression strategies within a fixed pipeline.
+  No study systematically evaluates P1 vs P2 vs P3 across regimes.
+  M6's finding that compress-first (P1) always wins contradicts
+  LongLLMLingua's design rationale.
+
+GAP 3: INFERENCE DISCLOSURE VIA COMPRESSION (H4)
+  Compression papers focus on task performance, not privacy side-channels.
+  M6's finding that compression aggressiveness inversely correlates with
+  disclosure is novel and connects quality (H2) to privacy (H4).
+
+GAP 4: MODEL-SIZE INVARIANCE OF CLIFF (H5)
+  No paper varies both model size AND compression ratio systematically.
+  M6's finding that cliff position is compressor-driven (not model-driven)
+  is a clean, publishable insight.
+
+GAP 5: COORDINATION-SPECIFIC METRICS
+  MultiAgentBench uses milestone KPIs but doesn't measure compression
+  effects. M6's qa_f1 (information preservation) enables new evaluation.
+
+CLOSEST RELATED WORK (that does NOT overlap):
+  - PROVENCE (Chirkova 2025): compression evaluation framework, but
+    single-agent only. M6 extends to multi-agent coordination.
+  - MultiAgentBench (Zhu 2025): multi-agent benchmark, but no compression.
+  - MaaS (Li 2025): memory as a service, but no quality measurement.
+  - Yu 2026 (Multi-Agent Memory): memory architecture, no compression cliff.
+
+POSITIONING: M6 sits at the intersection of compression × coordination ×
+privacy. No existing paper occupies this intersection.
+
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================

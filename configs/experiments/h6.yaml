@@ -1,0 +1,19 @@
+# H6 — MultiHopRAG Transfer Validation
+# Tests whether coordination cliff transfers from synthetic C1 to real data.
+# Reference: Tang & Yang, "MultiHopRAG", EMNLP 2024 Findings.
+#
+# Run:
+#   python -m m6.experiments.run_h6
+#   python -m m6.experiments.run_h6 --smoke
+#   python -m m6.experiments.run_h6 --synth-results results/h5_full
+
+hypothesis: h6
+benchmark_path: data/processed/multihoprag-30
+compressor: lingua2
+ratios: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0]
+seeds: [0, 1, 2, 3, 4]
+n_workloads: 30
+planner_model: llama3.1:8b
+backend: ollama
+require_trained_compressors: false
+notes: "H6 real-trace transfer to MultiHopRAG (Tang & Yang, EMNLP 2024)."
