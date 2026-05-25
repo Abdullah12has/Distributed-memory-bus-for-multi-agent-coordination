@@ -379,13 +379,34 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _compute_auc(ratios: np.ndarray, success: np.ndarray) -> float:
+    """Area under the coord_success vs ratio curve (normalized to [0,1]).
+
+    AUC is a more robust model-quality metric than tau* because it is
+    well-defined even for gradual declines and does not suffer from
+    boundary bias. Higher AUC = model degrades more slowly with compression.
+    """
+    x = np.asarray(ratios, dtype=np.float64)
+    y = np.asarray(success, dtype=np.float64)
+    if len(x) < 2:
+        return 0.0
+    order = np.argsort(x)
+    x, y = x[order], y[order]
+    raw_auc = float(np.trapz(y, x))
+    # Normalize by the range so AUC is in [0, 1]
+    span = float(x.max() - x.min())
+    return raw_auc / span if span > 0 else 0.0
+
+
 def compute_h5_verdict(df: pd.DataFrame) -> dict:
     """Check if tau* shifts upward with model size."""
     taus = {}  # {(model, family): tau}
+    aucs = {}  # {(model, family): auc}
     for (model, family), sub in df.groupby(["planner_model", "family"]):
         agg = sub.groupby("ratio")["coord_success"].mean().reset_index()
         fit = fit_piecewise(agg["ratio"].to_numpy(), agg["coord_success"].to_numpy())
         taus[(model, family)] = fit["tau"]
+        aucs[(model, family)] = _compute_auc(agg["ratio"].to_numpy(), agg["coord_success"].to_numpy())
 
     # Check monotonicity per family
     model_sizes = sorted(df["planner_model"].unique(), key=lambda m: float(m.replace("B", "")))
@@ -395,6 +416,7 @@ def compute_h5_verdict(df: pd.DataFrame) -> dict:
     per_family = {}
     for fam in families:
         fam_taus = [taus.get((m, fam), float("nan")) for m in model_sizes]
+        fam_aucs = [aucs.get((m, fam), 0.0) for m in model_sizes]
         # Need at least 2 non-NaN taus to assess monotonicity
         valid_pairs = [
             (fam_taus[i], fam_taus[i + 1])
@@ -404,9 +426,13 @@ def compute_h5_verdict(df: pd.DataFrame) -> dict:
         is_monotonic = len(valid_pairs) >= 1 and all(a <= b for a, b in valid_pairs)
         non_nan = [t for t in fam_taus if not np.isnan(t)]
         gap = non_nan[-1] - non_nan[0] if len(non_nan) >= 2 else 0.0
+        # AUC monotonicity: is AUC monotonically increasing with model size?
+        auc_monotonic = all(fam_aucs[i] <= fam_aucs[i + 1] for i in range(len(fam_aucs) - 1))
         per_family[fam] = {
             "taus": dict(zip(model_sizes, fam_taus, strict=False)),
+            "aucs": dict(zip(model_sizes, fam_aucs, strict=False)),
             "monotonic": is_monotonic,
+            "auc_monotonic": auc_monotonic,
             "gap": gap,
         }
         if is_monotonic:
