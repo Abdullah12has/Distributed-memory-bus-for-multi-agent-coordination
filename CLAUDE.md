@@ -150,15 +150,45 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 21. **H6 verdict tau-only**: coord curve comparison informational only (incompatible scoring) (commit 59f5b63)
 22. **H5 task_hint missing**: pre-compression now passes w.initial_prompt (commit 59f5b63)
 23. **n_workloads per family**: was total (only family-a loaded); now per-family so all families represented (commit 8b9bed6)
+24. **Theorem N=3 mismatch**: claimed q^3 compounding but code compresses once; fixed to N=1 default, q_min=theta
+25. **CAAC trivial backoff**: min_ratio was 1.0 (backs off to no compression); changed to 1.5
+26. **CAAC hardcoded theta**: was 0.65 with no derivation; added `derive_theta()`, default now 0.5
+27. **rounds field fake**: was `len(sub_tasks)` not actual rounds; set to 1 (truthful)
+28. **Filter non-determinism**: stopword dropping depended on iteration order; words now as explicit list
+29. **Missing critical_token_recall**: added family-specific metric (numbers for a, patterns for b, FINAL for c)
+30. **Missing achieved_ratio**: added actual compression ratio column to H1/H2 CSV
+
+## Critical Framing Notes (from deep review, 2026-05-25)
+
+### Theorem-Implementation Mismatch (FIXED)
+The compounding-error model originally claimed N=3 rounds of compression (q^N),
+but the code only compresses once (N=1). Fixed: theorem now uses N=1 by default,
+q_min = theta directly. The q^N formulation is still available for multi-pass
+scenarios but is explicitly documented as not matching our experiments.
+
+### Evaluation Honesty
+- **Deterministic solver (H1/H2)**: Information-extraction pipeline (regex parser),
+  NOT a multi-agent system. Isolates compression effects from LLM noise.
+- **Ollama planner (H5/H6)**: Single LLM call with all fragments, NOT multi-round
+  agent coordination. Measures coordination-task solvability under compression.
+- **rounds field**: Set to 1 (truthful: one compression pass + one solve pass).
+  Previously was set to len(sub_tasks), which was misleading.
+- The AutoGen backend EXISTS in the code (orchestrator.py:179+) but was not used
+  for production experiments due to high variance masking compression effects.
+
+### CAAC Constraints
+- min_ratio changed from 1.0 to 1.5 — CAAC must achieve at least 1.5x compression
+- theta changed from hardcoded 0.65 to empirically derivable via `derive_theta()`
+- Default theta=0.5, default n_compression_passes=1
 
 ## Thesis-Text Actions (no code, must address in writing)
 
 - **Rename H1**: "information preservation vs coordination" (not "QA accuracy")
 - **Reframe H3**: "compress-first preserves content quality" (don't claim to falsify LongLLMLingua)
 - **H5 Phi-3 confound**: acknowledge in discussion (0% at ratio=1.0)
-- **Weighted q in compounding-error model**: acknowledge in Ch5
 - **H4 terminology**: use "protected-fact recovery rate" not "inference disclosure"
 - **H3 cost**: note uses target ratio, not achieved
+- **Evaluation scope**: explicitly state experiments measure task solvability, not multi-agent communication
 
 ## Chapter Mapping
 

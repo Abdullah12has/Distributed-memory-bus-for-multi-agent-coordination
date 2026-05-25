@@ -6,11 +6,13 @@ below a safety threshold. Based on Theorem 1 from the coordination cliff
 theory (see m6.theory.cliff_prediction).
 
 Algorithm:
-  1. Compute q_min = theta^(1/N) — the minimum safe per-round token recall.
+  1. Compute q_min = theta (for single-pass compression, N=1).
   2. For each fragment, compress at the target ratio.
   3. Measure token_recall of the compressed output.
   4. If token_recall >= q_min: accept (safe, above cliff).
   5. Else: binary-search for the largest ratio that keeps token_recall >= q_min.
+  6. Floor: never back off below min_ratio (default 1.5x) to ensure
+     meaningful compression even when backing off.
 
 This wrapper works with ANY underlying compressor (lingua2, phi3-extractive,
 filter) without retraining.  Overhead is negligible: token_recall is a set
@@ -23,8 +25,7 @@ Usage:
     caac = CAACCompressor(
         inner="lingua2",
         target_ratio=4.0,
-        n_rounds=3,
-        theta=0.65,
+        theta=0.5,  # derive via cliff_prediction.derive_theta()
     )
     slot = caac.compress(fragment)
     text = caac.decompress(slot)
@@ -71,9 +72,9 @@ class CAACCompressor:
         *,
         inner: str | Compressor = "lingua2",
         target_ratio: float = 4.0,
-        n_rounds: int = 3,
-        theta: float = 0.65,
-        min_ratio: float = 1.0,
+        n_compression_passes: int = 1,
+        theta: float = 0.5,
+        min_ratio: float = 1.5,
         binary_search_steps: int = 5,
         **inner_kwargs: Any,
     ) -> None:
@@ -81,18 +82,20 @@ class CAACCompressor:
         Args:
             inner: Base compressor name or instance to wrap.
             target_ratio: Desired compression ratio (CAAC may use less).
-            n_rounds: Expected planner-worker-critic rounds for the task.
+            n_compression_passes: Number of times compression is applied (default 1).
             theta: Minimum surviving information fraction for success.
-            min_ratio: Lowest ratio CAAC will back off to (1.0 = no compression).
+                Derive empirically via cliff_prediction.derive_theta().
+            min_ratio: Lowest ratio CAAC will back off to (1.5 = always
+                achieve at least 1.5x compression, even when backing off).
             binary_search_steps: Max iterations for finding safe ratio.
             **inner_kwargs: Passed to make_compressor if inner is a string.
         """
         self.target_ratio = target_ratio
-        self.n_rounds = n_rounds
+        self.n_compression_passes = n_compression_passes
         self.theta = theta
         self.min_ratio = min_ratio
         self._search_steps = binary_search_steps
-        self._q_min = q_required(theta, n_rounds)
+        self._q_min = q_required(theta, n_compression_passes)
 
         # Build or store the inner compressor
         if isinstance(inner, str):
@@ -153,7 +156,9 @@ class CAACCompressor:
         """Find the largest ratio where token_recall >= q_min."""
         lo = self.min_ratio
         hi = max_ratio
-        best_text = fragment.text  # fallback: no compression
+        # Initialize to min_ratio compression (not uncompressed) to
+        # guarantee at least min_ratio compression even on full backoff.
+        best_text = self._compress_at_ratio(fragment, self.min_ratio)
 
         for _ in range(self._search_steps):
             mid = (lo + hi) / 2.0
@@ -205,7 +210,7 @@ class CAACCompressor:
             target_ratio_default=self.target_ratio,
             notes=(
                 f"CAAC wrapping {self._inner_name}. "
-                f"q_min={self._q_min:.3f} (theta={self.theta}, N={self.n_rounds}). "
+                f"q_min={self._q_min:.3f} (theta={self.theta}, N={self.n_compression_passes}). "
                 f"Backed off {self._backed_off}/{self._total_fragments} fragments. "
                 f"Achieved ratio: {achieved:.2f}x (target {self.target_ratio}x)."
             ),
@@ -227,7 +232,7 @@ class CAACCompressor:
             "achieved_ratio": achieved,
             "q_min": self._q_min,
             "theta": self.theta,
-            "n_rounds": self.n_rounds,
+            "n_compression_passes": self.n_compression_passes,
         }
 
     def _make_slot(self, fragment: Fragment, text: str, ratio: float) -> CompressedSlot:

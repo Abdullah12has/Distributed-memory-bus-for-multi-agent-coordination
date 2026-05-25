@@ -1350,6 +1350,119 @@ Found one critical bug and confirmed fix behavior.
   statistical controls are more defensible. H4 is the strongest.
 
 
+--------------------------------------------------------------------------------
+29. DEEP DIAGNOSTIC — ALL FIXES VALIDATED (2026-05-25)
+--------------------------------------------------------------------------------
+
+20-min pass with 4 compressors (incl truncation), 3 families, CAAC,
+theory validation. No new bugs found. Codebase ready for production.
+
+RESULTS:
+  H1: SUPPORTED (4/4 compressors, all rho < 0.6)
+  H2: SUPPORTED (8/12 cells, phi3 0/3 due to too few ratios)
+  H4: SUPPORTED (Holm-corrected, 0 errors, priors=0.50)
+  CAAC: fixed=0.33 vs CAAC=1.00 at high ratios — working
+  Theory: predicted tau=1.2, empirical cliff at 1-2x — matches
+
+KEY INSIGHTS:
+  1. Logistic fits better than piecewise in every cell (lower RMSE).
+     Logistic tau=2.5 vs piecewise tau=13.1 for family-a — logistic
+     gives the correct cliff position.
+
+  2. Truncation beats lingua2 on qa_f1 at 4x (0.366 vs 0.187) because
+     truncation preserves prefix tokens verbatim, giving high token
+     overlap with source. The qa_f1 metric rewards prefix retention.
+     NOT a bug — but thesis should note that token F1 favors prefix-
+     preserving compressors, which is why it decorrelates from
+     coordination success (H1).
+
+  3. phi3-extractive shows 0/3 cliffs because compressor_ratios limits
+     it to [1.0, 4.0, 8.0] — only 3 points, needs >=4 for piecewise.
+     Fix for production: add at least 1 more ratio for phi3.
+
+  4. H4 compression gradient: lingua2=0.40, filter=0.52, phi3=0.78
+     (compressed accuracy). Clean ordering matches aggressiveness:
+     lingua2 (most aggressive) → filter (least) → phi3 (span-level).
+
+
+--------------------------------------------------------------------------------
+30. DEEP REVIEW FIXES — THEOREM, CAAC, EVALUATION HONESTY (2026-05-25)
+--------------------------------------------------------------------------------
+
+External deep review identified 3 critical blockers and 5 important issues.
+All fixed in code.
+
+### BLOCKER 1: THEOREM N=3 vs CODE N=1 (FIXED)
+
+  PROBLEM: Theorem 1 claimed compression compounds across N=3 planner-
+  worker-critic rounds (q^N), but the code compresses each fragment ONCE
+  before the solver reads them. No multi-round compression occurs.
+  The `rounds` field was set to len(sub_tasks), not actual comm rounds.
+
+  FIX:
+  - cliff_prediction.py: default n_compression_passes=1, q_min=theta
+  - q^N formulation preserved for multi-pass scenarios but documented
+    as NOT matching current experiments
+  - orchestrator.py: rounds=1 (truthful: one compression + one solve)
+  - The cliff prediction still works: q(r*) = theta predicts the cliff
+    from token recall. Simpler and more honest.
+
+### BLOCKER 2: NO ACTUAL MULTI-AGENT SYSTEM (DOCUMENTED)
+
+  PROBLEM: Deterministic solver = regex parser (not agents).
+  Ollama planner = single LLM call (not multi-round coordination).
+
+  FIX: Honest framing in CLAUDE.md:
+  - Deterministic solver: "information-extraction pipeline, isolates
+    compression effects from LLM noise"
+  - Ollama planner: "single-agent coordination proxy, measures task
+    solvability under compression"
+  - AutoGen backend EXISTS (orchestrator.py:179+) but was not used due
+    to high variance masking compression effects
+
+### BLOCKER 3: CAAC TRIVIAL BACKOFF (FIXED)
+
+  PROBLEM: CAAC backed off to min_ratio=1.0 (no compression) — trivially
+  correct but useless.
+
+  FIX:
+  - min_ratio changed from 1.0 to 1.5 (must achieve at least 1.5x)
+  - theta changed from hardcoded 0.65 to 0.5 (empirically derivable)
+  - n_rounds renamed to n_compression_passes (default 1)
+  - Added derive_theta() to compute theta from sweep data
+
+### FIX 4: THETA DERIVATION (NEW)
+
+  Added cliff_prediction.derive_theta() that empirically computes theta
+  from H1/H2 sweep data — finds the token_recall at which coord_success
+  first drops below 0.5, averaged across compressors.
+
+### FIX 5: CRITICAL TOKEN RECALL (NEW)
+
+  Added critical_token_recall() to run_h1_h2.py — measures survival of
+  task-critical tokens specifically:
+  - Family-a: numbers (174, 5608 — the values that must be summed)
+  - Family-b: assignment patterns (sub-0, worker-2)
+  - Family-c: chain identifiers (FINAL-9245)
+  Generic token_recall can be high while all critical tokens are dropped.
+
+### FIX 6: FILTER NON-DETERMINISM (FIXED)
+
+  Stopword dropping in filter.py depended on iteration order (dict).
+  Now uses explicit list(split()) for deterministic ordering.
+
+### FIX 7: ACHIEVED RATIO COLUMN (NEW)
+
+  H1/H2 CSV now includes achieved_ratio (source_len / compressed_len)
+  alongside target ratio. Phi3-extractive achieved ratio often differs
+  from target due to salvage path.
+
+### FIX 8: ROUNDS FIELD (FIXED)
+
+  Was len(sub_tasks) — misleading as "communication rounds".
+  Now 1 — truthful: one compression pass, one solve pass.
+
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================

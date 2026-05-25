@@ -31,15 +31,15 @@ from m6.theory.cliff_prediction import (
 
 def run_validation(
     csv_path: str,
-    n_rounds: int = 3,
-    theta: float = 0.65,
+    n_compression_passes: int = 1,
+    theta: float = 0.5,
     compressors: list[str] | None = None,
     families: list[str] | None = None,
 ) -> dict:
     """Run full Theorem 1 validation on H1/H2 sweep data."""
     results = full_validation(
         csv_path,
-        n_rounds=n_rounds,
+        n_compression_passes=n_compression_passes,
         theta=theta,
         compressors=compressors,
         families=families,
@@ -50,8 +50,8 @@ def run_validation(
 def print_validation(results: dict) -> None:
     """Pretty-print validation results."""
     summary = results.get("_summary", {})
-    q_min = q_required(summary.get("theta", 0.65), summary.get("n_rounds", 3))
-    print(f"Theorem 1 Parameters: N={summary.get('n_rounds')}, theta={summary.get('theta')}, q_min={q_min:.4f}")
+    q_min = q_required(summary.get("theta", 0.5), summary.get("n_compression_passes", 1))
+    print(f"Theorem 1 Parameters: N={summary.get('n_compression_passes')}, theta={summary.get('theta')}, q_min={q_min:.4f}")
     print()
 
     for comp, fam_results in results.items():
@@ -77,7 +77,7 @@ def print_validation(results: dict) -> None:
           f"({summary.get('match_rate', 0):.0%})")
 
 
-def generate_plot(csv_path: str, out_dir: str, n_rounds: int = 3, theta: float = 0.65) -> None:
+def generate_plot(csv_path: str, out_dir: str, n_compression_passes: int = 1, theta: float = 0.5) -> None:
     """Generate the predicted-vs-empirical figure."""
     import matplotlib
     matplotlib.use("Agg")
@@ -87,7 +87,7 @@ def generate_plot(csv_path: str, out_dir: str, n_rounds: int = 3, theta: float =
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    q_min = q_required(theta, n_rounds)
+    q_min = q_required(theta, n_compression_passes)
     compressors = sorted(df["compressor"].unique())
 
     # Focus on family-a (sharpest cliff)
@@ -125,7 +125,7 @@ def generate_plot(csv_path: str, out_dir: str, n_rounds: int = 3, theta: float =
         tr = sub.groupby("ratio")["token_recall"].mean().reset_index()
         curve = list(zip(tr["ratio"].tolist(), tr["token_recall"].tolist()))
         if curve:
-            predicted = predicted_success_smooth(curve, n_rounds, theta, p0=1.0, steepness=25.0)
+            predicted = predicted_success_smooth(curve, n_compression_passes, theta, p0=1.0, steepness=25.0)
             pr = [r for r, _ in predicted]
             ps = [s for _, s in predicted]
             ax2.plot(pr, ps, "x--", color=color, alpha=0.5, markersize=5)
@@ -133,7 +133,7 @@ def generate_plot(csv_path: str, out_dir: str, n_rounds: int = 3, theta: float =
     # Add predicted tau vertical line for lingua2
     try:
         tr_curve = extract_token_recall_curve(csv_path, "lingua2", "a")
-        pred_tau = predicted_tau(tr_curve, n_rounds, theta)
+        pred_tau = predicted_tau(tr_curve, n_compression_passes, theta)
         if not np.isinf(pred_tau):
             ax2.axvline(pred_tau, ls=":", color="red", alpha=0.6, label=f"Predicted $\\tau^*$={pred_tau:.1f}")
     except Exception:
@@ -155,8 +155,8 @@ def generate_plot(csv_path: str, out_dir: str, n_rounds: int = 3, theta: float =
 def main():
     parser = argparse.ArgumentParser(description="Validate Theorem 1 against empirical data")
     parser.add_argument("--csv", type=str, required=True, help="H1/H2 sweep_results.csv path")
-    parser.add_argument("--n-rounds", type=int, default=3, help="Number of coordination rounds")
-    parser.add_argument("--theta", type=float, default=0.65, help="Success threshold")
+    parser.add_argument("--n-compression-passes", type=int, default=1, help="Number of compression passes")
+    parser.add_argument("--theta", type=float, default=0.5, help="Success threshold")
     parser.add_argument("--plot", action="store_true", help="Generate validation figure")
     parser.add_argument("--out", type=str, default="figures", help="Output dir for plots")
     args = parser.parse_args()
@@ -166,7 +166,7 @@ def main():
     print("=" * 60)
     print()
 
-    results = run_validation(args.csv, n_rounds=args.n_rounds, theta=args.theta)
+    results = run_validation(args.csv, n_compression_passes=args.n_compression_passes, theta=args.theta)
     print_validation(results)
 
     # Save JSON
@@ -177,7 +177,7 @@ def main():
     print(f"\nResults saved to {out_dir / 'theorem1_validation.json'}")
 
     if args.plot:
-        generate_plot(args.csv, args.out, n_rounds=args.n_rounds, theta=args.theta)
+        generate_plot(args.csv, args.out, n_compression_passes=args.n_compression_passes, theta=args.theta)
 
 
 if __name__ == "__main__":
