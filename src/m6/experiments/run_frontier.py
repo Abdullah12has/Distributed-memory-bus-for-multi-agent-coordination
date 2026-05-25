@@ -262,6 +262,21 @@ def run_frontier(cfg: FrontierConfig) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _compute_api_cost(df: pd.DataFrame) -> float:
+    """Compute total API cost using model-specific pricing."""
+    if df.empty:
+        return 0.0
+    from m6.pipelines.cost_model import PRICING
+    model = df["model"].iloc[0]
+    price = PRICING.get(model)
+    if not price:
+        return 0.0
+    return float(
+        df["input_tokens"].sum() / 1e6 * price.input_eur
+        + df["output_tokens"].sum() / 1e6 * price.output_eur
+    )
+
+
 def compute_frontier_verdict(
     df: pd.DataFrame, synth_results_path: str | None
 ) -> dict:
@@ -282,10 +297,7 @@ def compute_frontier_verdict(
         "frontier_baseline_coord": float(
             df[df["ratio"] == 1.0]["coord_success"].mean()
         ) if not df[df["ratio"] == 1.0].empty else float("nan"),
-        "total_api_cost_eur": float(
-            df["input_tokens"].sum() / 1e6 * 0.138
-            + df["output_tokens"].sum() / 1e6 * 0.552
-        ),
+        "total_api_cost_eur": _compute_api_cost(df),
     }
 
     if not synth_results_path:
