@@ -125,7 +125,8 @@ Your response:"""
         )
         resp.raise_for_status()
         response = resp.json().get("response", "")
-    except Exception:
+    except Exception as e:
+        print(f"  [warn] planner exception ({model}): {e}", file=sys.stderr)
         response = ""
 
     # Extract answer
@@ -312,6 +313,25 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
         fam_ws = [w for w in all_workloads if w.family.value == fam]
         workloads.extend(fam_ws[: cfg.n_workloads])
     print(f"  {len(workloads)} workloads loaded ({cfg.n_workloads} per family)")
+
+    # Validate Ollama models are available before starting long sweep
+    print("  Checking Ollama model availability...")
+    for label, model_name in cfg.planner_models.items():
+        try:
+            resp = httpx.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={"model": model_name, "prompt": "test", "stream": False,
+                      "options": {"num_predict": 1}},
+                timeout=30.0,
+            )
+            resp.raise_for_status()
+            print(f"    {label} ({model_name}): OK")
+        except Exception as e:
+            print(f"    {label} ({model_name}): FAILED — {e}", file=sys.stderr)
+            raise RuntimeError(
+                f"Ollama model {model_name!r} not available. "
+                f"Pull it with: ollama pull {model_name}"
+            ) from e
 
     rows: list[dict[str, Any]] = []
     comp_cache: dict[float, Any] = {}

@@ -200,7 +200,9 @@ class Phi3ExtractiveCompressor:
                 if stripped.strip():
                     return stripped
             return None
-        except Exception:
+        except Exception as e:
+            import sys
+            print(f"  [warn] phi3 Ollama error: {e}", file=sys.stderr)
             return None
 
     def _lingua2_compress(self, fragment: Fragment, ratio: float) -> str:
@@ -210,7 +212,9 @@ class Phi3ExtractiveCompressor:
                 from m6.compressors.lingua2 import LLMLingua2Compressor
 
                 self._lingua2_fallback = LLMLingua2Compressor(target_ratio=ratio)
-            except Exception:
+            except Exception as e:
+                import sys
+                print(f"  [warn] lingua2 fallback init failed: {e}", file=sys.stderr)
                 # Last resort: truncation
                 target_len = max(10, int(len(fragment.text) / ratio))
                 return fragment.text[:target_len]
