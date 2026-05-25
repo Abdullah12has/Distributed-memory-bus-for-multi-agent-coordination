@@ -1283,6 +1283,73 @@ Its absence would be a guaranteed reviewer complaint.
 FILE: experiment_plan.md (project root)
 
 
+--------------------------------------------------------------------------------
+28. DIAGNOSTIC SWEEP — ALL FIXES (2026-05-25)
+--------------------------------------------------------------------------------
+
+Ran all 6 hypotheses with diagnostic configs after all statistical fixes.
+Found one critical bug and confirmed fix behavior.
+
+### CRITICAL BUG FOUND: n_workloads was total, not per family
+
+  run_h1_h2.py line 451: `workloads = workloads[:cfg.n_workloads]`
+  With families=["a","b","c"] and n_workloads=15, only the first 15
+  workloads loaded — ALL family-a (which has 50). Families b and c
+  were never reached.
+
+  CONSEQUENCE: H1 computed Spearman on family-a only. Family-a has a
+  sharp binary cliff (coord=1.0 at ratio=1, coord=0.0 at ratio>=2),
+  so delta_coord was constant -1.0 → Spearman undefined → rho=0, NaN CI.
+  The NaN CI guard correctly rejected this, making H1 "not supported"
+  for the wrong reason.
+
+  FIX (commit 8b9bed6): n_workloads now limits per family. With
+  n_workloads=10 and families=["a","b","c"], loads 10+10+10=30 workloads.
+
+### VERIFICATION AFTER FIX
+
+  H1/H2 rerun (2 compressors, 4 ratios, 2 seeds, 10 wl/family = 30 total):
+
+  H1: SUPPORTED
+    lingua2: rho=0.359 [0.209, 0.496] n=90 — passes (< 0.6)
+    filter:  rho=-0.799 [-0.850, -0.712] n=90 — passes (< 0.6)
+
+  H2: 5/6 cells significant (need 7/9 for support)
+    filter/a:  tau=10.6 drop=132.5% p_holm=0.005
+    filter/b:  tau=10.6 drop=132.5% p_holm=0.005
+    filter/c:  tau=N/A  drop=0.0%  (no cliff)
+    lingua2/a: tau=10.6 drop=132.5% p_holm=0.005
+    lingua2/b: tau=10.6 drop=132.5% p_holm=0.005
+    lingua2/c: tau=2.9  drop=106.8% p_holm=0.005
+
+  KEY INSIGHT: tau is now INTERIOR (10.6, 2.9) instead of boundary
+  (15.9-16.0). The tau margin fix is working. lingua2/c cliff at 2.9
+  is a genuine early cliff for family-c string-matching tasks.
+
+### ALL HYPOTHESIS VERDICTS (diagnostic configs)
+
+  H1: SUPPORTED (2/2 compressors, rho well below 0.6)
+  H2: 5/6 cells (needs 3rd compressor + full workloads for 7/9)
+  H3: NOT SUPPORTED (P1-P2 diff=1.4pp, NS after per-workload bootstrap)
+  H4: SUPPORTED (survives Holm correction, 0 errors)
+  H5: NOT SUPPORTED (0 monotonic families, max_gap correctly 0.0)
+  H6: NOT SUPPORTED (only 3 workloads, no cliff detected)
+
+### STATISTICAL FIX IMPACT ASSESSMENT
+
+  | Fix | Effect on verdict |
+  |-----|-------------------|
+  | Wilcoxon (was Mann-Whitney) | H2 still passes with 10 pairs |
+  | Seed averaging | H1 N reduced from 960 to 90, CIs wider but still pass |
+  | NaN CI guard | Caught the per-family bug (would have silently passed) |
+  | Holm correction (H4) | H4 still passes (p-values very small) |
+  | Per-workload bootstrap (H3) | H3 effect shrinks to 1.4pp (was 7.7pp) |
+  | Per-family n_workloads | CRITICAL — fixes H1/H2 completely |
+
+  The fixes are working correctly. Verdicts that survive tighter
+  statistical controls are more defensible. H4 is the strongest.
+
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================

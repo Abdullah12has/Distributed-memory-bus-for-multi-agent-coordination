@@ -149,6 +149,7 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 20. **H3 bootstrap inflation**: now averages per workload before bootstrapping (commit 59f5b63)
 21. **H6 verdict tau-only**: coord curve comparison informational only (incompatible scoring) (commit 59f5b63)
 22. **H5 task_hint missing**: pre-compression now passes w.initial_prompt (commit 59f5b63)
+23. **n_workloads per family**: was total (only family-a loaded); now per-family so all families represented (commit 8b9bed6)
 
 ## Thesis-Text Actions (no code, must address in writing)
 

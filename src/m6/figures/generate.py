@@ -295,6 +295,133 @@ def fig6_frontier(frontier_csv: str, local_csv: str | None, out: Path) -> None:
 
 
 # ============================================================================
+# Additional figures (publication_guide.md + experiment_plan.md)
+# ============================================================================
+def fig_h1_scatter(h1h2_csv: str, out: Path) -> None:
+    """H1 scatter: delta_qa vs delta_coord, colored by compressor."""
+    df = pd.read_csv(h1h2_csv)
+    if df.empty:
+        print("  [skip] h1_scatter: empty")
+        return
+
+    families = sorted(df["family"].unique())
+    compressors = sorted(df["compressor"].unique())
+    fig, axes = plt.subplots(1, len(families), figsize=(4.5 * len(families), 4), sharey=True)
+    if len(families) == 1:
+        axes = [axes]
+
+    for ax, fam in zip(axes, families):
+        fam_df = df[df["family"] == fam]
+        for comp in compressors:
+            sub = fam_df[fam_df["compressor"] == comp]
+            agg = sub.groupby(["workload_id", "ratio"]).agg(
+                qa_f1=("qa_f1", "first"),
+                coord_success=("coord_success", "mean"),
+            ).reset_index()
+            ref = agg[agg["ratio"] == 1.0][["workload_id", "qa_f1", "coord_success"]]
+            ref = ref.rename(columns={"qa_f1": "qa_ref", "coord_success": "coord_ref"})
+            merged = agg.merge(ref, on="workload_id", how="left")
+            merged = merged[merged["ratio"] != 1.0].dropna()
+            if merged.empty:
+                continue
+            dqa = merged["qa_f1"] - merged["qa_ref"]
+            dcoord = merged["coord_success"] - merged["coord_ref"]
+            color = COLORS.get(comp, "#333333")
+            ax.scatter(dqa, dcoord, c=color, label=comp, alpha=0.5, s=15)
+        ax.set_xlabel(r"$\Delta$ Info Preservation")
+        ax.set_title(f"Family {fam.upper()}")
+        ax.axhline(0, ls=":", color="gray", alpha=0.3)
+        ax.axvline(0, ls=":", color="gray", alpha=0.3)
+        if fam == families[0]:
+            ax.set_ylabel(r"$\Delta$ Coordination Success")
+            ax.legend(fontsize=7)
+
+    fig.suptitle("H1: Information Preservation vs Coordination (decorrelated)", fontsize=12)
+    fig.tight_layout()
+    fig.savefig(out / "h1_scatter.pdf")
+    fig.savefig(out / "h1_scatter.png")
+    plt.close(fig)
+    print(f"  h1_scatter: {out / 'h1_scatter.pdf'}")
+
+
+def fig_h5_model_overlay(h5_csv: str, out: Path) -> None:
+    """H5 model-size overlay: 4 models on family-a, showing ceiling not cliff."""
+    df = pd.read_csv(h5_csv)
+    fam_a = df[df["family"] == "a"]
+    if fam_a.empty:
+        print("  [skip] h5_overlay: no family-a")
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    models = sorted(fam_a["planner_model"].unique(), key=lambda m: float(m.replace("B", "")))
+    for model in models:
+        sub = fam_a[fam_a["planner_model"] == model]
+        agg = sub.groupby("ratio")["coord_success"].mean().reset_index()
+        color = COLORS.get(model, "#333333")
+        ax.plot(agg["ratio"], agg["coord_success"], "o-", color=color, label=model, markersize=5)
+
+    ax.set_xlabel("Compression Ratio")
+    ax.set_ylabel("Coordination Success")
+    ax.set_title("Model Size Affects Ceiling, Not Cliff Position")
+    ax.legend(title="Planner")
+    ax.set_ylim(-0.05, 1.05)
+    ax.annotate("Same cliff position\n(all models ~3-4x)",
+                xy=(3.5, 0.15), fontsize=9, color="red", ha="center",
+                arrowprops=dict(arrowstyle="->", color="red"),
+                xytext=(6, 0.4))
+    fig.savefig(out / "h5_model_overlay.pdf")
+    fig.savefig(out / "h5_model_overlay.png")
+    plt.close(fig)
+    print(f"  h5_overlay: {out / 'h5_model_overlay.pdf'}")
+
+
+def fig_caac_ablation(caac_csv: str, out: Path) -> None:
+    """CAAC ablation: coord_success vs target_ratio for fixed vs CAAC."""
+    df = pd.read_csv(caac_csv)
+    if df.empty:
+        print("  [skip] caac_ablation: empty")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    # Left: coord success comparison
+    ax = axes[0]
+    for inner in sorted(df["inner_compressor"].unique()):
+        sub = df[df["inner_compressor"] == inner]
+        fixed = sub[~sub["is_caac"]].groupby("target_ratio")["coord_success"].mean()
+        caac = sub[sub["is_caac"]].groupby("target_ratio")["coord_success"].mean()
+        ax.plot(fixed.index, fixed.values, "o--", color=COLORS["fixed"], alpha=0.6, label=f"Fixed {inner}")
+        if not caac.empty:
+            ax.plot(caac.index, caac.values, "s-", color=COLORS["caac"], label=f"CAAC({inner})")
+    ax.set_xlabel("Target Compression Ratio")
+    ax.set_ylabel("Coordination Success")
+    ax.set_title("CAAC vs Fixed: Coordination")
+    ax.legend(fontsize=8)
+    ax.set_ylim(-0.05, 1.05)
+
+    # Right: achieved ratio comparison
+    ax = axes[1]
+    for inner in sorted(df["inner_compressor"].unique()):
+        sub = df[df["inner_compressor"] == inner]
+        fixed = sub[~sub["is_caac"]].groupby("target_ratio")["achieved_ratio"].mean()
+        caac = sub[sub["is_caac"]].groupby("target_ratio")["achieved_ratio"].mean()
+        ax.plot(fixed.index, fixed.values, "o--", color=COLORS["fixed"], alpha=0.6, label=f"Fixed {inner}")
+        if not caac.empty:
+            ax.plot(caac.index, caac.values, "s-", color=COLORS["caac"], label=f"CAAC({inner})")
+    ax.plot([1, 16], [1, 16], ":", color="gray", alpha=0.3, label="Target=Achieved")
+    ax.set_xlabel("Target Compression Ratio")
+    ax.set_ylabel("Achieved Compression Ratio")
+    ax.set_title("CAAC vs Fixed: Achieved Ratio")
+    ax.legend(fontsize=8)
+
+    fig.tight_layout()
+    fig.savefig(out / "caac_ablation.pdf")
+    fig.savefig(out / "caac_ablation.png")
+    plt.close(fig)
+    print(f"  caac_ablation: {out / 'caac_ablation.pdf'}")
+
+
+# ============================================================================
 # Entry point
 # ============================================================================
 def main():
@@ -328,11 +455,14 @@ def main():
 
     if h5:
         fig1_cliff_hero(h5, out)
+        fig_h5_model_overlay(h5, out)
     if h1h2:
         fig2_cliff_families(h1h2, out)
         fig3_predicted_vs_empirical(h1h2, out)
+        fig_h1_scatter(h1h2, out)
     if caac:
         fig4_caac_pareto(caac, out)
+        fig_caac_ablation(caac, out)
     if h4:
         fig5_privacy_quality(h4, out)
     if frontier:

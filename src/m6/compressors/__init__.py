@@ -50,7 +50,11 @@ def make_compressor(name: str, **kwargs: Any) -> Compressor:
         from m6.compressors.caac import CAACCompressor
 
         return CAACCompressor(**kwargs)
-    msg = f"Unknown compressor: {name!r}. Available: none, lingua2, filter, phi3-extractive, caac"
+    if name in {"truncation", "trunc", "truncate"}:
+        from m6.compressors.truncation import TruncationCompressor
+
+        return TruncationCompressor(**kwargs)
+    msg = f"Unknown compressor: {name!r}. Available: none, lingua2, filter, phi3-extractive, caac, truncation"
     raise ValueError(msg)
 
 
