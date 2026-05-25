@@ -400,6 +400,30 @@ def _fit_logistic(x: np.ndarray, y: np.ndarray) -> dict:
     return {"tau": float(tau), "k": float(k), "rmse": rmse}
 
 
+def _cliffs_delta(x: np.ndarray, y: np.ndarray) -> float:
+    """Cliff's delta: ordinal effect size between two arrays.
+    Returns value in [-1, 1]. |d| > 0.474 is large."""
+    n1, n2 = len(x), len(y)
+    if n1 == 0 or n2 == 0:
+        return 0.0
+    more = sum(1 for xi in x for yi in y if xi > yi)
+    less = sum(1 for xi in x for yi in y if xi < yi)
+    return (more - less) / (n1 * n2)
+
+
+def _cohens_d(x: np.ndarray, y: np.ndarray) -> float:
+    """Cohen's d: standardized mean difference. |d| > 0.8 is large."""
+    n1, n2 = len(x), len(y)
+    if n1 < 2 or n2 < 2:
+        return 0.0
+    m1, m2 = np.mean(x), np.mean(y)
+    s1, s2 = np.std(x, ddof=1), np.std(y, ddof=1)
+    pooled = np.sqrt(((n1 - 1) * s1 ** 2 + (n2 - 1) * s2 ** 2) / (n1 + n2 - 2))
+    if pooled < 1e-9:
+        return 0.0
+    return float((m1 - m2) / pooled)
+
+
 def holm_correction(p_values: list[float]) -> list[float]:
     n = len(p_values)
     if n == 0:
@@ -424,7 +448,13 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
     family_set = set(cfg.families)
     workloads = [w for w in workloads if w.family.value in family_set]
     if cfg.n_workloads:
-        workloads = workloads[: cfg.n_workloads]
+        # Limit per family, not total — otherwise only the first family loads
+        by_fam: dict[str, list] = {}
+        for w in workloads:
+            by_fam.setdefault(w.family.value, []).append(w)
+        workloads = []
+        for fam in sorted(by_fam):
+            workloads.extend(by_fam[fam][: cfg.n_workloads])
     print(f"  {len(workloads)} workloads loaded")
 
     total_cells = sum(
@@ -556,6 +586,9 @@ def compute_h1_verdict(df: pd.DataFrame) -> dict:
         delta_qa = (merged["qa_f1"] - merged["qa_ref"]).to_numpy()
         delta_coord = (merged["coord_success"] - merged["coord_ref"]).to_numpy()
         result = spearman_with_ci(delta_qa, delta_coord)
+        # Effect sizes (plan-v3 §5.4)
+        result["cliffs_delta"] = _cliffs_delta(delta_qa, delta_coord)
+        result["cohens_d"] = _cohens_d(delta_qa, delta_coord)
         # Plan-v3 criterion: rho < 0.6 AND 95% CI upper bound < 0.6
         # NaN CI means insufficient data — do not count as supported
         supported = result["rho"] < 0.6 and not np.isnan(result["ci_high"]) and result["ci_high"] < 0.6
@@ -614,6 +647,11 @@ def compute_h2_verdict(df: pd.DataFrame) -> dict:
             tested_indices.append(len(cells))
             p_values.append(test_p)
 
+        # Cohen's d for pre-cliff vs post-cliff (effect size)
+        cohens_d = _cohens_d(
+            paired["below"].to_numpy(), paired["above"].to_numpy()
+        ) if n_pairs >= 2 else 0.0
+
         cells.append(
             {
                 "compressor": comp,
@@ -621,9 +659,13 @@ def compute_h2_verdict(df: pd.DataFrame) -> dict:
                 "tau": fit["tau"],
                 "drop_rel": fit["drop_rel"],
                 "rmse": fit["rmse"],
+                "logistic_tau": fit.get("logistic_tau"),
+                "logistic_rmse": fit.get("logistic_rmse"),
+                "model_selected": fit.get("model_selected"),
                 "test_p": test_p,
                 "test_p_holm": None,
                 "n_pairs": n_pairs,
+                "cohens_d": cohens_d,
             }
         )
 
