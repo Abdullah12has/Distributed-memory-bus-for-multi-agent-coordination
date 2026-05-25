@@ -46,7 +46,11 @@ def make_compressor(name: str, **kwargs: Any) -> Compressor:
         from m6.compressors.phi3_extractive import Phi3ExtractiveCompressor
 
         return Phi3ExtractiveCompressor(**kwargs)
-    msg = f"Unknown compressor: {name!r}. Available: none, lingua2, filter, phi3-extractive"
+    if name == "caac":
+        from m6.compressors.caac import CAACCompressor
+
+        return CAACCompressor(**kwargs)
+    msg = f"Unknown compressor: {name!r}. Available: none, lingua2, filter, phi3-extractive, caac"
     raise ValueError(msg)
 
 
