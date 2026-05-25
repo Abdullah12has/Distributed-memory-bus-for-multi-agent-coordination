@@ -138,6 +138,26 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 9. **H4 missing Holm correction**: added Holm-Bonferroni across all 2N tests (commit 0da542b)
 10. **H3 P1=P2 cost model**: P1 now uses compressed corpus tokens for retrieval cost (commit 0da542b)
 11. **Smoke tests missing phi3**: added phi3-extractive to H1/H2, H3, H4 smoke configs (commit 0da542b)
+12. **H1 task_hint mismatch**: QA and coord paths used different hints; now both use initial_prompt (commit 237d509)
+13. **H1 CI inflation**: qa_f1 duplicated across seeds inflating N; now averages coord_success across seeds first (commit 237d509)
+14. **H1 NaN CI acceptance**: NaN ci_high no longer counts as supported (commit 237d509)
+15. **H4 silent "no" on exception**: now returns "error" + warning log (commit 237d509)
+16. **H2 Mann-Whitney → Wilcoxon**: paired test (same workloads in both groups violates independence) (commit 59f5b63)
+17. **H2 logistic fit added**: compounding-error model predicts smooth curve; both piecewise+logistic now fitted (commit 59f5b63)
+18. **H5 max_gap non-monotonic**: gap now only from monotonic families (commit 59f5b63)
+19. **H4 error tracking**: has_error column added, filtered before verdict (commit 59f5b63)
+20. **H3 bootstrap inflation**: now averages per workload before bootstrapping (commit 59f5b63)
+21. **H6 verdict tau-only**: coord curve comparison informational only (incompatible scoring) (commit 59f5b63)
+22. **H5 task_hint missing**: pre-compression now passes w.initial_prompt (commit 59f5b63)
+
+## Thesis-Text Actions (no code, must address in writing)
+
+- **Rename H1**: "information preservation vs coordination" (not "QA accuracy")
+- **Reframe H3**: "compress-first preserves content quality" (don't claim to falsify LongLLMLingua)
+- **H5 Phi-3 confound**: acknowledge in discussion (0% at ratio=1.0)
+- **Weighted q in compounding-error model**: acknowledge in Ch5
+- **H4 terminology**: use "protected-fact recovery rate" not "inference disclosure"
+- **H3 cost**: note uses target ratio, not achieved
 
 ## Chapter Mapping
 
@@ -145,9 +165,36 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 - **Ch6**: H3 (RAG pipelines + cost)
 - **Ch7**: H4 + H6 (inference disclosure + memory bus + transfer validation)
 
-## Remaining Work
+## Remaining Work (Thesis)
 
 - Full production runs with all fixes applied
 - H6 MultiHopRAG transfer validation (implementation ready, needs GPU run ~65min)
 - Thesis writing: Ch5, Ch6, Ch7 results sections
 - Figures: cliff curves, model-size bar charts, pipeline comparison
+
+## NeurIPS Upgrade Plan (see neurIPS.md for full details)
+
+### Implementation Checklist (P0 — Must-Have)
+
+- [ ] **THEORY**: Theorem 1 proof (coordination cliff bound) — `paper/sections/theorem.tex`
+- [x] **THEORY**: `src/m6/theory/cliff_prediction.py` — predicted_tau() + comparison plot (DONE)
+- [x] **ALGORITHM**: `src/m6/compressors/caac.py` — Cliff-Aware Adaptive Compression wrapper (DONE)
+- [x] **ALGORITHM**: `src/m6/experiments/run_caac.py` — CAAC vs fixed-ratio experiments (DONE, smoke verified)
+- [x] **EXPERIMENT**: `src/m6/experiments/run_frontier.py` — GPT-4o-mini cliff sweep via OpenAI (DONE, needs API key)
+- [ ] **EXPERIMENT**: Run H6 MultiHopRAG on GPU (~65 min)
+- [ ] **EXPERIMENT**: Run frontier validation (~$20 API cost)
+- [ ] **EXPERIMENT**: Run CAAC vs baselines on C1 (~4h GPU)
+- [ ] **EXPERIMENT**: Run full H1/H2 with 10 ratios + all fixes (~6h GPU)
+- [x] **FIGURES**: `src/m6/figures/generate.py` — 6 figure generators (DONE, auto-discovers CSVs)
+- [ ] **PAPER**: NeurIPS 9-page paper draft
+
+### Implementation Checklist (P1 — Should-Have)
+
+- [ ] HotpotQA cliff sweep (50 questions, ~2h GPU)
+- [ ] CAAC ablation: theta sensitivity {0.5, 0.6, 0.7, 0.8}
+- [ ] CAAC ablation: N sensitivity {1, 2, 3, 4, 5}
+- [ ] Per-fragment backing-off analysis
+- [ ] Selective Context as 4th compressor (~80 lines)
+- [ ] GPT-4o spot check at ratios {1, 4} (~$15)
+- [ ] Appendix with full result tables
+- [ ] Docker compose for reproducibility

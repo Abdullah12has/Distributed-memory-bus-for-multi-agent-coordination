@@ -1075,6 +1075,214 @@ POSITIONING: M6 sits at the intersection of compression × coordination ×
 privacy. No existing paper occupies this intersection.
 
 
+--------------------------------------------------------------------------------
+25. PUBLICATION-READINESS AUDIT — FIXES APPLIED (2026-05-25)
+--------------------------------------------------------------------------------
+
+Senior-researcher-level review identified 13 issues (3 critical, 6
+important, 4 methodology). 7 required code changes (commit 59f5b63),
+6 are thesis-text-only.
+
+### CODE FIXES APPLIED (commit 59f5b63)
+
+CRITICAL-2: H2 MANN-WHITNEY → PAIRED WILCOXON
+  Problem: Mann-Whitney requires independent samples, but the same
+  workloads appear in both groups (below/above tau). Anti-conservative.
+  Fix: Paired Wilcoxon signed-rank per workload. For each workload,
+  compute mean(coord | ratio<tau) - mean(coord | ratio>=tau), then
+  test whether paired differences are positive. Requires n>=10 pairs.
+  File: run_h1_h2.py:545-598
+
+CRITICAL-3: LOGISTIC FIT ADDED AS ALTERNATIVE TO PIECEWISE
+  Problem: Compounding-error model predicts smooth q^N, not piecewise.
+  No theoretical justification for piecewise-linear. Reviewer will ask
+  "why not logistic?".
+  Fix: fit_piecewise() now also fits logistic 1/(1+exp(k*(x-tau)))
+  and returns both RMSEs + model_selected field. _fit_logistic() added.
+  File: run_h1_h2.py:364-399
+
+IMPORTANT-4: H5 MAX_GAP EXCLUDES NON-MONOTONIC FAMILIES
+  Problem: A family with taus [10, 2, 15] is non-monotonic but has
+  gap=5. max_gap could come from a non-monotonic family → false positive.
+  Fix: max_gap = max(... if d["monotonic"])
+  File: run_h5.py:415
+
+IMPORTANT-5: H4 ERROR TRACKING
+  Problem: Reader exceptions silently returned "no", biasing results.
+  Fix: Exceptions return "error" + log warning. has_error column added.
+  Rows with errors filtered before computing rates in verdict.
+  File: run_h4.py:90-93, 175-188, 199-203
+
+IMPORTANT-6: H3 BOOTSTRAP PER WORKLOAD
+  Problem: Bootstrap paired (workload, compressor) pairs, inflating N
+  by 3x (same workload across compressors shares documents).
+  Fix: Average F1 per workload first, then bootstrap on n_workloads.
+  File: run_h3.py:202-213
+
+IMPORTANT-7: H6 VERDICT USES TAU* ONLY
+  Problem: H6 coord_success uses F1>=0.5, H5 uses error>0.75. Direct
+  curve comparison is meaningless across different scoring thresholds.
+  Fix: Verdict based on tau* comparison only. Coord curve kept as
+  informational with explicit note about scoring difference.
+  File: run_h6.py:315-330
+
+METHOD-12: H5 PRE-COMPRESSION PASSES TASK_HINT
+  Problem: comp.compress(frag) without task_hint. Currently safe
+  (lingua2 ignores hints) but would silently degrade with filter/phi3.
+  Fix: frag.model_copy(update={"task_hint": w.initial_prompt})
+  File: run_h5.py:336
+
+### THESIS-TEXT-ONLY ACTIONS (no code needed)
+
+CRITICAL-1: RENAME H1 FRAMING
+  "QA accuracy vs coordination" → "Information preservation vs
+  coordination". The metric measures token survival, not answer
+  accuracy. Finding is still valid and publishable: token survival
+  doesn't predict coordination collapse.
+
+IMPORTANT-8: REFRAME H3
+  Don't claim to falsify LongLLMLingua (they claim efficiency, not
+  accuracy). Frame as: "Compress-first preserves content quality (F1)
+  better than retrieve-first across both regimes."
+
+IMPORTANT-9: ACKNOWLEDGE H5 PHI-3 CONFOUND
+  Phi-3 scores 0% on family-a even at ratio=1.0. Can't test scaling
+  on a task where the middle model can't solve it. Note in discussion
+  that family-c shows all models perform comparably, supporting
+  "cliff is compressor-driven" narrative.
+
+METHOD-10: WEIGHTED TOKEN IMPORTANCE
+  Compounding-error model assumes uniform q. H4 shows compression
+  drops task-relevant tokens disproportionately (lingua2 -14.3pp vs
+  filter ~0pp). Acknowledge weighted q would predict different cliff
+  positions per compressor.
+
+METHOD-11: TERMINOLOGY
+  "Inference disclosure" is non-standard. Use "protected-fact recovery
+  rate" in thesis. Frame as empirical privacy operationalization, not
+  formal guarantee (not DP, not k-anonymity).
+
+METHOD-13: COST MODEL USES TARGET RATIO
+  H3 cost model uses requested ratio, not achieved. Phi3-extractive
+  salvage path may achieve lower ratio. Note in thesis.
+
+
+--------------------------------------------------------------------------------
+26. NEURIPS UPGRADE PLAN (2026-05-25)
+--------------------------------------------------------------------------------
+
+Full plan in neurIPS.md. Three additions transform thesis → NeurIPS paper:
+
+1. FORMAL THEOREM (Coordination Cliff Bound):
+   P(success | r) <= q(r)^N. Cliff at r* where q(r*) = theta^(1/N).
+   Cliff position depends on compressor (q), not model capacity.
+   Proof from independence + threshold assumptions.
+   Validated: predicted tau within 15% of empirical (~3-4x for family-a).
+
+2. CAAC ALGORITHM (Cliff-Aware Adaptive Compression):
+   Wraps any compressor. Monitors token_recall per fragment. Backs off
+   compression when q^N approaches theta. Binary search for safe ratio.
+   Training-free, portable, negligible overhead.
+   Expected: 75% compression with 90% coordination (vs 0% at fixed 4x).
+
+3. BROADER VALIDATION:
+   - GPT-4o-mini via OpenAI API (~$20): frontier-scale cliff validation
+   - MultiHopRAG (H6, already implemented): real benchmark
+   - HotpotQA extension: 2nd real benchmark
+   Shows cliff is universal across model scales and benchmarks.
+
+TIMELINE: 4 weeks (1 theory+code, 1 experiments, 1 writing, 1 polish)
+BUDGET: ~$35 API costs, RTX 5090 already available
+TARGET: NeurIPS 2026 main track
+
+
+--------------------------------------------------------------------------------
+27. NEURIPS IMPLEMENTATION PROGRESS (2026-05-25)
+--------------------------------------------------------------------------------
+
+COMPLETED:
+  1. src/m6/theory/cliff_prediction.py — Theorem 1 implementation
+     - q_required(0.65, 3) = 0.866 (verified)
+     - predicted_tau() with linear interpolation (verified: 3.01 on test curve)
+     - validate_prediction() for predicted vs empirical comparison
+     - full_validation() reads H1/H2 sweep CSVs directly
+
+  2. src/m6/compressors/caac.py — CAAC algorithm
+     - Wraps any compressor via make_compressor protocol
+     - Binary search for safe ratio per fragment (5 steps max)
+     - Compressor caching to avoid model reloading
+     - Registered in make_compressor("caac", inner="lingua2", ...)
+     - Smoke test: dominates 2/2 ratios (+100pp coord_success)
+
+  3. src/m6/experiments/run_caac.py — CAAC experiment runner
+     - Compares fixed vs CAAC at each target ratio
+     - Pareto frontier: achieved_ratio vs coord_success
+     - Smoke test passed: CAAC 100% vs fixed 0% at 4x and 8x
+
+  4. src/m6/experiments/run_frontier.py — Frontier model runner
+     - OpenAI API integration (GPT-4o-mini, GPT-4o)
+     - Same scoring as H5 (family-aware)
+     - Cost tracking (EUR per call)
+     - Verdict: compares frontier tau to local 8B tau
+
+REMAINING P0:
+  - Theorem 1 LaTeX proof (paper/sections/theorem.tex)
+  - GPU runs: H6, CAAC full, H1/H2 rerun with 10 ratios
+  - Frontier run ($20 API cost, needs OPENAI_API_KEY)
+  - Figure generation scripts
+  - Paper writing (NeurIPS 9 pages)
+
+
+--------------------------------------------------------------------------------
+28. DETAILED EXPERIMENT IMPROVEMENT PLAN (2026-05-25)
+--------------------------------------------------------------------------------
+
+Created comprehensive experiment_plan.md targeting NeurIPS/ICLR publication.
+
+THREE PARTS:
+
+Part A — Strengthening existing results (no GPU needed):
+  - H1: partial correlation controlling for ratio, per-family breakdown,
+    scatter plots (delta_qa vs delta_coord), Cliff's delta effect sizes
+  - H2: logistic vs piecewise fit comparison, compounding-error prediction
+    validation using cliff_prediction.py + token_recall data, hero cliff
+    figure with predicted tau overlay
+  - H3: per-compressor P1-P2 effect, cost-effectiveness Pareto frontier
+  - H4: per-question-type analysis, odds ratios, privacy-quality tradeoff
+    dual-axis figure connecting H4 to H2
+  - H5: AUC metric instead of boundary-biased tau*, cliff overlay figure
+    for 4 models, reframe as "ceiling not cliff" (validates Theorem 1(iii))
+  - Cross-hypothesis: unified compressor table, Holm correction across
+    {H1,H2,H5}, compounding-error model summary figure
+
+Part B — New experiments (prioritized):
+  P0 (REQUIRED, 14 GPU-hours, $20):
+    B1: CAAC vs baselines (code ready, 4h GPU)
+    B2: GPT-4o-mini frontier (code ready, $20 API)
+    B4: Truncation baseline (40 lines, 2h GPU) — reviewer dealbreaker
+    B5: H1/H2 10-ratio rerun (config change, 8h GPU)
+  P1 (HIGH, 12 GPU-hours):
+    B3: H6 MultiHopRAG (code ready, 1h GPU)
+    B6: Selective Context 4th compressor (80 lines, 3h GPU)
+    B7: CAAC ablations theta/N (config changes, 8h GPU)
+  P2 (MEDIUM, 3 GPU-hours + $15):
+    B8-B12: seed variance, HotpotQA, cost/latency, GPT-4o, human eval
+
+Part C — 14-day timeline:
+  Days 1-4: experiments (overnight GPU runs)
+  Days 5: figure generation (6 main + 3 appendix)
+  Days 6-9: paper writing (NeurIPS 9-page format)
+  Days 10-11: internal review + revisions
+  Days 12-13: code release + final polish
+  Day 14: submit
+
+KEY INSIGHT: The truncation baseline (B4) is the single most important
+missing piece — every compression paper at NeurIPS/ICLR includes it.
+Its absence would be a guaranteed reviewer complaint.
+
+FILE: experiment_plan.md (project root)
+
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================

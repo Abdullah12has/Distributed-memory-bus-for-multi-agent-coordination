@@ -168,7 +168,6 @@ class Phi3ExtractiveCompressor:
 
         # Attempt 3: fall back to LLMLingua-2
         if output is None:
-            self._verify_failures += 1
             self._fallback_count += 1
             output = self._lingua2_compress(fragment, ratio)
 
