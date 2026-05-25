@@ -156,6 +156,22 @@ def _ensure_benchmark(cfg: H6Config) -> None:
 def run_h6(cfg: H6Config) -> pd.DataFrame:
     _ensure_benchmark(cfg)
 
+    # Validate Ollama planner is available
+    try:
+        resp = httpx.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={"model": cfg.planner_model, "prompt": "test", "stream": False,
+                  "options": {"num_predict": 1}},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        print(f"  Planner {cfg.planner_model}: OK")
+    except Exception as e:
+        raise RuntimeError(
+            f"Ollama model {cfg.planner_model!r} not available. "
+            f"Pull it with: ollama pull {cfg.planner_model}"
+        ) from e
+
     print(f"Loading benchmark from {cfg.benchmark_path}...")
     workloads = load_benchmark(cfg.benchmark_path)
     if cfg.n_workloads and len(workloads) > cfg.n_workloads:

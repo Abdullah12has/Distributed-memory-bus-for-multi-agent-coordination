@@ -189,6 +189,8 @@ scenarios but is explicitly documented as not matching our experiments.
 - **H4 terminology**: use "protected-fact recovery rate" not "inference disclosure"
 - **H3 cost**: note uses target ratio, not achieved
 - **Evaluation scope**: explicitly state experiments measure task solvability, not multi-agent communication
+- **Family-A limitation**: all 50 workloads are "sum 8 numbers" — zero variability in reasoning type. Acknowledge in limitations.
+- **Family-B limitation**: capacity generator inflates capacity to ensure feasibility. Tasks are trivially solvable for the deterministic solver but still hard for LLM planners (constraint tracking).
 
 ## Chapter Mapping
 
