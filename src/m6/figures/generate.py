@@ -142,9 +142,9 @@ def fig3_predicted_vs_empirical(h1h2_csv: str, out: Path) -> None:
     tr_curve = list(zip(tr_agg["ratio"].tolist(), tr_agg["token_recall"].tolist()))
 
     # Predicted curve
-    n_rounds, theta = 3, 0.65
-    q_min = q_required(theta, n_rounds)
-    predicted = predicted_success_smooth(tr_curve, n_rounds, theta, p0=1.0)
+    n_compression_passes, theta = 1, 0.5
+    q_min = q_required(theta, n_compression_passes)
+    predicted = predicted_success_smooth(tr_curve, n_compression_passes, theta, p0=1.0)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 

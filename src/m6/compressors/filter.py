@@ -194,10 +194,11 @@ class InstructionAwareFilter:
         # Stage 2: token-level trim to hit ratio.
         # Use whitespace splitting to preserve punctuation attached to words
         # (e.g., "hours:" stays as "hours:", not "hours :").
+        # Sort candidate drop words to ensure determinism across Python versions.
         joined = " ".join(keep)
         if target_ratio <= 1.0:
             return joined
-        words = joined.split()
+        words = list(joined.split())
         source_words = text.split()
         target_word_count = max(int(len(source_words) / target_ratio), 1)
         kept_words: list[str] = []

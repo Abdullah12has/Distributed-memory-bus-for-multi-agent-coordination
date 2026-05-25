@@ -151,7 +151,10 @@ class PlannerWorkerCritic:
         else:
             answer, assignments = _solve_family_c(workload, compressed_texts)
 
-        rounds = max(1, len(workload.sub_tasks))
+        # rounds=1: one compression pass + one solve pass. NOT actual
+        # communication rounds — the deterministic solver is a single-pass
+        # information extractor, not a multi-round agent system.
+        rounds = 1
         critic_flags = sum(
             1
             for st in workload.sub_tasks

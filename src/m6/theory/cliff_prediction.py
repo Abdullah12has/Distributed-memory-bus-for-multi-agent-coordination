@@ -1,28 +1,32 @@
 """Coordination Cliff Theorem — prediction and validation.
 
 Theorem 1 (Coordination Cliff Bound):
-  Consider a multi-agent system with N sequential information-extraction
-  rounds, where each round applies a compressor C with per-token retention
-  probability q(r) at compression ratio r. Let theta be the minimum fraction
-  of task-relevant tokens required for coordination success. Then:
+  Consider a coordination task where a compressor C with per-token retention
+  probability q(r) at compression ratio r is applied to each fragment ONCE
+  before the planner reads them. Let theta be the minimum fraction of
+  task-relevant tokens required for coordination success. Then:
 
-    (i)   P(success | r) <= p0 * q(r)^N
-    (ii)  A coordination cliff exists at r* where q(r*) = theta^(1/N)
-    (iii) r* depends only on C (through q) and the task (through N, theta),
+    (i)   P(success | r) <= p0 * q(r)
+    (ii)  A coordination cliff exists at r* where q(r*) = theta
+    (iii) r* depends only on C (through q) and the task (through theta),
           NOT on planner model capacity.
+
+  Note: if compression is applied across N sequential passes (e.g.,
+  iterative summarization), the bound tightens to q(r)^N. In our
+  experiments, N=1 (single compression pass before coordination).
 
 This module implements:
   - predicted_tau(): compute r* from a token-recall curve
-  - q_required(): compute the minimum per-round token recall
+  - q_required(): compute the minimum token recall for coordination
+  - derive_theta(): empirically derive theta from sweep data
   - validate_prediction(): compare predicted vs empirical cliff positions
-  - plot_prediction(): generate the predicted-vs-empirical figure
 
 Usage:
     from m6.theory.cliff_prediction import predicted_tau, validate_prediction
 
     # From H1/H2 sweep data
     token_recall_curve = [(1.0, 1.0), (2.0, 0.52), (4.0, 0.11), ...]
-    tau_star = predicted_tau(token_recall_curve, n_rounds=3, theta=0.65)
+    tau_star = predicted_tau(token_recall_curve, n_compression_passes=1, theta=0.5)
 """
 
 from __future__ import annotations
@@ -32,46 +36,48 @@ from typing import Any
 import numpy as np
 
 
-def q_required(theta: float, n_rounds: int) -> float:
-    """Minimum per-round token recall to maintain coordination success.
+def q_required(theta: float, n_compression_passes: int = 1) -> float:
+    """Minimum token recall to maintain coordination success.
 
-    From Theorem 1(ii): q* = theta^(1/N).
+    From Theorem 1(ii): q* = theta^(1/N) where N is the number of
+    compression passes. For N=1 (our default), q* = theta.
 
     Args:
         theta: Minimum fraction of task-relevant tokens needed for success.
-        n_rounds: Number of planner-worker-critic rounds.
+        n_compression_passes: Number of times compression is applied.
+            Default 1 (single pass before coordination, matching our setup).
 
     Returns:
-        q*: the minimum per-round token recall.
+        q*: the minimum token recall.
     """
-    if n_rounds <= 0:
-        raise ValueError("n_rounds must be positive")
+    if n_compression_passes <= 0:
+        raise ValueError("n_compression_passes must be positive")
     if not 0 < theta <= 1:
         raise ValueError("theta must be in (0, 1]")
-    return theta ** (1.0 / n_rounds)
+    return theta ** (1.0 / n_compression_passes)
 
 
 def predicted_tau(
     token_recall_curve: list[tuple[float, float]],
-    n_rounds: int,
-    theta: float,
+    n_compression_passes: int = 1,
+    theta: float = 0.5,
 ) -> float:
     """Predict the cliff position from a measured token-recall curve.
 
-    Finds the compression ratio r* where q(r)^N first drops below theta,
-    i.e., where q(r) < theta^(1/N). Uses linear interpolation between
-    measured points for precision.
+    Finds the compression ratio r* where q(r)^N first drops below theta.
+    For N=1 (default, matching our single-pass setup), this is simply
+    where q(r) < theta.
 
     Args:
         token_recall_curve: List of (ratio, token_recall) pairs, sorted by ratio.
-        n_rounds: Typical rounds-to-completion (e.g., 3 for family-a).
+        n_compression_passes: Number of compression passes (default 1).
         theta: Fraction of source information the planner needs to succeed.
 
     Returns:
         Predicted tau* (compression ratio at the cliff).
         Returns float("inf") if the cliff is outside the measured range.
     """
-    q_min = q_required(theta, n_rounds)
+    q_min = q_required(theta, n_compression_passes)
     curve = sorted(token_recall_curve, key=lambda x: x[0])
 
     for i, (ratio, q) in enumerate(curve):
@@ -89,17 +95,66 @@ def predicted_tau(
     return float("inf")
 
 
-def survival_probability(q: float, n_rounds: int) -> float:
-    """Probability that task-relevant information survives N rounds.
+def derive_theta(
+    sweep_csv_path: str,
+    success_threshold: float = 0.5,
+    compressors: list[str] | None = None,
+    family: str = "a",
+) -> dict[str, Any]:
+    """Empirically derive theta from the H1/H2 sweep data.
 
-    From Theorem 1(i): P(survive) = q^N.
+    For each compressor, finds the token_recall value at the ratio where
+    coord_success first drops below ``success_threshold``. Theta is the
+    average of these critical token-recall values.
+
+    Returns:
+        Dict with per-compressor theta estimates and the mean.
     """
-    return q ** n_rounds
+    import pandas as pd
+
+    df = pd.read_csv(sweep_csv_path)
+    if compressors is None:
+        compressors = sorted(df["compressor"].unique())
+
+    per_comp: dict[str, float] = {}
+    for comp in compressors:
+        sub = df[(df["compressor"] == comp) & (df["family"] == family)]
+        agg = sub.groupby("ratio")[["coord_success", "token_recall"]].mean().reset_index()
+        agg = agg.sort_values("ratio")
+        # Find the first ratio where coord_success drops below threshold
+        for _, row in agg.iterrows():
+            if row["coord_success"] < success_threshold and row["ratio"] > 1.0:
+                per_comp[comp] = float(row["token_recall"])
+                break
+        else:
+            # No cliff found — use the token_recall at max ratio
+            if not agg.empty:
+                per_comp[comp] = float(agg.iloc[-1]["token_recall"])
+
+    thetas = list(per_comp.values())
+    mean_theta = float(np.mean(thetas)) if thetas else 0.5
+
+    return {
+        "per_compressor": per_comp,
+        "mean_theta": mean_theta,
+        "family": family,
+        "success_threshold": success_threshold,
+        "note": "Empirically derived from H1/H2 sweep. Use mean_theta as theta parameter.",
+    }
+
+
+def survival_probability(q: float, n_compression_passes: int = 1) -> float:
+    """Probability that task-relevant information survives compression.
+
+    From Theorem 1(i): P(survive) = q^N where N is compression passes.
+    For N=1 (default): P(survive) = q.
+    """
+    return q ** n_compression_passes
 
 
 def predicted_success_curve(
     token_recall_curve: list[tuple[float, float]],
-    n_rounds: int,
+    n_compression_passes: int,
     theta: float,
     p0: float = 1.0,
 ) -> list[tuple[float, float]]:
@@ -110,7 +165,7 @@ def predicted_success_curve(
 
     For a smooth version (not binary), use predicted_success_smooth().
     """
-    q_min = q_required(theta, n_rounds)
+    q_min = q_required(theta, n_compression_passes)
     result = []
     for ratio, q in sorted(token_recall_curve, key=lambda x: x[0]):
         if q >= q_min:
@@ -122,7 +177,7 @@ def predicted_success_curve(
 
 def predicted_success_smooth(
     token_recall_curve: list[tuple[float, float]],
-    n_rounds: int,
+    n_compression_passes: int,
     theta: float,
     p0: float = 1.0,
     steepness: float = 20.0,
@@ -137,7 +192,7 @@ def predicted_success_smooth(
     """
     result = []
     for ratio, q in sorted(token_recall_curve, key=lambda x: x[0]):
-        qn = q ** n_rounds
+        qn = q ** n_compression_passes
         prob = p0 / (1.0 + np.exp(-steepness * (qn - theta)))
         result.append((ratio, float(prob)))
     return result
@@ -146,7 +201,7 @@ def predicted_success_smooth(
 def validate_prediction(
     token_recall_curve: list[tuple[float, float]],
     empirical_tau: float,
-    n_rounds: int,
+    n_compression_passes: int,
     theta: float,
 ) -> dict[str, Any]:
     """Compare predicted vs empirical cliff position.
@@ -159,8 +214,8 @@ def validate_prediction(
         q_min: required per-round token recall
         match: True if within 25% relative error
     """
-    pred_tau = predicted_tau(token_recall_curve, n_rounds, theta)
-    q_min = q_required(theta, n_rounds)
+    pred_tau = predicted_tau(token_recall_curve, n_compression_passes, theta)
+    q_min = q_required(theta, n_compression_passes)
 
     if np.isinf(pred_tau) or np.isnan(empirical_tau):
         return {
@@ -169,7 +224,7 @@ def validate_prediction(
             "abs_error": float("nan"),
             "rel_error_pct": float("nan"),
             "q_min": q_min,
-            "n_rounds": n_rounds,
+            "n_compression_passes": n_compression_passes,
             "theta": theta,
             "match": False,
         }
@@ -183,7 +238,7 @@ def validate_prediction(
         "abs_error": abs_err,
         "rel_error_pct": rel_err,
         "q_min": q_min,
-        "n_rounds": n_rounds,
+        "n_compression_passes": n_compression_passes,
         "theta": theta,
         "match": rel_err <= 25.0,
     }
@@ -227,8 +282,8 @@ def extract_empirical_tau(
 
 def full_validation(
     sweep_csv_path: str,
-    n_rounds: int = 3,
-    theta: float = 0.65,
+    n_compression_passes: int = 1,
+    theta: float = 0.5,
     compressors: list[str] | None = None,
     families: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -248,7 +303,7 @@ def full_validation(
             try:
                 curve = extract_token_recall_curve(sweep_csv_path, comp, fam)
                 emp_tau = extract_empirical_tau(sweep_csv_path, comp, fam)
-                results[comp][fam] = validate_prediction(curve, emp_tau, n_rounds, theta)
+                results[comp][fam] = validate_prediction(curve, emp_tau, n_compression_passes, theta)
             except Exception as e:
                 results[comp][fam] = {"error": str(e)}
 
@@ -263,7 +318,7 @@ def full_validation(
         "n_validated": len(all_validations),
         "n_match": n_match,
         "match_rate": n_match / max(len(all_validations), 1),
-        "n_rounds": n_rounds,
+        "n_compression_passes": n_compression_passes,
         "theta": theta,
     }
     return results

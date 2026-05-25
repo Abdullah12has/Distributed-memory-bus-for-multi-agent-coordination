@@ -132,6 +132,29 @@ def token_recall(source: str, compressed: str, gold_answer: str = "") -> float:
     return len(target_tokens & comp_tokens) / len(target_tokens)
 
 
+def critical_token_recall(source: str, compressed: str, family: str) -> float:
+    """Fraction of task-critical tokens preserved in compressed text.
+
+    Unlike generic token_recall which counts all words, this focuses on
+    the tokens that actually determine coordination success:
+    - Family-a: numbers (hours, budget values)
+    - Family-b: assignment patterns (sub-X, worker-X)
+    - Family-c: chain identifiers (FINAL-XXXX)
+    """
+    if family == "a":
+        critical = set(re.findall(r"\d+", source))
+    elif family == "b":
+        critical = set(re.findall(r"(?:sub|worker|agent)-\d+", source, re.IGNORECASE))
+    else:  # family c
+        critical = set(re.findall(r"FINAL-\d+", source, re.IGNORECASE))
+    if not critical:
+        return 1.0
+    # Lowercase both sides for case-insensitive matching
+    critical = {c.lower() for c in critical}
+    preserved = {t.lower() for t in re.findall(r"\w[\w-]*", compressed)}
+    return len(critical & preserved) / len(critical)
+
+
 # ============================================================================
 # Coordination metrics (inline)
 # ============================================================================
@@ -508,11 +531,20 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
                     w.expected_answer,
                 )
 
-                # Token recall for compounding-error model (per tech ref §9)
+                # Token recall for compounding-error model
                 tr = 0.0
+                ctr = 0.0
                 for frag, ct in zip(w.fragments, compressed_parts, strict=False):
                     tr += token_recall(frag.text, ct)
-                avg_token_recall = tr / max(len(w.fragments), 1)
+                    ctr += critical_token_recall(frag.text, ct, w.family.value)
+                n_frags = max(len(w.fragments), 1)
+                avg_token_recall = tr / n_frags
+                avg_critical_recall = ctr / n_frags
+
+                # Achieved compression ratio (actual, not target)
+                source_len = sum(len(f.text) for f in w.fragments)
+                compressed_len = sum(len(ct) for ct in compressed_parts)
+                achieved_ratio = source_len / max(compressed_len, 1)
 
                 for seed in cfg.seeds:
                     # Multi-agent coordination
@@ -533,6 +565,8 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
                             "rounds": coord["rounds"],
                             "critic_rate": coord["critic_rate"],
                             "token_recall": avg_token_recall,
+                            "critical_token_recall": avg_critical_recall,
+                            "achieved_ratio": achieved_ratio,
                             "timestamp": datetime.now(UTC).isoformat(),
                         }
                     )

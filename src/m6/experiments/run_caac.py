@@ -45,8 +45,8 @@ class CAACConfig:
     seeds: list[int] | None = None
     families: list[str] | None = None
     n_workloads: int | None = None
-    n_rounds: int = 3
-    theta: float = 0.65
+    n_compression_passes: int = 1
+    theta: float = 0.5
     out_dir: str = "results/caac"
 
     def __post_init__(self):
@@ -153,7 +153,7 @@ def run_caac_experiment(cfg: CAACConfig) -> pd.DataFrame:
             caac = CAACCompressor(
                 inner=inner_name,
                 target_ratio=target_ratio,
-                n_rounds=cfg.n_rounds,
+                n_compression_passes=cfg.n_compression_passes,
                 theta=cfg.theta,
             )
 
@@ -264,7 +264,7 @@ def main():
     print(f"Inner compressors: {cfg.inner_compressors}")
     print(f"Target ratios: {cfg.target_ratios}")
     print(f"Families: {cfg.families}")
-    print(f"N_rounds: {cfg.n_rounds}, theta: {cfg.theta}")
+    print(f"N_rounds: {cfg.n_compression_passes}, theta: {cfg.theta}")
     print(f"Output: {cfg.out_dir}")
     print()
 
