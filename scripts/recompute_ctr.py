@@ -54,17 +54,20 @@ for comp_name in compressor_names:
         comp = build_compressor(comp_name, target_ratio=ratio)
         for fam in ["a", "b", "c"]:
             for wl in workloads_by_fam[fam]:
+                # Use workload-level initial_prompt as task_hint (matches main sweep)
+                hint = wl.get("initial_prompt", "")
                 for frag_d in wl["fragments"]:
                     frag = Fragment(
                         fragment_id=frag_d["fragment_id"],
                         text=frag_d["text"],
                         tags=frag_d.get("tags", {}),
-                        task_hint=frag_d.get("task_hint", ""),
+                        task_hint=hint,
                     )
                     if ratio == 1.0:
                         ct = frag.text
                     else:
-                        ct = comp.compress(frag).payload.text
+                        slot = comp.compress(frag)
+                        ct = comp.decompress(slot) or frag.text
 
                     ctr = critical_token_recall_fixed(frag.text, ct, fam)
                     rows.append({

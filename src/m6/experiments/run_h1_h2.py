@@ -553,13 +553,15 @@ def run_sweep(cfg: SweepConfig) -> pd.DataFrame:
 
                 # Token recall for compounding-error model
                 tr = 0.0
-                ctr = 0.0
+                ctr_vals: list[float] = []
                 for frag, ct in zip(w.fragments, compressed_parts, strict=False):
                     tr += token_recall(frag.text, ct)
-                    ctr += critical_token_recall(frag.text, ct, w.family.value)
+                    ctr_val = critical_token_recall(frag.text, ct, w.family.value)
+                    if not (isinstance(ctr_val, float) and ctr_val != ctr_val):  # skip NaN
+                        ctr_vals.append(ctr_val)
                 n_frags = max(len(w.fragments), 1)
                 avg_token_recall = tr / n_frags
-                avg_critical_recall = ctr / n_frags
+                avg_critical_recall = sum(ctr_vals) / len(ctr_vals) if ctr_vals else float("nan")
 
                 # Achieved compression ratio (actual, not target)
                 source_len = sum(len(f.text) for f in w.fragments)

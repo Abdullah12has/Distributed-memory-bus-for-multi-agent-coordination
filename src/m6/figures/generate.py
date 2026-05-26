@@ -345,16 +345,17 @@ def fig_pareto_privacy_coordination(h1h2_csv: str, h4_csv: str, out: Path) -> No
                         textcoords="offset points", xytext=(8, 4),
                         fontsize=8, color=COLORS.get(comp, "#333333"))
 
-    # Add ideal corner annotation
-    ax.annotate("ideal\n(high coord,\nhigh privacy)",
-                xy=(1.0, 0.6), fontsize=7, color="gray", ha="center",
-                style="italic")
-
     ax.set_xlabel("Coordination Success (at 4x compression)")
     ax.set_ylabel("Disclosure Reduction (pp)")
     ax.set_title("Privacy–Coordination Tradeoff")
     ax.set_xlim(-0.05, 1.05)
-    ax.set_ylim(-0.05, max(0.6, ax.get_ylim()[1] + 0.05))
+    # Set y-axis from data range with margin
+    ymin, ymax = ax.get_ylim()
+    ax.set_ylim(min(-0.05, ymin - 0.05), max(0.6, ymax + 0.1))
+    # Ideal corner annotation relative to actual axis
+    ax.annotate("ideal\n(high coord,\nhigh privacy)",
+                xy=(0.95, ax.get_ylim()[1] * 0.85), fontsize=7, color="gray",
+                ha="center", style="italic")
 
     # Legend for marker shapes
     from matplotlib.lines import Line2D
@@ -411,7 +412,7 @@ def fig_compressor_fingerprints(h1h2_csv: str, out: Path, ctr_csv: str | None = 
             # Predicted tau
             curve = list(zip(tr.index.tolist(), tr.values.tolist()))
             tau = predicted_tau(curve, n_compression_passes=1, theta=theta)
-            if tau != float("inf") and tau <= 16:
+            if np.isfinite(tau) and tau <= 16:
                 ax.axvline(tau, color=color, linestyle=":", alpha=0.4, linewidth=1)
 
             # Critical token recall (dashed)
@@ -550,17 +551,19 @@ def fig_scaling_auc(h5_csv: str, out: Path) -> None:
     # Left: AUC per model per family
     ax = axes[0]
     x = np.arange(len(models))
-    width = 0.35
-    for i, fam in enumerate(families):
+    n_fam = len(families)
+    width = 0.7 / max(n_fam, 1)
+    offsets = np.linspace(-width * (n_fam - 1) / 2, width * (n_fam - 1) / 2, n_fam) if n_fam > 1 else [0.0]
+    for offset, fam in zip(offsets, families):
         aucs = []
         for m in models:
             sub = df[(df["planner_model"] == m) & (df["family"] == fam)]
             agg = sub.groupby("ratio")["coord_success"].mean().sort_index()
             if len(agg) >= 2:
-                aucs.append(float(np.trapezoid(agg.values, agg.index)))
+                aucs.append(float(np.trapz(agg.values, agg.index)))
             else:
                 aucs.append(0.0)
-        ax.bar(x + (i - 0.5) * width, aucs, width, label=f"Family {fam.upper()}", alpha=0.85)
+        ax.bar(x + offset, aucs, width, label=f"Family {fam.upper()}", alpha=0.85)
     ax.set_xlabel("Planner Model")
     ax.set_ylabel("AUC (Coordination Quality)")
     ax.set_title("Ceiling Scales with Model Size")
