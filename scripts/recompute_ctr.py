@@ -8,28 +8,7 @@ t0 = time.time()
 from m6.memory_bus.schemas import Fragment
 from m6.compressors import make_compressor as build_compressor
 from m6.theory.cliff_prediction import predicted_tau
-
-
-def critical_token_recall_fixed(source, compressed, family):
-    if family == "a":
-        critical = set(re.findall(r"\b\d{2,}\b", source))
-    elif family == "b":
-        critical = set(re.findall(r"\d+", source))
-    else:
-        critical = set(re.findall(r"(?:entry \d+|FINAL-\d+)", source, re.IGNORECASE))
-    if not critical:
-        return float("nan")
-    critical = {c.lower() for c in critical}
-    compressed_lower = compressed.lower()
-    preserved = 0
-    for c in critical:
-        if re.fullmatch(r"\d+", c):
-            if re.search(r"(?<!\d)" + re.escape(c) + r"(?!\d)", compressed_lower):
-                preserved += 1
-        else:
-            if c in compressed_lower:
-                preserved += 1
-    return preserved / len(critical)
+from m6.experiments.run_h1_h2 import critical_token_recall as critical_token_recall_fixed
 
 
 # Load workloads
