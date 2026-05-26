@@ -229,6 +229,8 @@ def cliff_sharpness(m: int, theta: float = 0.5) -> float:
 
     Returns the approximate transition width in q-space.
     """
+    if m <= 0:
+        return float("inf")
     # From Chernoff: P drops from 0.9 to 0.1 over delta_q where
     # exp(-2M*delta_q^2) = 0.1, so delta_q = sqrt(ln(10)/(2M))
     return float(np.sqrt(np.log(10) / (2 * m)))

@@ -32,7 +32,7 @@ verdicts = {}
 # =====================================================================
 # H1/H2: Full sweep
 # =====================================================================
-log("H1/H2: 3 compressors, 10 ratios, 5 seeds, 50 wl/fam, 3 families")
+log("H1/H2: 4 compressors, 10 ratios, 5 seeds, 50 wl/fam, 3 families")
 from m6.experiments.run_h1_h2 import SweepConfig, run_sweep, compute_h1_verdict, compute_h2_verdict
 
 cfg = SweepConfig(

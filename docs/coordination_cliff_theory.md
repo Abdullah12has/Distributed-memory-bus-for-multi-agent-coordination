@@ -64,7 +64,7 @@ For the loose bound (Markov's inequality):
 
     P(X/M >= theta) <= E[X/M] / theta = q(r) / theta
 
-Combined: P(success | r) <= p0 * q(r) / theta. Since theta <= 1, this simplifies to P(success | r) <= p0 * q(r).
+Combined: P(success | r) <= p0 * q(r) / theta. This bound is coarse and can exceed 1 when q is large. The tighter, operationally useful bound comes from Theorem 2 (concentration): in the large-M regime, P(X/M >= theta) converges to an indicator function, giving P(success | r) ≈ p0 when q(r) > theta and P(success | r) ≈ 0 when q(r) < theta. For the purpose of predicting the cliff position, the key result is that the transition occurs at q(r*) = theta regardless of which bound is used.
 
 ### Proof of (ii)
 
