@@ -1817,6 +1817,37 @@ All fixed in code.
 
   SAVED: results/h1_h2_final/critical_token_recall_fixed.csv (2320 rows)
 
+37. NOVELTY IDEAS 2, 3, 7 — FIGURES GENERATED (2026-05-26)
+
+  Three new figures added to generate.py and tested on GPU:
+
+  1. PARETO PRIVACY-COORDINATION (Idea 2):
+     figures/pareto_privacy_coordination.pdf
+     Shows tradeoff: lingua2 (most privacy, least coord), phi3 (least
+     privacy, most coord), filter in between. Points at 2x/4x/8x ratios.
+
+  2. COMPRESSOR FINGERPRINTS (Idea 3):
+     figures/compressor_fingerprints.pdf
+     Three panels (families a/b/c). Each shows q(r) curves for all 3
+     compressors (solid=token_recall, dashed=critical_token_recall).
+     Theta=0.5 line shows where theorem predicts cliff.
+     Key visual: lingua2 decays smoothly, filter steps, phi3 floors.
+
+  3. SCALING AUC (Idea 7):
+     figures/scaling_auc.pdf
+     Left: AUC bar chart showing ceiling scales with model size.
+     Right: cliff curves for family-a showing all models cliff at same ratio.
+     8B has sharp cliff at ~2-3x, 1.5B/3.8B baseline already below cliff.
+
+  All figures auto-generated via:
+    python -m m6.figures.generate --h1h2 ... --h4 ... --h5 ... --out figures/
+
+  REMAINING FROM NOVELTY PLAN:
+  - Idea 4 (CAAC): queued in production run
+  - Idea 5 (frontier): needs API key
+  - Idea 6 (H6): queued in production run
+  - Ideas 9, 10: optional
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================

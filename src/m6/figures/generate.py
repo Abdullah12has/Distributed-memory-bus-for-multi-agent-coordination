@@ -295,6 +295,162 @@ def fig6_frontier(frontier_csv: str, local_csv: str | None, out: Path) -> None:
 
 
 # ============================================================================
+# Novelty figures (neurips_novelty_plan.md Ideas 2 & 3)
+# ============================================================================
+def fig_pareto_privacy_coordination(h1h2_csv: str, h4_csv: str, out: Path) -> None:
+    """Privacy-coordination Pareto frontier (Idea 2).
+
+    Each compressor is a point: x = coord_success at ratio=4x,
+    y = disclosure reduction (baseline - compressed recovery rate).
+    Shows the tradeoff: aggressive compression improves privacy but hurts coordination.
+    """
+    df1 = pd.read_csv(h1h2_csv)
+    df4 = pd.read_csv(h4_csv)
+    if df1.empty or df4.empty:
+        print("  [skip] pareto: empty data")
+        return
+    if "has_error" in df4.columns:
+        df4 = df4[~df4["has_error"]]
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    compressors = sorted(set(df1["compressor"].unique()) & set(df4["compressor"].unique()))
+
+    for comp in compressors:
+        # Coord success at multiple ratios
+        c1 = df1[df1["compressor"] == comp]
+        # Disclosure reduction from H4
+        c4 = df4[df4["compressor"] == comp]
+        baseline_rate = float(c4["baseline_correct"].mean())
+        compressed_rate = float(c4["compressed_correct"].mean())
+        disclosure_reduction = baseline_rate - compressed_rate
+
+        # Plot points at ratios 2x, 4x, 8x
+        for ratio in [2.0, 4.0, 8.0]:
+            sub = c1[c1["ratio"] == ratio]
+            if sub.empty:
+                continue
+            coord = float(sub["coord_success"].mean())
+            color = COLORS.get(comp, "#333333")
+            marker = "o" if ratio == 4.0 else ("^" if ratio == 2.0 else "s")
+            size = 100 if ratio == 4.0 else 60
+            ax.scatter(coord, disclosure_reduction, c=color, marker=marker,
+                       s=size, zorder=5, edgecolors="white", linewidths=0.5)
+
+        # Label at ratio=4x
+        sub4 = c1[c1["ratio"] == 4.0]
+        if not sub4.empty:
+            coord4 = float(sub4["coord_success"].mean())
+            ax.annotate(comp, (coord4, disclosure_reduction),
+                        textcoords="offset points", xytext=(8, 4),
+                        fontsize=8, color=COLORS.get(comp, "#333333"))
+
+    # Add ideal corner annotation
+    ax.annotate("ideal\n(high coord,\nhigh privacy)",
+                xy=(1.0, 0.6), fontsize=7, color="gray", ha="center",
+                style="italic")
+
+    ax.set_xlabel("Coordination Success (at 4x compression)")
+    ax.set_ylabel("Disclosure Reduction (pp)")
+    ax.set_title("Privacy–Coordination Tradeoff")
+    ax.set_xlim(-0.05, 1.05)
+    ax.set_ylim(-0.05, max(0.6, ax.get_ylim()[1] + 0.05))
+
+    # Legend for marker shapes
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Line2D([0], [0], marker="^", color="gray", linestyle="None", markersize=6, label="2x"),
+        Line2D([0], [0], marker="o", color="gray", linestyle="None", markersize=8, label="4x"),
+        Line2D([0], [0], marker="s", color="gray", linestyle="None", markersize=6, label="8x"),
+    ]
+    ax.legend(handles=legend_elements, title="Ratio", loc="upper left", fontsize=8)
+
+    fig.savefig(out / "pareto_privacy_coordination.pdf")
+    fig.savefig(out / "pareto_privacy_coordination.png")
+    plt.close(fig)
+    print(f"  pareto: {out / 'pareto_privacy_coordination.pdf'}")
+
+
+def fig_compressor_fingerprints(h1h2_csv: str, out: Path, ctr_csv: str | None = None) -> None:
+    """Compressor fingerprints — q(r) curves per compressor (Idea 3).
+
+    Shows token_recall curves (solid) and critical_token_recall curves (dashed)
+    for each compressor, averaged across families. Annotates predicted tau*
+    from the theorem at theta=0.5.
+    """
+    df = pd.read_csv(h1h2_csv)
+    if df.empty:
+        print("  [skip] fingerprints: empty data")
+        return
+
+    # Load critical token recall if available
+    ctr_df = None
+    if ctr_csv and Path(ctr_csv).exists():
+        ctr_df = pd.read_csv(ctr_csv)
+
+    from m6.theory.cliff_prediction import predicted_tau
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4.5), sharey=True)
+    families = ["a", "b", "c"]
+    family_labels = {"a": "Family A (Aggregation)", "b": "Family B (Constraints)", "c": "Family C (Chain)"}
+    theta = 0.5
+
+    for idx, fam in enumerate(families):
+        ax = axes[idx]
+        ax.set_title(family_labels[fam], fontsize=11)
+
+        for comp in sorted(df["compressor"].unique()):
+            color = COLORS.get(comp, "#333333")
+            sub = df[(df["compressor"] == comp) & (df["family"] == fam)]
+            if sub.empty:
+                continue
+            tr = sub.groupby("ratio")["token_recall"].mean().sort_index()
+            ax.plot(tr.index, tr.values, "o-", color=color, label=comp,
+                    markersize=4, linewidth=1.5)
+
+            # Predicted tau
+            curve = list(zip(tr.index.tolist(), tr.values.tolist()))
+            tau = predicted_tau(curve, n_compression_passes=1, theta=theta)
+            if tau != float("inf") and tau <= 16:
+                ax.axvline(tau, color=color, linestyle=":", alpha=0.4, linewidth=1)
+
+            # Critical token recall (dashed)
+            if ctr_df is not None:
+                csub = ctr_df[(ctr_df["compressor"] == comp) & (ctr_df["family"] == fam)]
+                if not csub.empty:
+                    ctr_agg = csub.groupby("ratio")["critical_token_recall"].mean().dropna().sort_index()
+                    if not ctr_agg.empty:
+                        ax.plot(ctr_agg.index, ctr_agg.values, "x--", color=color,
+                                markersize=4, linewidth=1, alpha=0.6)
+
+        # Theta line
+        ax.axhline(theta, color="red", linestyle="--", alpha=0.3, linewidth=1)
+        ax.text(15.5, theta + 0.02, f"θ={theta}", color="red", fontsize=7, alpha=0.5, ha="right")
+
+        ax.set_xlabel("Compression Ratio")
+        if idx == 0:
+            ax.set_ylabel("Token Recall q(r)")
+        ax.set_xlim(0.5, 16.5)
+        ax.set_ylim(-0.05, 1.05)
+
+    # Single legend for all subplots
+    handles, labels = axes[0].get_legend_handles_labels()
+    # Add dashed line to legend if CTR exists
+    if ctr_df is not None:
+        from matplotlib.lines import Line2D
+        handles.append(Line2D([0], [0], linestyle="--", color="gray", marker="x", markersize=4, label="critical recall"))
+        labels.append("critical recall")
+    fig.legend(handles, labels, loc="upper center", ncol=len(handles),
+               bbox_to_anchor=(0.5, 1.02), fontsize=8)
+
+    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    fig.savefig(out / "compressor_fingerprints.pdf")
+    fig.savefig(out / "compressor_fingerprints.png")
+    plt.close(fig)
+    print(f"  fingerprints: {out / 'compressor_fingerprints.pdf'}")
+
+
+# ============================================================================
 # Additional figures (publication_guide.md + experiment_plan.md)
 # ============================================================================
 def fig_h1_scatter(h1h2_csv: str, out: Path) -> None:
@@ -373,6 +529,67 @@ def fig_h5_model_overlay(h5_csv: str, out: Path) -> None:
     fig.savefig(out / "h5_model_overlay.png")
     plt.close(fig)
     print(f"  h5_overlay: {out / 'h5_model_overlay.pdf'}")
+
+
+def fig_scaling_auc(h5_csv: str, out: Path) -> None:
+    """Scaling: AUC bar chart + cliff position comparison (Idea 7).
+
+    Shows that AUC (coordination quality) scales with model size,
+    but cliff position (tau*) does NOT.
+    """
+    df = pd.read_csv(h5_csv)
+    if df.empty:
+        print("  [skip] scaling_auc: empty")
+        return
+
+    models = sorted(df["planner_model"].unique(), key=lambda m: float(m.replace("B", "")))
+    families = [f for f in ["a", "c"] if f in df["family"].unique()]
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
+
+    # Left: AUC per model per family
+    ax = axes[0]
+    x = np.arange(len(models))
+    width = 0.35
+    for i, fam in enumerate(families):
+        aucs = []
+        for m in models:
+            sub = df[(df["planner_model"] == m) & (df["family"] == fam)]
+            agg = sub.groupby("ratio")["coord_success"].mean().sort_index()
+            if len(agg) >= 2:
+                aucs.append(float(np.trapezoid(agg.values, agg.index)))
+            else:
+                aucs.append(0.0)
+        ax.bar(x + (i - 0.5) * width, aucs, width, label=f"Family {fam.upper()}", alpha=0.85)
+    ax.set_xlabel("Planner Model")
+    ax.set_ylabel("AUC (Coordination Quality)")
+    ax.set_title("Ceiling Scales with Model Size")
+    ax.set_xticks(x)
+    ax.set_xticklabels(models)
+    ax.legend()
+
+    # Right: cliff curves overlaid (family-a)
+    ax = axes[1]
+    fam_a = df[df["family"] == "a"]
+    if not fam_a.empty:
+        for m in models:
+            sub = fam_a[fam_a["planner_model"] == m]
+            agg = sub.groupby("ratio")["coord_success"].mean().sort_index()
+            color = COLORS.get(m, "#333333")
+            ax.plot(agg.index, agg.values, "o-", color=color, label=m, markersize=5)
+        ax.axhline(0.5, ls="--", color="red", alpha=0.3)
+        ax.text(14, 0.53, "θ=0.5", color="red", fontsize=8, alpha=0.5)
+    ax.set_xlabel("Compression Ratio")
+    ax.set_ylabel("Coordination Success")
+    ax.set_title("Cliff Position Is Model-Invariant")
+    ax.legend(title="Planner")
+    ax.set_ylim(-0.05, 1.05)
+
+    fig.tight_layout()
+    fig.savefig(out / "scaling_auc.pdf")
+    fig.savefig(out / "scaling_auc.png")
+    plt.close(fig)
+    print(f"  scaling_auc: {out / 'scaling_auc.pdf'}")
 
 
 def fig_caac_ablation(caac_csv: str, out: Path) -> None:
@@ -456,10 +673,15 @@ def main():
     if h5:
         fig1_cliff_hero(h5, out)
         fig_h5_model_overlay(h5, out)
+        fig_scaling_auc(h5, out)
     if h1h2:
         fig2_cliff_families(h1h2, out)
         fig3_predicted_vs_empirical(h1h2, out)
         fig_h1_scatter(h1h2, out)
+        ctr_csv = _find("critical_token_recall_fixed.csv")
+        fig_compressor_fingerprints(h1h2, out, ctr_csv=ctr_csv)
+    if h1h2 and h4:
+        fig_pareto_privacy_coordination(h1h2, h4, out)
     if caac:
         fig4_caac_pareto(caac, out)
         fig_caac_ablation(caac, out)
