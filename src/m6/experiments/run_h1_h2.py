@@ -137,22 +137,42 @@ def critical_token_recall(source: str, compressed: str, family: str) -> float:
 
     Unlike generic token_recall which counts all words, this focuses on
     the tokens that actually determine coordination success:
-    - Family-a: numbers (hours, budget values)
-    - Family-b: assignment patterns (sub-X, worker-X)
-    - Family-c: chain identifiers (FINAL-XXXX)
+    - Family-a: multi-digit numbers (>=2 digits) — hours, budget values
+      that the solver must sum. Single digits excluded (noise).
+    - Family-b: all numbers (capacities, loads, task/agent counts) —
+      the solver needs these to produce valid assignments.
+    - Family-c: chain references (Entry X, entry X) AND final answers
+      (FINAL-XXXX) — the solver must follow the reference chain.
     """
     if family == "a":
-        critical = set(re.findall(r"\d+", source))
+        # Multi-digit numbers only: the values being summed (174, 5608, etc.)
+        # Excludes single digits which are noise (dates, ordinals)
+        critical = set(re.findall(r"\b\d{2,}\b", source))
     elif family == "b":
-        critical = set(re.findall(r"(?:sub|worker|agent)-\d+", source, re.IGNORECASE))
+        # All numbers in the spec: capacities [5,4,2,4,5], loads [2,2,1,...],
+        # agent/task counts. These determine feasible assignments.
+        critical = set(re.findall(r"\d+", source))
     else:  # family c
-        critical = set(re.findall(r"FINAL-\d+", source, re.IGNORECASE))
+        # Chain references (Entry 0, entry 1) + final answer (FINAL-4483)
+        # The solver must follow "See entry X" links to find FINAL-XXXX
+        critical = set(re.findall(r"(?:entry \d+|FINAL-\d+)", source, re.IGNORECASE))
     if not critical:
-        return 1.0
-    # Lowercase both sides for case-insensitive matching
+        return float("nan")
     critical = {c.lower() for c in critical}
-    preserved = {t.lower() for t in re.findall(r"\w[\w-]*", compressed)}
-    return len(critical & preserved) / len(critical)
+    compressed_lower = compressed.lower()
+    # Use regex word-boundary matching for numbers to avoid substring false positives
+    # (e.g. "1" matching inside "12"). Multi-word patterns use plain substring match.
+    preserved = 0
+    for c in critical:
+        if re.fullmatch(r"\d+", c):
+            # Number: require word boundary
+            if re.search(r"(?<!\d)" + re.escape(c) + r"(?!\d)", compressed_lower):
+                preserved += 1
+        else:
+            # Multi-word pattern (e.g. "entry 0"): substring match
+            if c in compressed_lower:
+                preserved += 1
+    return preserved / len(critical)
 
 
 # ============================================================================
