@@ -345,7 +345,7 @@ def fig_pareto_privacy_coordination(h1h2_csv: str, h4_csv: str, out: Path) -> No
                         textcoords="offset points", xytext=(8, 4),
                         fontsize=8, color=COLORS.get(comp, "#333333"))
 
-    ax.set_xlabel("Coordination Success (at 4x compression)")
+    ax.set_xlabel("Coordination Success")
     ax.set_ylabel("Disclosure Reduction (pp)")
     ax.set_title("Privacy–Coordination Tradeoff")
     ax.set_xlim(-0.05, 1.05)
