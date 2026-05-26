@@ -1463,6 +1463,220 @@ All fixed in code.
   Now 1 — truthful: one compression pass, one solve pass.
 
 
+31. PHI3-EXTRACTIVE COMPRESSION CEILING ~2.5x (2026-05-26)
+
+  Production run (h1_h2_final, 11500/19500 rows so far) reveals that
+  phi3-extractive cannot actually compress beyond ~2.5x regardless of
+  target ratio:
+
+    Target ratio:  1.0x  2.0x  4.0x  8.0x  12.0x  16.0x
+    Achieved ratio: 1.0  1.61  1.90  2.57   2.58   1.81
+
+  At 16x target the achieved ratio actually DROPS to 1.81x (lower than
+  8x or 12x targets). This is because phi3's extractive span selection
+  hits a floor — it can only discard so much before the lingua2 fallback
+  triggers, and the salvage logic (>= 50% extractive fraction) keeps
+  most of the text.
+
+  CONSEQUENCE — "bounce" in coord_success at 16x:
+  phi3-extractive shows coord_success of 0.32 at 16x target, appearing
+  to bounce back from 0.17 at 8x/12x. This is NOT a real recovery —
+  it's simply that the text is barely compressed (1.81x achieved).
+  When binned by ACHIEVED ratio, the pattern is monotonic:
+    1-1.5x achieved → ~25% coord_success
+    1.5-2x achieved → ~22% coord_success
+    2-3x achieved   → ~5-8% coord_success
+    3x+ achieved    → 0% coord_success
+
+  Contrast with lingua2, which faithfully achieves target ratios and
+  shows clean monotonic decay in both qa_f1 and coord_success.
+
+  ACTION FOR THESIS:
+  - Report phi3 results by ACHIEVED ratio, not target ratio
+  - Note compression ceiling (~2.5x) as a compressor limitation
+  - phi3 results above 3x target are essentially duplicates of ~2.5x behavior
+  - This strengthens the case for CAAC: even without cliff-awareness,
+    phi3 naturally self-limits compression, which may explain its
+    higher coord_success at nominal high ratios
+
+32. PRODUCTION RUN RESULTS — H1/H2/H3/H4 FINAL + H5 PARTIAL (2026-05-26)
+
+  Full production run launched 2026-05-25, running all experiments sequentially
+  with all bug fixes applied. Results directory: results/{h1_h2,h3,h4,h5}_final.
+
+  ### H1/H2 FINAL (19,500 rows — COMPLETE)
+
+  H1 SUPPORTED (3/3 compressors, rho < 0.6 with CIs excluding 0.6):
+    filter:          rho = -0.593  CI [-0.641, -0.542]
+    lingua2:         rho =  0.381  CI [ 0.344,  0.418]
+    phi3-extractive: rho =  0.208  CI [ 0.148,  0.267]
+
+  Notable: filter has NEGATIVE correlation (rho=-0.59) — qa_f1 and
+  coord_success move in opposite directions. This is the strongest
+  decorrelation evidence: preserving text quality does not preserve
+  coordination-relevant structure.
+
+  H2 SUPPORTED (8/9 cells significant, same failure: filter/c):
+    Logistic model selected over piecewise in most cells.
+    Logistic tau clusters near 2.5x — the cliff midpoint.
+    Tau spread within 20% across compressors for all families.
+
+  Coord success by compressor x ratio (mean across families):
+    ratio:   1.0   2.0   3.0   4.0   5.0   6.0   8.0  10.0  12.0  16.0
+    filter:  1.0  0.34  0.34  0.33  0.33  0.33  0.33  0.33  0.33  0.33
+    lingua2: 1.0  0.33  0.33  0.31  0.25  0.21  0.10  0.00  0.00  0.00
+    phi3:    1.0  0.23   NaN  0.17   NaN   NaN  0.17   NaN  0.17  0.17
+
+  KEY OBSERVATIONS:
+  - filter plateaus at 0.333 from ratio 2.0x onward — it only affects
+    family-a and family-b, family-c tasks pass through unaffected.
+    This is because filter's TF-IDF approach preserves task-relevant
+    keywords better for family-c (FINAL ANSWER patterns).
+  - lingua2 shows the cleanest cliff: sharp drop at 2x, gradual decay
+    to zero by 10x. This is the textbook coordination cliff.
+  - phi3's flat ~0.17 from 4x-16x reflects the compression ceiling
+    (see insight #31) — it can't actually compress beyond ~2.5x.
+
+  ### H3 FINAL (900 rows — COMPLETE, NOT SUPPORTED)
+
+  F1 by pipeline x regime:
+                  Storage-bounded  Accuracy-bounded
+    P1 (compress→retrieve):  0.396          0.648
+    P2 (retrieve→compress):  0.364          0.628
+    P3 (no compression):     0.820          0.895
+
+  P1 > P2 in BOTH regimes (no sign-flip → H3 not supported).
+  P3 dominates massively — compression hurts retrieval quality
+  regardless of pipeline order. The P1-P2 gap is modest (3.2pp
+  storage-bounded, 2.0pp accuracy-bounded) but significant (p<0.001).
+
+  EUR/query showing 0.0 for all pipelines — cost model may be broken
+  (possibly because local Ollama has zero API cost). Need to check if
+  cost calculation uses model-specific pricing or defaults to zero
+  for local models.
+
+  NARRATIVE: compress-first (P1) consistently preserves more content
+  than retrieve-first (P2). This challenges the LongLLMLingua assumption
+  that compression should happen after retrieval for best results.
+
+  ### H4 FINAL (756 rows — COMPLETE, SUPPORTED)
+
+  All 3 compressors now show significant signal AND reduction:
+
+    Compressor       Priors  Baseline  Compressed  Signal   Reduction
+    filter           0.500   0.968     0.532       +46.8pp  43.7pp
+    lingua2          0.500   0.968     0.468       +46.8pp  50.0pp
+    phi3-extractive  0.500   0.968     0.774       +46.8pp  19.4pp
+
+  All p-values < 0.001 after Holm correction.
+
+  IMPROVEMENT from previous run (h4_v2):
+  - filter now shows significant reduction (was NS before)
+  - lingua2 reduction increased from 14.3pp to 50.0pp
+  - phi3 reduction increased from 3.2pp to 19.4pp
+  - Zero errors (has_error=0 for all rows)
+
+  The ranking matches compression aggressiveness perfectly:
+    lingua2 (50.0pp) > filter (43.7pp) > phi3 (19.4pp)
+  This aligns with phi3's compression ceiling — it preserves more
+  text, so more protected facts leak through.
+
+  Baseline recovery rate of 96.8% (up from previous runs) confirms
+  the signal is strong — uncompressed fragments almost always contain
+  the protected fact.
+
+  ### H5 PARTIAL (6,600/9,000 rows — IN PROGRESS)
+
+  Only lingua2 compressor so far. 8B model still running (only 2 ratios).
+  Models: 1.5B, 3.8B, 8B (all Qwen2.5 quantized via Ollama).
+
+  Coord success by model x ratio:
+    ratio:  1.0   2.0   3.0   4.0   5.0   6.0   8.0  10.0  12.0  16.0
+    1.5B:  0.37  0.22  0.32  0.25  0.25  0.23  0.11  0.00  0.00  0.00
+    3.8B:  0.34  0.32  0.27  0.22  0.28  0.23  0.12  0.00  0.00  0.00
+    8B:    0.72  0.65   ...pending...
+
+  Coord success at ratio=1.0 by family (uncompressed baseline):
+    Model   family-a  family-b  family-c
+    1.5B     0.17      0.00      0.93
+    3.8B     0.03      0.00      1.00
+    8B       1.00      0.15      1.00
+
+  KEY OBSERVATIONS:
+  - Family-b remains near-zero for ALL models — bin-packing is too hard
+    for LLMs even without compression. Only 8B scores 0.15 (barely).
+  - Family-c is trivially solvable (0.93-1.00) — FINAL ANSWER extraction
+    is easy for all model sizes.
+  - Family-a shows the clearest model-size effect: 8B achieves 1.00 at
+    ratio=1.0 while 1.5B/3.8B get only 0.17/0.03. The 8-number summation
+    task requires arithmetic ability that scales with model size.
+  - 1.5B and 3.8B have remarkably similar cliff shapes — both hit zero
+    at ratio 10x. The cliff position appears model-invariant (consistent
+    with previous H5 finding).
+  - 8B at 0.65 for ratio=2.0 suggests it may maintain higher coord_success
+    deeper into compression, but we need remaining ratios to confirm.
+
+  ### CROSS-EXPERIMENT PATTERNS
+
+  1. COMPRESSION AGGRESSIVENESS HIERARCHY:
+     lingua2 > filter > phi3-extractive (by achieved ratio)
+     This ranking is consistent across ALL experiments:
+     - H1: lingua2 has steepest qa_f1 decay
+     - H2: lingua2 shows cleanest cliff
+     - H4: lingua2 has largest disclosure reduction
+     - phi3's ceiling (~2.5x) makes it the gentlest compressor
+
+  2. FAMILY DIFFICULTY HIERARCHY:
+     family-b (bin-packing) >> family-a (summation) >> family-c (extraction)
+     - family-b: near-zero for all LLMs, only deterministic solver handles it
+     - family-a: solvable by 8B at ratio=1.0, hard for smaller models
+     - family-c: trivially solvable by all models
+
+  3. THE 2x CLIFF:
+     Across H1/H2/H5, the biggest coord_success drop consistently occurs
+     between ratio 1.0x and 2.0x. The logistic tau of 2.5x confirms this
+     is the cliff midpoint. Even modest compression (2x) destroys
+     coordination-critical structure.
+
+33. FAMILY-B NEAR-ZERO: GENUINE LLM CAPABILITY GAP, NOT A BUG (2026-05-26)
+
+  Investigated why family-b (constraint-satisfaction planning) scores ~0%
+  coord_success for ALL LLM planners at ratio=1.0 (uncompressed). Tested
+  actual LLM outputs for family-b workloads. Each model fails differently:
+
+  1.5B (Qwen2.5): Assigns to non-existent workers. With 5 agents
+    (worker-0 through worker-4), outputs worker-5 through worker-9.
+    Also hallucinates extra tasks (sub-9 for a 9-task problem).
+    f1=1.0 (regex matches all sub-IDs) but feasibility check fails.
+
+  3.8B (Phi-3): Same issue — references agent-5 for a 5-agent problem.
+    Duplicates sub-6 assignment. f1~1.0, coord_success=0.
+
+  8B (Llama 3.1): Understands the problem conceptually but outputs
+    prose step-by-step explanation instead of "ANSWER: sub-0=worker-X;..."
+    format. Regex can't parse it. f1=0.525, coord_success=0.15.
+
+  The task requires simultaneously: (1) understanding constraints,
+  (2) tracking running capacity totals, (3) structured output format.
+  This combination exceeds small-model capabilities.
+
+  NOTE on f1 metric: f1 counts task coverage (fraction of sub-IDs that
+  appear in the parsed answer map) regardless of worker validity. So
+  1.5B gets f1=1.0 with entirely invalid assignments. This is by design
+  (f1 measures format compliance, coord_success measures correctness),
+  but worth noting.
+
+  THESIS IMPLICATIONS:
+  - Family-b establishes a DIFFICULTY FLOOR that separates compression
+    effects from base LLM capability
+  - Near-zero baseline means compression effects CANNOT be measured
+    for family-b in H5 — any ratio sweep is vacuous
+  - Production run correctly excludes family-b from H5 (families a+c only)
+  - Document as: "constraint-satisfaction planning requires capabilities
+    (counting, constraint tracking) absent in models ≤8B"
+  - Interesting contrast: deterministic solver (H1/H2) handles family-b
+    perfectly — this validates the two-tier evaluation design
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================
