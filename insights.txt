@@ -1906,6 +1906,41 @@ All fixed in code.
   9. recompute_ctr.py passes workload initial_prompt as task_hint
   10. short_run.py H6 config passes synth_results_path for verdict match
 
+40. THREE REVIEW-AUDIT FIXES (2026-05-27)
+
+  External NeurIPS readiness assessment identified 3 real gaps (out of 10
+  claimed issues — 7 were already fixed). All three now addressed:
+
+  1. TRUNCATION BASELINE IN PRODUCTION RUN:
+     Added "truncation" to production_run.py H1/H2 compressor list.
+     Next run will include truncation alongside lingua2/phi3/filter.
+     Truncation is the simplest baseline every compression paper needs.
+
+  2. H3 COST MODEL — GPT-4o-MINI PRICING:
+     Changed run_h3.py from "local-ollama" (EUR 0.05/1M → near-zero costs)
+     to "gpt-4o-mini" (EUR 0.138/1M input) as reference pricing.
+     This produces meaningful EUR/query values for cost-effectiveness analysis.
+     Next H3 run will show realistic cost differences between P1/P2/P3.
+
+  3. CHERNOFF BOUND PROOF FOR CLIFF SHARPNESS (Theorem 2):
+     Added to cliff_prediction.py:
+     - chernoff_success_probability(q, theta, M): P(success) with finite-M
+     - chernoff_success_curve(): full predicted curve with Chernoff sharpness
+     - cliff_sharpness(M): transition width = sqrt(ln10 / 2M)
+
+     The Hoeffding-Chernoff bound explains WHY the cliff is sharp:
+     - X ~ Binomial(M, q(r)) surviving tokens
+     - P(failure) decays as exp(-2M(q-theta)^2)
+     - Transition width scales as O(1/sqrt(M))
+     - Family-a (M≈10): width ≈ 0.34 in q-space (sharp)
+     - Hypothetical M=100: width ≈ 0.11 (very sharp)
+
+     Full derivation in docs/coordination_cliff_theory.md including:
+     - Theorem 1 proof (cliff bound)
+     - Theorem 2 proof (sharpness via concentration)
+     - Weighted extension (non-uniform token importance)
+     - Connections to scaling laws, Lost in the Middle, info bottleneck
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================
