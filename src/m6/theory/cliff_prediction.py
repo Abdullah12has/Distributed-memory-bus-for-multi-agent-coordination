@@ -100,12 +100,18 @@ def derive_theta(
     success_threshold: float = 0.5,
     compressors: list[str] | None = None,
     family: str = "a",
+    recall_column: str = "token_recall",
 ) -> dict[str, Any]:
     """Empirically derive theta from the H1/H2 sweep data.
 
-    For each compressor, finds the token_recall value at the ratio where
+    For each compressor, finds the recall value at the ratio where
     coord_success first drops below ``success_threshold``. Theta is the
-    average of these critical token-recall values.
+    average of these critical recall values.
+
+    Args:
+        recall_column: Which recall metric to use. Default "token_recall"
+            (generic word overlap). Use "critical_token_recall" for
+            task-specific tokens when that column is available.
 
     Returns:
         Dict with per-compressor theta estimates and the mean.
@@ -116,20 +122,23 @@ def derive_theta(
     if compressors is None:
         compressors = sorted(df["compressor"].unique())
 
+    # Fall back to token_recall if requested column doesn't exist
+    col = recall_column if recall_column in df.columns else "token_recall"
+
     per_comp: dict[str, float] = {}
     for comp in compressors:
         sub = df[(df["compressor"] == comp) & (df["family"] == family)]
-        agg = sub.groupby("ratio")[["coord_success", "token_recall"]].mean().reset_index()
+        agg = sub.groupby("ratio")[["coord_success", col]].mean().reset_index()
         agg = agg.sort_values("ratio")
         # Find the first ratio where coord_success drops below threshold
         for _, row in agg.iterrows():
             if row["coord_success"] < success_threshold and row["ratio"] > 1.0:
-                per_comp[comp] = float(row["token_recall"])
+                per_comp[comp] = float(row[col])
                 break
         else:
-            # No cliff found — use the token_recall at max ratio
+            # No cliff found — use the recall at max ratio
             if not agg.empty:
-                per_comp[comp] = float(agg.iloc[-1]["token_recall"])
+                per_comp[comp] = float(agg.iloc[-1][col])
 
     thetas = list(per_comp.values())
     mean_theta = float(np.mean(thetas)) if thetas else 0.5
@@ -139,6 +148,7 @@ def derive_theta(
         "mean_theta": mean_theta,
         "family": family,
         "success_threshold": success_threshold,
+        "recall_column": col,
         "note": "Empirically derived from H1/H2 sweep. Use mean_theta as theta parameter.",
     }
 

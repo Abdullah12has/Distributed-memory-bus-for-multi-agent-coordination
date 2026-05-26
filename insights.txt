@@ -1848,6 +1848,64 @@ All fixed in code.
   - Idea 6 (H6): queued in production run
   - Ideas 9, 10: optional
 
+38. NEURIPS NOVELTY PLAN — IDEA 0 ADDED: KNOWN-LIMITATIONS AUDIT (2026-05-27)
+
+  Reviewed neurips_novelty_plan.md against known bugs and codebase reality.
+  Found 7 issues that could silently undermine the planned analyses.
+  Added "Idea 0: Known-Limitations Audit" as P-1 priority (before all other ideas).
+
+  Issues identified:
+
+  a) N=1 vs q^N framing: All experiments compress once (N=1), but the theorem
+     uses q^N compounding. Ideas 1, 3, 4 reference q^N as a hook. Must either
+     add multi-pass experiments or explicitly present as N=1 with generalization.
+
+  b) No formal theorem proof planned: Checklist has theorem.tex as TODO but
+     none of the 10 ideas include writing the actual proof/derivation.
+
+  c) Phi-3 baseline failure: 0% coord at ratio=1.0 means its q(r) curve is
+     meaningless. Would corrupt fingerprinting (Idea 3) and Pareto (Idea 2).
+     Must exclude or annotate as cautionary example.
+
+  d) Achieved ratio vs target ratio: Bug #30 added achieved_ratio column but
+     plan uses target ratio throughout. Pareto frontier, theorem validation,
+     and fingerprinting all need achieved_ratio on x-axis.
+
+  e) Filter H4 not significant: Plan claims -43.7pp disclosure for filter,
+     but CLAUDE.md records it as NS. Would make Pareto frontier misleading.
+
+  f) Empirical tau unreliable: Bug #8 found tau parking at x.max. All tau*
+     cluster at 15.9-16.0 (suspiciously uniform). Theorem validation (Idea 1)
+     compares against these values — must verify logistic fit R² first.
+
+  g) Family-B scoring fragility: Required agent/worker normalization + feasibility
+     checker. Reproducibility risk for reviewers using different LLMs.
+
+  Decision: Idea 0 must complete before Ideas 1-3 start. Updated priority table
+  and effort totals in neurips_novelty_plan.md accordingly.
+
+39. CODE REVIEW — 10 ISSUES FIXED (2026-05-27)
+
+  Comprehensive code review found 2 critical + 8 important issues.
+  All fixed:
+
+  CRITICAL:
+  1. NaN propagation in critical_token_recall averaging — now skips NaN
+     values and averages only valid entries (run_h1_h2.py)
+  2. short_run.py theory validation used old N=3, theta=0.65 — fixed to
+     N=1, theta=0.5 matching corrected theorem
+
+  IMPORTANT:
+  3. np.trapezoid → np.trapz (NumPy 1.x compatibility in generate.py)
+  4. AUC bar offset generalized for N families (was hardcoded for 2)
+  5. Pareto y-axis clips fixed, ideal annotation positioned from data
+  6. NaN guard on tau in fingerprint plot (np.isfinite check)
+  7. derive_theta() now accepts recall_column parameter to use either
+     token_recall or critical_token_recall
+  8. recompute_ctr.py uses decompress() fallback (not raw .payload.text)
+  9. recompute_ctr.py passes workload initial_prompt as task_hint
+  10. short_run.py H6 config passes synth_results_path for verdict match
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================

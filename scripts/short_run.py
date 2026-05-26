@@ -55,7 +55,8 @@ print(f"[{elapsed()}] H5={results['h5']}", flush=True)
 # === H6 ===
 print(f"[{elapsed()}] H6...", flush=True)
 from m6.experiments.run_h6 import H6Config, run_h6, compute_h6_verdict
-df6 = run_h6(H6Config(ratios=[1.0, 4.0, 8.0, 16.0], seeds=[0], n_workloads=3, out_dir="results/short_h6"))
+df6 = run_h6(H6Config(ratios=[1.0, 4.0, 8.0, 16.0], seeds=[0], n_workloads=3,
+                      synth_results_path="results/short_h5", out_dir="results/short_h6"))
 v6 = compute_h6_verdict(df6, "results/short_h5")
 results["h6"] = v6["h6_supported"]
 print(f"[{elapsed()}] H6={results['h6']}", flush=True)
@@ -79,7 +80,7 @@ fam_a = df[(df["family"] == "a") & (df["compressor"] == "lingua2")]
 if not fam_a.empty:
     tr = fam_a.groupby("ratio")["token_recall"].mean()
     tr_curve = list(zip(tr.index.tolist(), tr.values.tolist()))
-    tau = predicted_tau(tr_curve, 3, 0.65)
+    tau = predicted_tau(tr_curve, n_compression_passes=1, theta=0.5)
     results["theory_tau"] = f"{tau:.1f}"
 else:
     results["theory_tau"] = "N/A"
