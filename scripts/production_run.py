@@ -36,7 +36,7 @@ log("H1/H2: 3 compressors, 10 ratios, 5 seeds, 50 wl/fam, 3 families")
 from m6.experiments.run_h1_h2 import SweepConfig, run_sweep, compute_h1_verdict, compute_h2_verdict
 
 cfg = SweepConfig(
-    compressors=["lingua2", "phi3-extractive", "filter"],
+    compressors=["lingua2", "phi3-extractive", "filter", "truncation"],
     ratios=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0],
     compressor_ratios={"phi3-extractive": [1.0, 2.0, 4.0, 8.0, 12.0, 16.0]},
     seeds=[0, 1, 2, 3, 4],

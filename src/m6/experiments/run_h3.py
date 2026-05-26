@@ -173,7 +173,10 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                     else:  # P3
                         # retrieve full → conditionally compress subset
                         input_tokens = corpus_tokens + int(retrieved_tokens * 0.7)
-                    eur = eur_for_call("local-ollama", input_tokens, 200)
+                    # Use GPT-4o-mini pricing as a realistic reference cost,
+                    # even for local runs, so the cost-effectiveness analysis
+                    # produces meaningful EUR/query values.
+                    eur = eur_for_call("gpt-4o-mini", input_tokens, 200)
                     rows.append(
                         {
                             "compressor": comp_name,

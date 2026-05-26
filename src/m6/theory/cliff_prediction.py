@@ -1,4 +1,4 @@
-"""Coordination Cliff Theorem — prediction and validation.
+"""Coordination Cliff Theorem — prediction, sharpness analysis, and validation.
 
 Theorem 1 (Coordination Cliff Bound):
   Consider a coordination task where a compressor C with per-token retention
@@ -15,9 +15,24 @@ Theorem 1 (Coordination Cliff Bound):
   iterative summarization), the bound tightens to q(r)^N. In our
   experiments, N=1 (single compression pass before coordination).
 
+Theorem 2 (Cliff Sharpness via Concentration):
+  Under assumption A1 (memoryless compressor), the number of surviving
+  task-relevant tokens X ~ Binomial(M, q(r)), where M is the total number
+  of task-relevant tokens. By the Hoeffding-Chernoff bound:
+
+    If q(r) > theta:  P(X/M < theta) <= exp(-2M(q(r) - theta)^2)
+    If q(r) < theta:  P(X/M >= theta) <= exp(-2M(theta - q(r))^2)
+
+  As M -> infinity, P(success) converges to a step function at q(r) = theta.
+  The transition width in q-space scales as O(1/sqrt(M)), explaining why
+  the coordination cliff is SHARP (a phase transition), not gradual.
+
 This module implements:
   - predicted_tau(): compute r* from a token-recall curve
   - q_required(): compute the minimum token recall for coordination
+  - chernoff_success_probability(): P(success) with finite-M sharpness
+  - chernoff_success_curve(): full curve with M-dependent sharpness
+  - cliff_sharpness(): transition width as a function of M
   - derive_theta(): empirically derive theta from sweep data
   - validate_prediction(): compare predicted vs empirical cliff positions
 
@@ -151,6 +166,72 @@ def derive_theta(
         "recall_column": col,
         "note": "Empirically derived from H1/H2 sweep. Use mean_theta as theta parameter.",
     }
+
+
+def chernoff_success_probability(
+    q: float,
+    theta: float,
+    m: int,
+    n_compression_passes: int = 1,
+) -> float:
+    """Coordination success probability via Chernoff bound.
+
+    Under the memoryless compressor assumption, the number of surviving
+    task-relevant tokens follows Binomial(M, q^N). The Chernoff bound
+    gives the probability that the surviving fraction exceeds theta:
+
+        If q^N > theta:  P(X/M >= theta) >= 1 - exp(-2M(q^N - theta)^2)
+        If q^N < theta:  P(X/M >= theta) <= exp(-2M(theta - q^N)^2)
+        If q^N = theta:  P(X/M >= theta) ~ 0.5
+
+    The key insight: for large M, the transition sharpens into a step
+    function at q^N = theta. This explains WHY the cliff is sharp.
+    """
+    qn = q ** n_compression_passes
+    gap = qn - theta
+    exponent = 2.0 * m * gap * gap
+
+    if gap > 0:
+        # Above cliff: success probability approaches 1
+        return 1.0 - np.exp(-exponent)
+    elif gap < 0:
+        # Below cliff: success probability approaches 0
+        return np.exp(-exponent)
+    else:
+        return 0.5
+
+
+def chernoff_success_curve(
+    token_recall_curve: list[tuple[float, float]],
+    theta: float,
+    m: int,
+    n_compression_passes: int = 1,
+    p0: float = 1.0,
+) -> list[tuple[float, float]]:
+    """Predict coordination success at each ratio using Chernoff bound.
+
+    Unlike the hard-threshold version, this produces a smooth but steep
+    transition whose sharpness depends on M (number of task-relevant tokens).
+    Larger M = sharper cliff.
+    """
+    result = []
+    for ratio, q in sorted(token_recall_curve, key=lambda x: x[0]):
+        prob = chernoff_success_probability(q, theta, m, n_compression_passes)
+        result.append((ratio, p0 * prob))
+    return result
+
+
+def cliff_sharpness(m: int, theta: float = 0.5) -> float:
+    """Quantify cliff sharpness: the ratio-range over which success drops from 90% to 10%.
+
+    For a Binomial(M, q) model with threshold theta, the transition width
+    (in q-space) scales as O(1/sqrt(M)). Larger M = narrower transition.
+
+    Returns the approximate transition width in q-space.
+    """
+    # From Chernoff: P drops from 0.9 to 0.1 over delta_q where
+    # exp(-2M*delta_q^2) = 0.1, so delta_q = sqrt(ln(10)/(2M))
+    return float(np.sqrt(np.log(10) / (2 * m)))
 
 
 def survival_probability(q: float, n_compression_passes: int = 1) -> float:
