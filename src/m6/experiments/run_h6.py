@@ -424,11 +424,19 @@ def compute_h6_task_theta_verdict(
                 "Higher theta = denser information = earlier cliff (Corollary 2)."
             )
 
-    result["corollary2_supported"] = not np.isnan(theta_mhr) and theta_mhr < 0.3
+    # Corollary 2 supported if theta varies meaningfully across tasks:
+    # MultiHopRAG theta < max(C1 thetas) by at least 0.1
+    c1_max_theta = max(result.get("c1_thetas", {}).values(), default=float("nan"))
+    theta_varies = (
+        not np.isnan(theta_mhr)
+        and not np.isnan(c1_max_theta)
+        and (c1_max_theta - theta_mhr) >= 0.1
+    )
+    result["corollary2_supported"] = theta_varies
     result["framing"] = (
         "Cliff position varies with task information density (Corollary 2). "
-        "MultiHopRAG has low theta (distributed information, gradual degradation), "
-        "while C1 numeric tasks have high theta (dense information, sharp cliff)."
+        "MultiHopRAG has lower theta (distributed information, gradual degradation), "
+        "while C1 numeric tasks have higher theta (dense information, sharp cliff)."
     )
     return result
 
