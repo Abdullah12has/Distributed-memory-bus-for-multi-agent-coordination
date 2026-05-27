@@ -684,6 +684,9 @@ def validate_model_independence(
         "corollary1_supported": supported,
         "baseline_threshold": baseline_threshold,
         "tau_tolerance_pct": tau_tolerance_pct,
+        "limitation": f"Validated on {n_testable}/{len(families)} families "
+                      f"(others have floor effects: baseline < {baseline_threshold}). "
+                      f"Tau spread tolerance is {tau_tolerance_pct}%.",
     }
 
 

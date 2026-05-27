@@ -473,20 +473,22 @@ def _permutation_cliff_test(
         return 1.0
 
     # Build per-workload arrays: each workload has mean coord_success per ratio
-    wl_arrays = {}
+    # fillna(0.0) prevents NaN from reindex when a workload is missing a ratio
+    wl_originals = {}
     for wl_id, wl_sub in sub.groupby("workload_id"):
-        vals = wl_sub.groupby("ratio")["coord_success"].mean().reindex(ratios_sorted)
-        wl_arrays[wl_id] = vals.to_numpy()
+        vals = wl_sub.groupby("ratio")["coord_success"].mean().reindex(ratios_sorted).fillna(0.0)
+        wl_originals[wl_id] = vals.to_numpy()
 
     ratios_arr = np.array(ratios_sorted, dtype=float)
 
     n_extreme = 0
     for _ in range(n_perm):
         perm_means = np.zeros(n_ratios)
-        for arr in wl_arrays.values():
-            rng.shuffle(arr)
-            perm_means += arr
-        perm_means /= len(wl_arrays)
+        for orig in wl_originals.values():
+            perm = orig.copy()
+            rng.shuffle(perm)
+            perm_means += perm
+        perm_means /= len(wl_originals)
 
         perm_fit = fit_piecewise(ratios_arr, perm_means)
         if abs(perm_fit["drop_rel"]) >= abs(observed_drop):
@@ -732,8 +734,7 @@ def compute_h1_verdict(df: pd.DataFrame) -> dict:
             if len(seed_merged) >= 5:
                 dqa = (seed_merged["qa_f1"] - seed_merged["qa_ref"]).to_numpy()
                 dcs = (seed_merged["coord_success"] - seed_merged["coord_ref"]).to_numpy()
-                from scipy.stats import spearmanr
-                rho_s, _ = spearmanr(dqa, dcs)
+                rho_s, _ = stats.spearmanr(dqa, dcs)
                 if not np.isnan(rho_s):
                     seed_rhos.append(float(rho_s))
         result["per_seed_rhos"] = seed_rhos
@@ -853,12 +854,26 @@ def compute_h2_verdict(df: pd.DataFrame) -> dict:
                     "within_20pct": spread <= 0.20,
                 }
 
+    # Permutation test agreement check (informational — perm_p is a robustness
+    # check that accounts for tau-fitting on the same data; the primary verdict
+    # uses Wilcoxon + Holm which is the pre-registered test)
+    n_perm_disagree = 0
+    for c in cells:
+        if c.get("test_p_holm") is not None and c.get("perm_p") is not None:
+            wilcox_sig = c["test_p_holm"] < 0.05
+            perm_sig = c["perm_p"] < 0.05
+            if wilcox_sig != perm_sig:
+                n_perm_disagree += 1
+
     return {
         "cells": cells,
         "n_significant_cliffs": n_significant_cliffs,
         "total_cells": len(cells),
         "h2_supported": n_significant_cliffs >= 7,
         "tau_spread": tau_spread,
+        "perm_test_note": "perm_p is an informational robustness check (accounts for "
+                          "tau-fitting step). Primary verdict uses Wilcoxon + Holm.",
+        "n_perm_disagree": n_perm_disagree,
     }
 
 
