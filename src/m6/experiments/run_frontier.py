@@ -109,10 +109,7 @@ def _resolve_api_config(
             os.environ.get("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1"),
         )
     if not key:
-        key = os.environ.get(
-            "OPENAI_API_KEY",
-            os.environ.get("FEATHERLESS_API_KEY", ""),
-        )
+        key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("FEATHERLESS_API_KEY", "")
     # Strip trailing /chat/completions if user included it
     base = base.rstrip("/")
     if base.endswith("/chat/completions"):
