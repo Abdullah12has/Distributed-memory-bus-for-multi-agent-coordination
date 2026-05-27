@@ -365,18 +365,24 @@ def extract_token_recall_curve(
     sweep_csv_path: str,
     compressor: str = "lingua2",
     family: str = "a",
+    recall_column: str = "critical_token_recall",
 ) -> list[tuple[float, float]]:
     """Extract the token-recall curve from an H1/H2 sweep CSV.
 
     Reads the sweep_results.csv, filters to the given compressor and family,
-    and returns (ratio, mean_token_recall) pairs.
+    and returns (ratio, mean_recall) pairs.
+
+    Args:
+        recall_column: Which recall metric to use. Default "critical_token_recall"
+            (task-specific tokens). Falls back to "token_recall" if column missing.
     """
     import pandas as pd
 
     df = pd.read_csv(sweep_csv_path)
+    col = recall_column if recall_column in df.columns else "token_recall"
     sub = df[(df["compressor"] == compressor) & (df["family"] == family)]
-    agg = sub.groupby("ratio")["token_recall"].mean().reset_index()
-    return [(float(r), float(q)) for r, q in zip(agg["ratio"], agg["token_recall"])]
+    agg = sub.groupby("ratio")[col].mean().reset_index()
+    return [(float(r), float(q)) for r, q in zip(agg["ratio"], agg[col])]
 
 
 def extract_empirical_tau(
@@ -403,6 +409,7 @@ def full_validation(
     theta: float = 0.5,
     compressors: list[str] | None = None,
     families: list[str] | None = None,
+    recall_column: str = "critical_token_recall",
 ) -> dict[str, Any]:
     """Run full predicted-vs-empirical validation across compressors and families.
 
@@ -418,7 +425,7 @@ def full_validation(
         results[comp] = {}
         for fam in families:
             try:
-                curve = extract_token_recall_curve(sweep_csv_path, comp, fam)
+                curve = extract_token_recall_curve(sweep_csv_path, comp, fam, recall_column)
                 emp_tau = extract_empirical_tau(sweep_csv_path, comp, fam)
                 results[comp][fam] = validate_prediction(curve, emp_tau, n_compression_passes, theta)
             except Exception as e:
@@ -840,6 +847,7 @@ def full_validation_per_family(
     n_compression_passes: int = 1,
     compressors: list[str] | None = None,
     families: list[str] | None = None,
+    recall_column: str = "critical_token_recall",
 ) -> dict[str, Any]:
     """Run validation using per-family theta instead of global theta.
 
@@ -851,10 +859,10 @@ def full_validation_per_family(
     if families is None:
         families = ["a", "b", "c"]
 
-    # Derive per-family theta
+    # Derive per-family theta using critical_token_recall
     per_family_theta: dict[str, float] = {}
     for fam in families:
-        dt = derive_theta(sweep_csv_path, family=fam, compressors=compressors)
+        dt = derive_theta(sweep_csv_path, family=fam, compressors=compressors, recall_column=recall_column)
         per_family_theta[fam] = dt["mean_theta"]
 
     results: dict[str, Any] = {}
@@ -863,7 +871,7 @@ def full_validation_per_family(
         for fam in families:
             theta_f = per_family_theta[fam]
             try:
-                curve = extract_token_recall_curve(sweep_csv_path, comp, fam)
+                curve = extract_token_recall_curve(sweep_csv_path, comp, fam, recall_column)
                 emp_tau = extract_empirical_tau(sweep_csv_path, comp, fam)
                 results[comp][fam] = validate_prediction(curve, emp_tau, n_compression_passes, theta_f)
             except Exception as e:

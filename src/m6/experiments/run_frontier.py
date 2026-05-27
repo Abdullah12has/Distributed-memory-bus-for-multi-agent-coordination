@@ -413,6 +413,12 @@ def compute_frontier_verdict(
 
 
 def main():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # dotenv not installed — rely on env vars being set
+
     parser = argparse.ArgumentParser(description="Frontier model cliff sweep")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--out", type=str, default=None)
