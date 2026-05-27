@@ -66,10 +66,10 @@ contributes:
   controlled measurement.
 
 * **The compounding-error framing is novel as applied to multi-agent
-  context compression.** Token-recall $q$ per compress step compounds across
-  $N$ planner-worker-critic rounds as $q^N$; the cliff position is where
-  $q^N$ crosses the planner's task-completion threshold. This makes the
-  cliff *predicted* rather than just *observed*.
+  context compression.** Token-recall $q$ per compression pass compounds as
+  $q^N$ over $N$ sequential passes (in practice $N = 1$); the cliff
+  position is where $q^N$ crosses the planner's task-completion threshold
+  $\theta$. This makes the cliff *predicted* rather than just *observed*.
 
 * **The summary-level inference-disclosure measurement (C4) operationalises
   privacy of compressed memory.** This is distinct from prior privacy-aware
@@ -179,17 +179,17 @@ The headline empirical contribution. Three findings stitched together:
 3. **H5:** Cliff shifts upward as planner-LLM scales 1.5B → 3.8B → 8B.
 
 The theoretical framing — *the compounding-error model* — is a single
-paragraph in Chapter 5. Let $q \in [0, 1]$ be the per-round *token-recall*
+paragraph in Chapter 5. Let $q \in [0, 1]$ be the *token-recall*
 of the compressor (fraction of task-relevant tokens preserved per compress
-step), and $N$ the number of planner-worker-critic rounds before a `DONE`
-verdict. Then the surviving fraction of task-relevant information after
-$N$ rounds is approximately $q^{N}$. If the planner needs surviving
+step), and $N$ the number of sequential compression passes (in our
+experiments, $N = 1$: a single compression before the solver reads
+fragments). The surviving fraction of task-relevant information after
+$N$ passes is approximately $q^{N}$. If the planner needs surviving
 fraction $\theta$ to succeed, the cliff lies at the compression ratio where
-$q = \theta^{1/N}$. Empirically, $N \approx 3$ for our family-(a)
-workloads and $\theta \approx 0.65$ for an 8B planner, predicting
-$q^{*} \approx 0.87$. Reading $q^{*}$ off the LLMLingua-2 token-retention
-table at $\tau^{*} \approx 4\times$ gives token-recall ~0.85 — consistent
-with the empirical cliff.
+$q = \theta^{1/N}$. With $N = 1$, this simplifies to $q = \theta$.
+Empirically, $\theta \approx 0.5$ (derived via `derive_theta()`),
+predicting the cliff where token-recall drops below 0.5 — consistent
+with the empirical cliff near $\tau^{*} \approx 4\times$.
 
 This isn't a deep theory. It's a sanity argument that makes the cliff
 position *predicted* rather than just *observed*, and reviewers reward
