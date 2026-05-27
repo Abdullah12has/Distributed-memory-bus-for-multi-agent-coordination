@@ -48,7 +48,14 @@ def _normalize_token(t: str) -> str:
 
 
 def _token_recall(source: str, compressed: str) -> float:
-    """Fast token-recall: fraction of source tokens preserved in compressed."""
+    """Fast generic token-recall: fraction of source word-tokens preserved in compressed.
+
+    Note: this treats all tokens equally (conservative proxy). The theorem's q(r) refers
+    to task-relevant tokens specifically. For theorem validation, use critical_token_recall
+    from run_h1_h2.py which weights family-specific tokens (numbers for a, patterns for b/c).
+    CAAC uses generic recall for simplicity — it overestimates preservation, meaning CAAC
+    backs off slightly less than optimal (conservative direction).
+    """
     src_toks = set(_normalize_token(t) for t in re.findall(r"\w+", source))
     comp_toks = set(_normalize_token(t) for t in re.findall(r"\w+", compressed))
     if not src_toks:
@@ -156,11 +163,15 @@ class CAACCompressor:
         """Find the largest ratio where token_recall >= q_min."""
         lo = self.min_ratio
         hi = max_ratio
+        epsilon = 0.1  # Stop when search interval is narrow enough
         # Initialize to min_ratio compression (not uncompressed) to
         # guarantee at least min_ratio compression even on full backoff.
         best_text = self._compress_at_ratio(fragment, self.min_ratio)
+        best_q = _token_recall(fragment.text, best_text)
 
         for _ in range(self._search_steps):
+            if hi - lo < epsilon:
+                break
             mid = (lo + hi) / 2.0
             if mid <= 1.05:
                 # Below meaningful compression, just return original
@@ -170,11 +181,19 @@ class CAACCompressor:
             if q >= self._q_min:
                 # Safe: try compressing more
                 best_text = compressed
+                best_q = q
                 lo = mid
             else:
                 # Unsafe: back off
                 hi = mid
 
+        if best_q < self._q_min:
+            import logging
+            logging.getLogger(__name__).warning(
+                "CAAC binary search exhausted: best q=%.3f < q_min=%.3f "
+                "(fragment %d chars, min_ratio=%.1f)",
+                best_q, self._q_min, len(fragment.text), self.min_ratio,
+            )
         return best_text
 
     def _get_compressor_at_ratio(self, ratio: float) -> Compressor:
