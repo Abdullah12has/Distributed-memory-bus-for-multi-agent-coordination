@@ -35,6 +35,7 @@ import pandas as pd
 from m6.benchmark.generator import load as load_benchmark
 from m6.benchmark.schemas import Workload
 from m6.compressors import make_compressor
+from m6.compressors.cache import CompressionCache, make_cached_compressor
 from m6.experiments.run_h5 import (
     _score_family_a,
     _score_family_b,
@@ -59,6 +60,7 @@ class FrontierConfig:
     n_workloads: int = 10
     synth_results_path: str | None = None
     out_dir: str = "results/frontier"
+    cache_path: str | None = None
 
     def __post_init__(self):
         if self.ratios is None:
@@ -223,6 +225,11 @@ def run_frontier(cfg: FrontierConfig) -> pd.DataFrame:
         workloads.extend(fam_ws[: cfg.n_workloads])
     print(f"  {len(workloads)} workloads loaded")
 
+    # Load precomputed cache if provided
+    ext_cache: CompressionCache | None = None
+    if cfg.cache_path:
+        ext_cache = CompressionCache.load(cfg.cache_path)
+
     # Pre-compress
     comp_cache: dict[float, Any] = {}
     compressed_cache: dict[tuple[float, str], str] = {}
@@ -235,6 +242,12 @@ def run_frontier(cfg: FrontierConfig) -> pd.DataFrame:
             for frag in w.fragments:
                 key = (ratio, frag.fragment_id)
                 if key not in compressed_cache:
+                    # Try precomputed cache first
+                    if ext_cache is not None:
+                        cached = ext_cache.lookup(cfg.compressor, ratio, frag.fragment_id, w.initial_prompt)
+                        if cached is not None:
+                            compressed_cache[key] = cached
+                            continue
                     fh = frag.model_copy(update={"task_hint": w.initial_prompt})
                     slot = comp.compress(fh)
                     compressed_cache[key] = comp.decompress(slot) or frag.text
@@ -408,6 +421,7 @@ def main():
     parser.add_argument("--api-base", type=str, default=None,
                         help="API base URL (default: auto-detect from env)")
     parser.add_argument("--synth-results", type=str, default=None)
+    parser.add_argument("--cache", type=str, default=None, help="Path to precomputed compression cache JSON")
     args = parser.parse_args()
 
     cfg = FrontierConfig.smoke() if args.smoke else FrontierConfig()
@@ -419,6 +433,8 @@ def main():
         cfg.api_base = args.api_base
     if args.synth_results:
         cfg.synth_results_path = args.synth_results
+    if args.cache:
+        cfg.cache_path = args.cache
 
     # Validate API key is available
     try:

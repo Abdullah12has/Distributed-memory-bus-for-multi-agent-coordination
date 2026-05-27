@@ -31,6 +31,7 @@ import pandas as pd
 
 from m6.benchmark.generator import load as load_benchmark
 from m6.compressors import make_compressor
+from m6.compressors.cache import CompressionCache, make_cached_compressor
 
 # ============================================================================
 # Config
@@ -47,6 +48,7 @@ class H4Config:
     n_workloads: int | None = None
     out_dir: str = "results/h4"
     reader_model: str = READER_MODEL
+    cache_path: str | None = None
 
     def __post_init__(self):
         if self.compressors is None:
@@ -139,11 +141,19 @@ def run_h4(cfg: H4Config) -> pd.DataFrame:
 
     rows: list[dict[str, Any]] = []
 
+    # Load precomputed cache if provided
+    ext_cache: CompressionCache | None = None
+    if cfg.cache_path:
+        ext_cache = CompressionCache.load(cfg.cache_path)
+
     # Cache compressors (avoid reloading LLMLingua-2 / Phi-3 per question)
     comp_cache: dict[str, Any] = {}
     for comp_name in cfg.compressors:
         print(f"  Loading compressor: {comp_name}...")
-        comp_cache[comp_name] = make_compressor(comp_name, target_ratio=cfg.ratio)
+        if ext_cache is not None:
+            comp_cache[comp_name] = make_cached_compressor(comp_name, ext_cache, target_ratio=cfg.ratio)
+        else:
+            comp_cache[comp_name] = make_compressor(comp_name, target_ratio=cfg.ratio)
 
     for w in workloads:
         preamble = w.initial_prompt  # public info only
@@ -254,11 +264,14 @@ def main():
     parser = argparse.ArgumentParser(description="H4: Inference disclosure")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--out", type=str, default=None)
+    parser.add_argument("--cache", type=str, default=None, help="Path to precomputed compression cache JSON")
     args = parser.parse_args()
 
     cfg = H4Config.smoke() if args.smoke else H4Config()
     if args.out:
         cfg.out_dir = args.out
+    if args.cache:
+        cfg.cache_path = args.cache
 
     print("=" * 60)
     print("H4: Summary-Level Inference Disclosure")

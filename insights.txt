@@ -1942,5 +1942,91 @@ All fixed in code.
      - Connections to scaling laws, Lost in the Middle, info bottleneck
 
 ================================================================================
+
+## 44. COMPRESSION CACHE SYSTEM (2026-05-27)
+
+### Problem
+Every experiment re-runs compression on-the-fly, requiring GPU/Ollama even for
+experiments that only need API calls (frontier) or deterministic solvers (H1/H2, H3).
+No compressed text was saved to disk — only aggregate metrics.
+
+### Solution: Precomputed compression cache
+Created a caching system that separates compression from evaluation:
+
+1. `src/m6/compressors/cache.py` — CompressionCache + CachedCompressor classes
+   - Cache key: (compressor, ratio, fragment_id, task_hint_hash)
+   - CachedCompressor implements full Compressor protocol (transparent drop-in)
+   - JSON format for portability
+
+2. `src/m6/experiments/precompute_cache.py` — one-shot precompute script
+   - Runs all compressors × all ratios × all fragments × both hint variants
+   - Hint variants: None (for H4, H6, H3-P1) and workload.initial_prompt (for H1-H3-P2, H5, frontier)
+   - Run once on GPU: `python -m m6.experiments.precompute_cache`
+
+3. All 7 experiment runners now accept `--cache <path>`:
+   - run_h1_h2, run_h3, run_h4, run_h5, run_h6, run_frontier, run_caac
+
+### Impact
+- **H1/H2, H3**: Can now run fully locally (deterministic solver, no GPU needed)
+- **Frontier**: Can run locally with just an API key (no LLMLingua-2 needed)
+- **H4, H5, H6**: Still need Ollama for planner, but skip compression (~2x faster)
+- **CAAC**: Fixed baselines use cache; adaptive CAAC still needs live compressor
+  (binary search across intermediate ratios can't be precomputed)
+
+### Cache key design
+task_hint matters for filter compressor (TF-IDF relevance scoring).
+Used md5[:12] hash of task_hint to keep keys compact while avoiding collisions.
+
+================================================================================
+§31: Pre-Paper Senior Researcher Audit (2026-05-27)
+================================================================================
+
+Comprehensive code/theory/experiment review before thesis+NeurIPS writing.
+Three deep reviews: theory, experiments, infrastructure.
+
+### Critical issues found and fixed
+
+1. **H2 data leakage**: Wilcoxon test used tau fitted on same data as split point.
+   FIX: Added permutation test (_permutation_cliff_test) as robustness check.
+   Shuffles coord_success across ratios within workloads, refits tau each time.
+
+2. **H3 cost model bias**: Used target ratio instead of achieved ratio for P1 cost.
+   FIX: Now measures actual compressed corpus size from pipeline's indexed fragments.
+
+3. **H2 always used piecewise tau**: Even when logistic model had lower RMSE.
+   FIX: fit_piecewise() now returns tau from selected model, with piecewise_tau
+   preserved for reference.
+
+4. **CAAC binary search**: No convergence guarantee (fixed 5 iterations).
+   FIX: Added epsilon convergence check + warning if best q < q_min.
+
+5. **Token recall ambiguity**: Theorem says "task-relevant tokens" but code
+   measures all tokens. critical_token_recall exists and is in CSV, but CAAC
+   uses generic recall. DOCUMENTED: generic recall is conservative proxy.
+
+6. **Theta circularity**: Derived and validated on same data.
+   FIX: Added cross_validate_theta() (leave-one-family-out) and
+   theta_sensitivity() (sweep over {0.3-0.7}).
+
+7. **H1 aggregation asymmetry**: qa_f1 deterministic, coord_success averaged.
+   DOCUMENTED: Conservative direction. Added per_seed_rhos supplementary analysis.
+
+8. **Cross-hypothesis correction**: 6 tests at alpha=0.05 → 26% FDR.
+   FIX: Added cross_hypothesis_correction() with Bonferroni (alpha'=0.008).
+
+### Minor fixes
+- M2: H5 answer extraction now takes LAST "ANSWER:" line (not first)
+- M3: Family-c critical_token_recall uses word-boundary regex (was substring)
+- I3: plan-v3.md N=3 references updated to N=1
+- I7: H5 gap calculation verified correct (model_sizes already sorted)
+
+### Key framing corrections needed (thesis text, no code)
+- "Multi-agent coordination" → "task solvability under compression"
+- H3 negative result: compressor quality dominates pipeline architecture
+- H5 negative result: cliff is compressor property, not planner property
+- Theorem 1(ii) is tautological — the prediction is tau from q(r) curve
+- Evaluation scope: experiments measure task solvability, not agent communication
+
+================================================================================
 END OF INSIGHTS
 ================================================================================
