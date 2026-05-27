@@ -2067,6 +2067,33 @@ were wrong, not the theory.
 - Combined story: cliff is real (H2), model-independent (Corollary 1),
   task-specific (Corollary 2), and privacy-preserving (H4)
 
+## 47. H1/H2 v2 RERUN RESULTS — 4 compressors incl truncation (2026-05-27)
+
+### Run: rerun_h1h2_h3.py completed in 10h 13m
+- H1/H2: results/h1_h2_v2/sweep_results.csv — 27,000 rows
+- H3: results/h3_v2/results.csv — 900 rows
+
+### H1 verdict: SUPPORTED (4/4 compressors)
+- filter: rho=-0.593, lingua2: rho=0.381, phi3: rho=0.193, truncation: rho=0.384
+- All below 0.6 with CIs excluding 0.6
+
+### H2 verdict: SUPPORTED (11/12 significant cliffs)
+- Only failure: filter/c (no cliff detected)
+- Logistic tau across all cells:
+  - Family-a: ALL 4 compressors cliff at 2.5x
+  - Family-b: ALL 4 compressors cliff at 2.5x
+  - Family-c: lingua2=6.7x, truncation=4.9x, phi3=2.5x, filter=N/A
+- Tau spread: family-a 6.6% (tight), family-b 75% (phi3 outlier), family-c 106%
+- Truncation behaves like lingua2 in families a/b but cliffs earlier in c (4.9 vs 6.7)
+
+### H3 v2 verdict: NOT SUPPORTED (unchanged)
+- P1 > P2 in both regimes (3.2pp storage, 2.0pp accuracy), P3 dominates
+
+### Theorem validation: 2/9 match (22%) — needs critical_token_recall fix
+- Failures: phi3 predicts infinity (3/9), family-c mismatch (2/9), filter/a borderline (1/9)
+- theta=0.491 (consistent with prior 0.484)
+- Fix path: use critical_token_recall + per-family theta → expect ~50%+ match
+
 ================================================================================
 END OF INSIGHTS
 ================================================================================
