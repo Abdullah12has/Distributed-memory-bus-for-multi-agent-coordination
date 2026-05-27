@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Frontier model cliff sweep — validates coordination cliff on GPT-4o-mini.
+"""Frontier model cliff sweep — validates coordination cliff on large models.
 
 Tests whether the coordination cliff discovered on local models (1.5B-14B)
-also appears on frontier-class models via the OpenAI API. This validates
-Theorem 1(iii): cliff position depends on the compressor, not the model.
+also appears on frontier-class models via an OpenAI-compatible API. This
+validates Theorem 1(iii): cliff position depends on the compressor, not the model.
 
-Requires OPENAI_API_KEY environment variable.
+Supports any OpenAI-compatible endpoint (OpenAI, Featherless, Together, etc.)
+via OPENAI_BASE_URL and OPENAI_API_KEY environment variables.
+
+Default: Featherless API with Qwen2.5-72B-Instruct.
 
 Run:
-    python -m m6.experiments.run_frontier
-    python -m m6.experiments.run_frontier --smoke
-    python -m m6.experiments.run_frontier --model gpt-4o  # spot check
+    FEATHERLESS_API_KEY=xxx python -m m6.experiments.run_frontier
+    FEATHERLESS_API_KEY=xxx python -m m6.experiments.run_frontier --smoke
+    FEATHERLESS_API_KEY=xxx python -m m6.experiments.run_frontier --model meta-llama/Llama-3.3-70B-Instruct
+    OPENAI_API_KEY=xxx OPENAI_BASE_URL=https://api.openai.com/v1 python -m m6.experiments.run_frontier --model gpt-4o-mini
 """
 
 from __future__ import annotations
@@ -46,7 +50,9 @@ from m6.experiments.run_h5 import (
 class FrontierConfig:
     benchmark_path: str = "data/processed/c1-v0.1"
     compressor: str = "lingua2"
-    model: str = "gpt-4o-mini"
+    model: str = "Qwen/Qwen2.5-72B-Instruct"
+    api_base: str | None = None  # auto-detect from env
+    api_key: str | None = None   # auto-detect from env
     ratios: list[float] | None = None
     seeds: list[int] | None = None
     families: list[str] | None = None
@@ -85,19 +91,49 @@ def _format_hint(workload: Workload) -> str:
         return 'Use exactly this format: "ANSWER: FINAL-<number>" with the leaf value.'
 
 
+def _resolve_api_config(
+    api_base: str | None = None, api_key: str | None = None
+) -> tuple[str, str]:
+    """Resolve API base URL and key from args or environment.
+
+    Priority: explicit args > FEATHERLESS_ env > OPENAI_ env.
+    Default: Featherless API.
+    """
+    base = api_base
+    key = api_key
+    if not base:
+        base = os.environ.get(
+            "OPENAI_BASE_URL",
+            os.environ.get("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1"),
+        )
+    if not key:
+        key = os.environ.get(
+            "OPENAI_API_KEY",
+            os.environ.get("FEATHERLESS_API_KEY", ""),
+        )
+    # Strip trailing /chat/completions if user included it
+    base = base.rstrip("/")
+    if base.endswith("/chat/completions"):
+        base = base.rsplit("/chat/completions", 1)[0]
+    if not key:
+        raise RuntimeError(
+            "No API key found. Set FEATHERLESS_API_KEY or OPENAI_API_KEY."
+        )
+    return base, key
+
+
 def openai_planner_solve(
     model: str,
     workload: Workload,
     compressed_texts: dict[str, str],
     seed: int = 0,
     api_key: str | None = None,
+    api_base: str | None = None,
 ) -> dict:
-    """Ask an OpenAI model to solve the workload."""
+    """Ask a model to solve the workload via any OpenAI-compatible API."""
     import httpx
 
-    key = api_key or os.environ.get("OPENAI_API_KEY", "")
-    if not key:
-        raise RuntimeError("OPENAI_API_KEY not set")
+    base, key = _resolve_api_config(api_base, api_key)
 
     fragments_text = "\n\n".join(
         f"[{fid}] {text}" for fid, text in compressed_texts.items()
@@ -119,7 +155,7 @@ Your response:"""
 
     try:
         resp = httpx.post(
-            "https://api.openai.com/v1/chat/completions",
+            f"{base}/chat/completions",
             headers={
                 "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json",
@@ -129,9 +165,8 @@ Your response:"""
                 "messages": [{"role": "user", "content": user_msg}],
                 "max_tokens": 512,
                 "temperature": 0.1,
-                "seed": seed,
             },
-            timeout=60.0,
+            timeout=120.0,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -140,7 +175,7 @@ Your response:"""
         input_tokens = usage.get("prompt_tokens", 0)
         output_tokens = usage.get("completion_tokens", 0)
     except Exception as e:
-        print(f"  [warn] OpenAI exception: {e}", file=sys.stderr)
+        print(f"  [warn] API exception ({base}): {e}", file=sys.stderr)
         response = ""
         input_tokens = output_tokens = 0
 
@@ -221,7 +256,10 @@ def run_frontier(cfg: FrontierConfig) -> pd.DataFrame:
                 for frag in w.fragments
             }
             for seed in cfg.seeds:
-                result = openai_planner_solve(cfg.model, w, compressed_texts, seed=seed)
+                result = openai_planner_solve(
+                    cfg.model, w, compressed_texts, seed=seed,
+                    api_key=cfg.api_key, api_base=cfg.api_base,
+                )
 
                 # Estimate cost
                 from m6.pipelines.cost_model import PRICING
@@ -365,7 +403,10 @@ def main():
     parser = argparse.ArgumentParser(description="Frontier model cliff sweep")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--out", type=str, default=None)
-    parser.add_argument("--model", type=str, default=None, help="OpenAI model name")
+    parser.add_argument("--model", type=str, default=None,
+                        help="Model name (default: Qwen/Qwen2.5-72B-Instruct)")
+    parser.add_argument("--api-base", type=str, default=None,
+                        help="API base URL (default: auto-detect from env)")
     parser.add_argument("--synth-results", type=str, default=None)
     args = parser.parse_args()
 
@@ -374,17 +415,23 @@ def main():
         cfg.out_dir = args.out
     if args.model:
         cfg.model = args.model
+    if args.api_base:
+        cfg.api_base = args.api_base
     if args.synth_results:
         cfg.synth_results_path = args.synth_results
 
-    if not os.environ.get("OPENAI_API_KEY"):
-        print("ERROR: Set OPENAI_API_KEY environment variable")
+    # Validate API key is available
+    try:
+        base, _ = _resolve_api_config(cfg.api_base, cfg.api_key)
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
         sys.exit(1)
 
     print("=" * 60)
     print("Frontier Model Cliff Sweep")
     print("=" * 60)
     print(f"Model: {cfg.model}")
+    print(f"API: {base}")
     print(f"Compressor: {cfg.compressor}")
     print(f"Ratios: {cfg.ratios}")
     print(f"Seeds: {cfg.seeds}")

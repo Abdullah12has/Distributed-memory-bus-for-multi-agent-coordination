@@ -39,6 +39,12 @@ PRICING: dict[str, PricePerMillion] = {
     "local-mlx":             PricePerMillion(input_eur=0.05,  output_eur=0.05),
     "local-llamacpp-int4":   PricePerMillion(input_eur=0.05,  output_eur=0.05),
     "local-ollama":          PricePerMillion(input_eur=0.05,  output_eur=0.05),
+
+    # Featherless API — open-source models served via API.
+    # Free tier / pay-per-use. Estimate based on comparable providers.
+    "Qwen/Qwen2.5-72B-Instruct":           PricePerMillion(input_eur=0.37,  output_eur=0.37),
+    "meta-llama/Llama-3.3-70B-Instruct":    PricePerMillion(input_eur=0.37,  output_eur=0.37),
+    "mistralai/Mistral-Small-24B-Instruct-2501": PricePerMillion(input_eur=0.14, output_eur=0.14),
 }
 
 
