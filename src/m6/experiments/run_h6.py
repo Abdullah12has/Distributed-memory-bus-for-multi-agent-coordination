@@ -366,6 +366,11 @@ def compute_h6_task_theta_verdict(
     and compare with C1 family thetas. The finding is that theta scales
     with information density: dense numeric tasks have high theta (early cliff),
     distributed QA tasks have low theta (late/no cliff).
+
+    Note: theta is estimated as (1 - normalized_AUC), an empirical proxy for
+    the theoretical theta (minimum token fraction for success). This proxy
+    captures the intuition that tasks robust to compression (high AUC) have
+    low information density (low theta), but is not derived from the theorem.
     """
     # Estimate theta for MultiHopRAG from the success curve
     agg = df.groupby("ratio")["coord_success"].mean().reset_index().sort_values("ratio")

@@ -40,7 +40,7 @@ class CompressionCache:
 
     @staticmethod
     def _key(compressor: str, ratio: float, fragment_id: str, task_hint: str | None = None) -> str:
-        return f"{compressor}|{ratio:.1f}|{fragment_id}|{_hint_key(task_hint)}"
+        return f"{compressor}|{ratio:.2f}|{fragment_id}|{_hint_key(task_hint)}"
 
     def store(
         self,
@@ -116,7 +116,7 @@ class CachedCompressor:
                 key = CompressionCache._key(self.compressor_id, ratio, fragment.fragment_id, hint)
                 print(f"  [cache miss] {key}", file=sys.stderr)
             raise KeyError(
-                f"Cache miss: {self.compressor_id}|{ratio:.1f}|{fragment.fragment_id}|{_hint_key(hint)}"
+                f"Cache miss: {self.compressor_id}|{ratio:.2f}|{fragment.fragment_id}|{_hint_key(hint)}"
             )
         slot_id = f"cached-{fragment.fragment_id[:40]}-{ratio:.0f}"
         return CompressedSlot(

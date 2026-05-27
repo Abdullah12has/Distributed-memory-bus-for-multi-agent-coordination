@@ -169,25 +169,30 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                     content_f1 = sum(frag_f1s) / len(frag_f1s) if frag_f1s else 0.0
                     # Cost model: estimate tokens actually processed per pipeline
                     corpus_tokens = sum(len(f.text) // 4 for f in corpus)
+                    original_retrieved_tokens = sum(
+                        len(next((f for f in w.fragments if f.fragment_id == h.fragment.fragment_id), h.fragment).text) // 4
+                        for h in hits
+                    )
                     retrieved_tokens = sum(len(h.fragment.text) // 4 for h in hits)
-                    # Measure actual compressed corpus size from pipeline's indexed fragments
-                    if hasattr(pipe, "retriever") and hasattr(pipe.retriever, "_fragments"):
-                        compressed_corpus_tokens = sum(
-                            len(f.text) // 4 for f in pipe.retriever._fragments
-                        )
-                    else:
-                        compressed_corpus_tokens = int(corpus_tokens / max(ratio, 1.0))
-                    achieved_ratio = corpus_tokens / max(compressed_corpus_tokens, 1)
                     if p_name == "P1":
-                        # compress full corpus → retrieve from compressed
-                        # Cost = compress(full) + retrieve(compressed)
+                        # P1: compress full corpus → retrieve from compressed
+                        # Retriever stores compressed fragments — measure from there
+                        if hasattr(pipe, "retriever") and hasattr(pipe.retriever, "_fragments"):
+                            compressed_corpus_tokens = sum(
+                                len(f.text) // 4 for f in pipe.retriever._fragments
+                            )
+                        else:
+                            compressed_corpus_tokens = int(corpus_tokens / max(ratio, 1.0))
+                        achieved_ratio = corpus_tokens / max(compressed_corpus_tokens, 1)
                         input_tokens = corpus_tokens + compressed_corpus_tokens
                     elif p_name == "P2":
-                        # retrieve from full corpus → compress top-k only
-                        # Cost = retrieve(full) + compress(top-k)
+                        # P2: retrieve from full corpus → compress top-k only
+                        # Hits contain compressed text; original_retrieved_tokens has pre-compression size
+                        achieved_ratio = original_retrieved_tokens / max(retrieved_tokens, 1)
                         input_tokens = corpus_tokens + retrieved_tokens
                     else:  # P3
-                        # retrieve full → conditionally compress subset
+                        # retrieve full → conditionally compress subset (~70% compressed)
+                        achieved_ratio = original_retrieved_tokens / max(retrieved_tokens, 1)
                         input_tokens = corpus_tokens + int(retrieved_tokens * 0.7)
                     # Use GPT-4o-mini pricing as a realistic reference cost,
                     # even for local runs, so the cost-effectiveness analysis

@@ -34,8 +34,11 @@ Usage:
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from m6.compressors import make_compressor
 from m6.compressors.base import Compressor, ModelCard
@@ -188,8 +191,7 @@ class CAACCompressor:
                 hi = mid
 
         if best_q < self._q_min:
-            import logging
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "CAAC binary search exhausted: best q=%.3f < q_min=%.3f "
                 "(fragment %d chars, min_ratio=%.1f)",
                 best_q, self._q_min, len(fragment.text), self.min_ratio,

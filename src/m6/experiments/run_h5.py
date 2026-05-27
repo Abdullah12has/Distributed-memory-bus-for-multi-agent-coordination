@@ -486,6 +486,10 @@ def compute_h5_model_independence_verdict(df: pd.DataFrame, baseline_threshold: 
     For each family where at least 2 models have baseline >= baseline_threshold,
     check that tau spread across models is small. This reframes H5 from
     "does tau increase with model size?" to "is tau invariant to model size?"
+
+    Note: cliff_prediction.validate_model_independence() provides a CSV-based version
+    of this same analysis for post-hoc validation. This in-memory version is used
+    during the experiment run.
     """
     model_sizes = sorted(df["planner_model"].unique(), key=lambda m: float(m.replace("B", "")))
     families = sorted(df["family"].unique())
@@ -549,6 +553,10 @@ def compute_h5_model_independence_verdict(df: pd.DataFrame, baseline_threshold: 
         "baseline_threshold": baseline_threshold,
         "framing": "Cliff position is model-independent (Corollary 1). "
                    "Model size affects ceiling p0, not cliff position r*.",
+        "limitation": f"Validated on {n_testable}/{len(per_family)} families "
+                      f"(others have floor effects: baseline < {baseline_threshold}). "
+                      "Tau spread tolerance is 50%. Stronger evidence would require "
+                      "more families with sufficient baseline performance.",
     }
 
 
