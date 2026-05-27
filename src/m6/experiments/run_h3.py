@@ -24,6 +24,7 @@ import pandas as pd
 from m6.benchmark.generator import load as load_benchmark
 from m6.benchmark.schemas import WorkloadFamily
 from m6.compressors import make_compressor
+from m6.compressors.cache import CompressionCache, make_cached_compressor
 from m6.pipelines import Pipeline1, Pipeline2, Pipeline3
 from m6.pipelines.cost_model import eur_for_call
 
@@ -39,6 +40,7 @@ class H3Config:
     ratio_accuracy: float = 2.0  # low compression for accuracy-bounded
     n_workloads: int | None = None
     out_dir: str = "results/h3"
+    cache_path: str | None = None
 
     def __post_init__(self):
         if self.compressors is None:
@@ -127,6 +129,10 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
         workloads = workloads[: cfg.n_workloads]
     print(f"  {len(workloads)} family-(a) workloads loaded")
 
+    ext_cache: CompressionCache | None = None
+    if cfg.cache_path:
+        ext_cache = CompressionCache.load(cfg.cache_path)
+
     regime_ratios = {
         "storage_bounded": cfg.ratio_storage,
         "accuracy_bounded": cfg.ratio_accuracy,
@@ -136,7 +142,10 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
     for comp_name in cfg.compressors:
         for regime, ratio in regime_ratios.items():
             print(f"  {comp_name} / {regime} (ratio={ratio}x)...")
-            comp = make_compressor(comp_name, target_ratio=ratio)
+            if ext_cache is not None:
+                comp = make_cached_compressor(comp_name, ext_cache, target_ratio=ratio)
+            else:
+                comp = make_compressor(comp_name, target_ratio=ratio)
             pipelines = {
                 "P1": Pipeline1(comp, target_ratio=ratio),
                 "P2": Pipeline2(comp, target_ratio=ratio),
@@ -161,7 +170,14 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                     # Cost model: estimate tokens actually processed per pipeline
                     corpus_tokens = sum(len(f.text) // 4 for f in corpus)
                     retrieved_tokens = sum(len(h.fragment.text) // 4 for h in hits)
-                    compressed_corpus_tokens = int(corpus_tokens / max(ratio, 1.0))
+                    # Measure actual compressed corpus size from pipeline's indexed fragments
+                    if hasattr(pipe, "retriever") and hasattr(pipe.retriever, "_fragments"):
+                        compressed_corpus_tokens = sum(
+                            len(f.text) // 4 for f in pipe.retriever._fragments
+                        )
+                    else:
+                        compressed_corpus_tokens = int(corpus_tokens / max(ratio, 1.0))
+                    achieved_ratio = corpus_tokens / max(compressed_corpus_tokens, 1)
                     if p_name == "P1":
                         # compress full corpus → retrieve from compressed
                         # Cost = compress(full) + retrieve(compressed)
@@ -188,6 +204,7 @@ def run_h3(cfg: H3Config) -> pd.DataFrame:
                             "retrieval_recall": retrieval_recall,
                             "eur_per_query": eur,
                             "f1_over_eur": content_f1 / max(eur, 1e-9),
+                            "achieved_ratio": achieved_ratio,
                         }
                     )
 
@@ -256,11 +273,14 @@ def main():
     parser = argparse.ArgumentParser(description="H3: RAG pipeline placement")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--out", type=str, default=None)
+    parser.add_argument("--cache", type=str, default=None, help="Path to precomputed compression cache JSON")
     args = parser.parse_args()
 
     cfg = H3Config.smoke() if args.smoke else H3Config()
     if args.out:
         cfg.out_dir = args.out
+    if args.cache:
+        cfg.cache_path = args.cache
 
     print("=" * 60)
     print("H3: RAG Pipeline Placement")

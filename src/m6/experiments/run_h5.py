@@ -33,6 +33,7 @@ from scipy import optimize
 from m6.benchmark.generator import load as load_benchmark
 from m6.benchmark.schemas import Workload
 from m6.compressors import make_compressor
+from m6.compressors.cache import CompressionCache, make_cached_compressor
 
 # ============================================================================
 # Config
@@ -57,6 +58,7 @@ class H5Config:
     n_workloads: int = 20  # per family (20 × 3 families = 60 total)
     out_dir: str = "results/h5"
     planner_models: dict[str, str] | None = None
+    cache_path: str | None = None
 
     def __post_init__(self):
         if self.ratios is None:
@@ -129,12 +131,11 @@ Your response:"""
         print(f"  [warn] planner exception ({model}): {e}", file=sys.stderr)
         response = ""
 
-    # Extract answer
+    # Extract answer (take last ANSWER: line — LLMs sometimes draft then revise)
     answer = ""
     for line in response.split("\n"):
         if line.strip().upper().startswith("ANSWER:"):
             answer = line.split(":", 1)[1].strip()
-            break
     if not answer:
         answer = response[:200]
 
@@ -333,6 +334,11 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
                 f"Pull it with: ollama pull {model_name}"
             ) from e
 
+    # Load precomputed cache if provided
+    ext_cache: CompressionCache | None = None
+    if cfg.cache_path:
+        ext_cache = CompressionCache.load(cfg.cache_path)
+
     rows: list[dict[str, Any]] = []
     comp_cache: dict[float, Any] = {}
     # Cache compressed text per (ratio, fragment_id) — compression is
@@ -353,6 +359,12 @@ def run_h5(cfg: H5Config) -> pd.DataFrame:
             for frag in w.fragments:
                 cache_key = (ratio, frag.fragment_id)
                 if cache_key not in compressed_cache:
+                    # Try precomputed cache first
+                    if ext_cache is not None:
+                        cached = ext_cache.lookup(cfg.compressor, ratio, frag.fragment_id, w.initial_prompt)
+                        if cached is not None:
+                            compressed_cache[cache_key] = cached
+                            continue
                     frag_with_hint = frag.model_copy(update={"task_hint": w.initial_prompt})
                     slot = comp.compress(frag_with_hint)
                     compressed_cache[cache_key] = comp.decompress(slot) or frag.text
@@ -468,15 +480,90 @@ def compute_h5_verdict(df: pd.DataFrame) -> dict:
     }
 
 
+def compute_h5_model_independence_verdict(df: pd.DataFrame, baseline_threshold: float = 0.5) -> dict:
+    """Corollary 1: cliff position is model-independent when baseline > threshold.
+
+    For each family where at least 2 models have baseline >= baseline_threshold,
+    check that tau spread across models is small. This reframes H5 from
+    "does tau increase with model size?" to "is tau invariant to model size?"
+    """
+    model_sizes = sorted(df["planner_model"].unique(), key=lambda m: float(m.replace("B", "")))
+    families = sorted(df["family"].unique())
+
+    per_family: dict[str, Any] = {}
+    n_testable = 0
+    n_invariant = 0
+
+    for fam in families:
+        fam_df = df[df["family"] == fam]
+        baselines: dict[str, float] = {}
+        taus: dict[str, float] = {}
+
+        for model in model_sizes:
+            sub = fam_df[fam_df["planner_model"] == model]
+            bl_sub = sub[sub["ratio"] == 1.0]
+            baseline = float(bl_sub["coord_success"].mean()) if not bl_sub.empty else 0.0
+            baselines[model] = baseline
+
+            if baseline >= baseline_threshold:
+                agg = sub.groupby("ratio")["coord_success"].mean().reset_index()
+                fit = fit_piecewise(agg["ratio"].to_numpy(), agg["coord_success"].to_numpy())
+                taus[model] = fit.get("logistic_tau", fit.get("tau", float("nan")))
+
+        valid_taus = {m: t for m, t in taus.items() if not np.isnan(t)}
+        floor_models = [m for m, b in baselines.items() if b < baseline_threshold]
+
+        if len(valid_taus) >= 2:
+            n_testable += 1
+            tau_vals = list(valid_taus.values())
+            tau_mean = float(np.mean(tau_vals))
+            tau_spread = (max(tau_vals) - min(tau_vals)) / max(abs(tau_mean), 1e-9) * 100
+            is_invariant = tau_spread <= 50.0
+
+            if is_invariant:
+                n_invariant += 1
+
+            per_family[fam] = {
+                "baselines": baselines,
+                "taus": valid_taus,
+                "tau_mean": tau_mean,
+                "tau_spread_pct": float(tau_spread),
+                "is_invariant": is_invariant,
+                "floor_effect_models": floor_models,
+            }
+        else:
+            per_family[fam] = {
+                "baselines": baselines,
+                "taus": valid_taus,
+                "skipped": True,
+                "reason": f"<2 models with baseline >= {baseline_threshold}",
+                "floor_effect_models": floor_models,
+            }
+
+    supported = n_invariant >= 1 and n_testable >= 1
+    return {
+        "per_family": per_family,
+        "n_testable_families": n_testable,
+        "n_invariant_families": n_invariant,
+        "corollary1_supported": supported,
+        "baseline_threshold": baseline_threshold,
+        "framing": "Cliff position is model-independent (Corollary 1). "
+                   "Model size affects ceiling p0, not cliff position r*.",
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="H5: Model-size scaling")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--out", type=str, default=None)
+    parser.add_argument("--cache", type=str, default=None, help="Path to precomputed compression cache JSON")
     args = parser.parse_args()
 
     cfg = H5Config.smoke() if args.smoke else H5Config()
     if args.out:
         cfg.out_dir = args.out
+    if args.cache:
+        cfg.cache_path = args.cache
 
     print("=" * 60)
     print("H5: Model-Size Scaling")
@@ -489,7 +576,7 @@ def main():
     print(f"\nSaved {len(df)} rows to {out_dir / 'results.csv'}")
 
     verdict = compute_h5_verdict(df)
-    print("\nH5 VERDICT:")
+    print("\nH5 VERDICT (original — tau monotonicity):")
     for fam, data in verdict["per_family"].items():
         print(
             f"  Family {fam}: taus={data['taus']} monotonic={data['monotonic']} gap={data['gap']:.1f}"
@@ -498,6 +585,23 @@ def main():
         f"  => H5 SUPPORTED: {verdict['h5_supported']} ({verdict['monotonic_families']}/3 monotonic, gap={verdict['max_gap']:.1f})"
     )
 
+    # Corollary 1: model-independence verdict
+    mi_verdict = compute_h5_model_independence_verdict(df)
+    print("\nH5 VERDICT (reframed — Corollary 1: model-independence):")
+    for fam, data in mi_verdict["per_family"].items():
+        if data.get("skipped"):
+            print(f"  Family {fam}: SKIPPED — {data['reason']} (floor: {data['floor_effect_models']})")
+        else:
+            print(
+                f"  Family {fam}: tau_mean={data['tau_mean']:.1f} spread={data['tau_spread_pct']:.0f}% "
+                f"invariant={data['is_invariant']} (floor: {data['floor_effect_models']})"
+            )
+    print(
+        f"  => COROLLARY 1 SUPPORTED: {mi_verdict['corollary1_supported']} "
+        f"({mi_verdict['n_invariant_families']}/{mi_verdict['n_testable_families']} invariant families)"
+    )
+
+    verdict["model_independence"] = mi_verdict
     with open(out_dir / "verdicts.json", "w") as f:
         json.dump(verdict, f, indent=2, default=str)
 

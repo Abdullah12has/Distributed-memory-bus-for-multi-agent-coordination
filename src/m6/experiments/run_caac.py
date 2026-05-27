@@ -30,6 +30,7 @@ from m6.agents.orchestrator import AgentConfig, PlannerWorkerCritic
 from m6.benchmark.generator import load as load_benchmark
 from m6.benchmark.schemas import Workload, WorkloadTrace
 from m6.compressors import make_compressor
+from m6.compressors.cache import CompressionCache, make_cached_compressor
 from m6.compressors.caac import CAACCompressor, _token_recall
 from m6.experiments.run_h1_h2 import score_coordination
 
@@ -48,6 +49,7 @@ class CAACConfig:
     n_compression_passes: int = 1
     theta: float = 0.5
     out_dir: str = "results/caac"
+    cache_path: str | None = None
 
     def __post_init__(self):
         if self.inner_compressors is None:
@@ -100,6 +102,12 @@ def run_caac_experiment(cfg: CAACConfig) -> pd.DataFrame:
         workloads = filtered
     print(f"  {len(workloads)} workloads loaded")
 
+    # Load precomputed cache if provided (used for fixed baselines only;
+    # CAAC's adaptive binary search needs live compressor access)
+    ext_cache: CompressionCache | None = None
+    if cfg.cache_path:
+        ext_cache = CompressionCache.load(cfg.cache_path)
+
     rows: list[dict[str, Any]] = []
     done = 0
     t_start = time.time()
@@ -108,7 +116,10 @@ def run_caac_experiment(cfg: CAACConfig) -> pd.DataFrame:
         for target_ratio in cfg.target_ratios:
             # --- Fixed baseline ---
             print(f"\n  Fixed {inner_name} @ {target_ratio}x...")
-            fixed_comp = make_compressor(inner_name, target_ratio=target_ratio)
+            if ext_cache is not None:
+                fixed_comp = make_cached_compressor(inner_name, ext_cache, target_ratio=target_ratio)
+            else:
+                fixed_comp = make_compressor(inner_name, target_ratio=target_ratio)
 
             for w in workloads:
                 # Compress fragments and measure achieved ratio
@@ -252,11 +263,14 @@ def main():
     parser = argparse.ArgumentParser(description="CAAC vs fixed-ratio baselines")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--out", type=str, default=None)
+    parser.add_argument("--cache", type=str, default=None, help="Path to precomputed compression cache JSON (fixed baselines only)")
     args = parser.parse_args()
 
     cfg = CAACConfig.smoke() if args.smoke else CAACConfig()
     if args.out:
         cfg.out_dir = args.out
+    if args.cache:
+        cfg.cache_path = args.cache
 
     print("=" * 60)
     print("CAAC: Cliff-Aware Adaptive Compression")
