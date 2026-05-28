@@ -2143,10 +2143,27 @@ compressor (LLMLingua-2). The cliff is compressor-determined, not model-determin
 - All ratios: 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0
 - Two hint variants per fragment (empty + workload prompt)
 
-### CAAC experiment: in progress on GPU
+### Qwen 72B frontier curve detail
+| Ratio | Qwen 72B | Synth 8B |
+|-------|----------|----------|
+| 1.0x  | 100%     | 100%     |
+| 2.0x  | 80%      | 80%      |
+| 3.0x  | 30%      | 17%      |
+| 4.0x  | 30%      | 6%       |
+| 6.0x  | 0%       | 0%       |
+| 8.0x  | 0%       | 0%       |
+
+API cost: EUR 0.031. Both models cliff between 2-3x and zero out by 6x.
+
+### Additional frontier models
+- GPT-oss 120B: 20/180 partial, stalled due to GPU contention with CAAC. Will re-run.
+- DeepSeek V4 Pro: not yet started. Will run after CAAC completes.
+
+### CAAC experiment: in progress on GPU (11+ hours)
 - Running lingua2 + filter inner compressors
 - 8 target ratios × 50 workloads × 3 seeds × 3 families
-- Estimated: ~2-4 hours remaining
+- Binary search with lingua2 is very expensive (reloads model per step)
+- Still computing as of 2026-05-28 02:40 UTC
 
 ================================================================================
 END OF INSIGHTS
