@@ -27,13 +27,17 @@ Format: numbered section with heading, date, and clear description. See existing
 | `plan-v3.md` | Active plan (v1 and v2 are dead) |
 | `docs/TECHNICAL_REFERENCE_V3.md` | Technical spec |
 | `insights.txt` | Running log of all findings and decisions |
+| `CONTEXT.md` | Domain glossary (θ_q vs θ_info, τ*, q(r), N, calibrated regime, etc.) |
+| `docs/adr/ADR-006-008` | Load-bearing decisions from 2026-05-29 grilling reconciliation |
 
 ## Compressors (all training-free)
 
 1. **LLMLingua-2** (`lingua2.py`) — token-level XLM-RoBERTa classifier
 2. **Phi-3-Mini extractive** (`phi3_extractive.py`) — verbatim span selection via Ollama, with novel-token stripping + LLMLingua-2 fallback
 3. **Instruction-aware filter** (`filter.py`) — TF-IDF + cross-encoder reranker
-4. **Identity** (`__init__.py`) — no-compression control
+4. **Truncation** (`truncation.py`) — prefix-truncation baseline (added 2026-05-27 for h1_h2_v2)
+5. **Identity** (`__init__.py`) — no-compression control
+6. **CAAC** (`caac.py`) — wrapper, not a fifth family; per ADR-007 reframed as operating-point selection (not Pareto dominance)
 
 ## Experiment Scripts (v3, self-contained)
 
@@ -85,10 +89,12 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 
 ### H4: Inference Disclosure
 - **Criterion**: baseline > priors AND compressed < baseline
-- **Status: SUPPORTED**
-  - Signal: +5pp (p=0.001) for all 3 compressors
-  - Reduction: lingua2 -14.3pp (p=0.0001), phi3 -3.2pp (p=0.006), filter NS
-  - Key insight: compression aggressiveness correlates with disclosure gap
+- **Status: SUPPORTED** (re-validated 2026-05-29 on unbiased benchmark in `results/h4_unbiased/`)
+  - Signal: +29pp (p=0.0001) for all 3 compressors (baseline 0.78 vs priors 0.50)
+  - Reduction: filter -21pp, lingua2 -19pp (both p=0.0001); phi3 -7.5pp (p=0.027, borderline)
+  - Key insight: compression aggressiveness correlates with disclosure gap. Aggressive token-level compressors (filter, lingua2) reduce disclosure substantially; extractive copying (phi3) preserves enough surface tokens that the leak persists.
+- **Note (2026-05-29) — original `h4_final` had a question-template surface-pattern bias**: every "at least X" question had ground truth YES, every "exceed X" question had ground truth NO. A surface-pattern reader could score 100% from the verb alone. Reader (llama3.1:8b) didn't exploit this in practice (priors stayed near 0.50) but the DATA WAS biased, inflating baseline to 0.97. Benchmark generator was fixed (`fact_aggregation.py:119-156`) to use a single comparator phrasing ("at least N") with parity-based threshold sign — so the YES/NO answer is now decoupled from question wording. Fragments unchanged (cache stays valid).
+- **Reader's "no" bias caveat**: llama3.1:8b under-predicts YES — when ground truth is yes, priors_rate ≈ 0.03, baseline_rate ≈ 0.58. When ground truth is no, both ≈ 1.00. The pooled priors of 0.50 reflects balanced ground-truth distribution, not reader competence. The thesis should note: H4 measures *"compression preserves enough to flip a no-biased reader to confident yes"* — asymmetric but still a valid leakage signal.
 
 ### H5: Model-Size Scaling
 - **Original criterion**: tau* monotonic across 1.5B/3.8B/8B on >= 2/3 families, gap >= 1.5
@@ -98,18 +104,21 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
   - Family-a: 1.5B (17%) and 3.8B (3%) have floor effect (baseline < 50%) — correctly skipped
   - Family-b: all models below threshold — correctly skipped
   - **Key finding**: model size affects ceiling p0, not cliff position r*
-  - Validates Theorem 1(iii): r* depends on compressor + task, not model capacity
+  - Validates compounding-error model part (iii) **within the calibrated regime** per ADR-006: r* depends on compressor + task, not planner capacity. Extended-reasoning planners (e.g., GPT-oss 120B) are scoped out of this claim.
 
 ### H6: MultiHopRAG Transfer
 - **Original criterion**: tau* within +/-15% of C1 family-a, coord_success within +/-10pp
 - **Original status: NOT SUPPORTED** (h6_final, 2026-05-27, tau 320% different)
   - MultiHopRAG tau=11.3x vs C1 family-a tau=2.7x
   - MultiHopRAG baseline=34.7% (task much harder than C1)
-- **Reframed as Corollary 2 (Information Density Scaling): SUPPORTED** (2026-05-27)
-  - MultiHopRAG theta=0.484 (distributed QA, low info density)
-  - C1 family-a theta=0.881 (dense numeric, high info density)
-  - Gap=0.40 (well above 0.1 threshold)
-  - **Key finding**: theta scales with task information density — dense tasks cliff early, distributed tasks degrade gradually
+- **Reframed as Corollary 2 (Information Density Scaling): SUPPORTED** (2026-05-27, confirmed 2026-05-29)
+  - MultiHopRAG **θ_info**=0.484 (distributed QA, low info density)
+  - C1 family-a **θ_info**=0.967 (dense numeric, high info density) — earlier value 0.881 was from a different computation; current canonical AUC-based value is 0.967 per `hotpotqa_sweep/verdicts.json`
+  - HotpotQA θ_info=0.373 (most distributed)
+  - Gap (MHR vs C1-a) = 0.48; gap (HotpotQA vs C1-a) = 0.59 — both well above 0.1 threshold
+  - **Key finding**: θ_info scales with task information density — dense tasks cliff early, distributed tasks degrade gradually
+  - **Important — θ_info ≠ θ_q.** θ_info (AUC-based, per-task, used here for Corollary 2) is distinct from θ_q (recall-threshold, per-family, used in the cliff equation q(r*) = θ_q). The CTR end-to-end switch for CAAC + cliff prediction does NOT affect Corollary 2. See CONTEXT.md.
+  - **Thesis-only positioning** per ADR-006 / Q11: Corollary 2 lives in thesis Ch7; dropped from NeurIPS-track positioning.
 
 ## Completed Experiment Runs (GPU Server)
 
@@ -119,9 +128,14 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 | H3 final | `h3_final` | 2026-05-26 | Done | 3 compressors, H3 not supported |
 | H4 final | `h4_final` | 2026-05-26 | Done | H4 supported, 3 compressors |
 | H5 final | `h5_final` | 2026-05-27 | Done | 9000 rows, Corollary 1 SUPPORTED |
-| H6 final | `h6_final` | 2026-05-27 | Done | 1524 rows, Corollary 2 SUPPORTED |
-| H1/H2 v2 rerun | `h1_h2_v2` | 2026-05-27 | Running | 4 compressors incl truncation, ~37% done |
+| H6 final | `h6_final` | 2026-05-27 | Done | **1500 rows** (was misreported as 1524), Corollary 2 SUPPORTED |
+| H1/H2 v2 | `h1_h2_v2` | 2026-05-27 | **Done** (27000 rows; 4 compressors incl truncation) |
 | Frontier smoke | `frontier_smoke` | 2026-05-27 | Done | Featherless API test |
+| Frontier Qwen 72B | `frontier_qwen72b` | 2026-05-28 | Done | 180 rows, τ_diff 0.8% from synth — VALIDATES |
+| Frontier DeepSeek V4 Pro | `frontier_deepseekv4` | 2026-05-28 | Done | 180 rows, CI [1.76, 7.14] contains synth — VALIDATES |
+| Frontier GPT-oss 120B (v1, v2) | `frontier_gptoss120b{,_v2}` | 2026-05-28 | **Scoped out per ADR-006** | Extended-reasoning planner, outside calibrated regime. Retained on disk with `STATUS_NONCANONICAL.txt`. |
+| HotpotQA sweep | `hotpotqa_sweep` | 2026-05-28 | Done | 750 rows, τ=2.69, θ_info=0.373, Corollary 2 second external benchmark |
+| CAAC | `caac` | 2026-05-28 | Done; **rerun pending** with CTR + per-family θ_q wiring per ADR-007 | 13500 rows; strict_pareto = 0/7 (expected per operating-point framing); §54 ablation confirms safety-floor character |
 
 ## Key Bugs Fixed
 
@@ -156,12 +170,19 @@ python -m m6.experiments.run_h6 --synth-results results/h5_full
 29. **Missing critical_token_recall**: added family-specific metric (numbers for a, patterns for b, FINAL for c)
 30. **Missing achieved_ratio**: added actual compression ratio column to H1/H2 CSV
 
-## Critical Framing Notes (from deep review, 2026-05-25)
+## Critical Framing Notes (from deep review 2026-05-25, reconciled 2026-05-29)
 
-### Theorem-Implementation Mismatch (FIXED)
+### Naming: "compounding-error model", not "Theorem 1" (per ADR-008)
+Thesis manuscript uses plan-v3's terminology: **compounding-error model**.
+The formal LaTeX proof in `paper/sections/theorem.tex` is dropped — Ch5
+uses the derivation paragraph from plan-v3 §3 instead. Codebase
+identifiers (`theorem_validation.json`, `validate_theorem.py`, etc.)
+are NOT renamed for back-compat; CONTEXT.md documents the mapping.
+
+### N=1 (FIXED)
 The compounding-error model originally claimed N=3 rounds of compression (q^N),
-but the code only compresses once (N=1). Fixed: theorem now uses N=1 by default,
-q_min = theta directly. The q^N formulation is still available for multi-pass
+but the code only compresses once (N=1). Fixed: model now uses N=1 by default,
+q_min = θ_q directly. The q^N formulation is still available for multi-pass
 scenarios but is explicitly documented as not matching our experiments.
 
 ### Evaluation Honesty
@@ -174,10 +195,12 @@ scenarios but is explicitly documented as not matching our experiments.
 - The AutoGen backend EXISTS in the code (orchestrator.py:179+) but was not used
   for production experiments due to high variance masking compression effects.
 
-### CAAC Constraints
+### CAAC Constraints (updated 2026-05-29 per ADR-007)
 - min_ratio changed from 1.0 to 1.5 — CAAC must achieve at least 1.5x compression
 - theta changed from hardcoded 0.65 to empirically derivable via `derive_theta()`
 - Default theta=0.5, default n_compression_passes=1
+- **Active sprint**: wire `cfg.theta = derive_theta(family, recall_column="critical_token_recall")` per-family; CAAC's internal q-check switches from generic token_recall to critical_token_recall. Rerun on GPU (~7h).
+- **Framing**: CAAC reframed as theorem-grounded **operating-point selection** (not Pareto dominance). Strict-Pareto rate = 0/7 is the EXPECTED and CORRECT result, not a contribution-killer. CAAC trades compression for predictable coordination above q_min; fixed-ratio trades coord for compression. They populate complementary regions of the (coord, achieved_ratio) frontier. See ADR-007 + insights §54.
 
 ## Thesis-Text Actions (no code, must address in writing)
 
@@ -192,29 +215,37 @@ scenarios but is explicitly documented as not matching our experiments.
 
 ## Chapter Mapping
 
-- **Ch5**: H1 + H2 + H5 (coordination cliff + scaling)
-- **Ch6**: H3 (RAG pipelines + cost)
-- **Ch7**: H4 + H6 (inference disclosure + memory bus + transfer validation)
+- **Ch5**: H1 + H2 + H5 (compounding-error model + cliff measurement + Corollary 1)
+- **Ch6**: H3 (RAG pipelines + cost) — verdict NOT SUPPORTED, honestly framed per Q12
+- **Ch7**: H4 + H6 (protected-fact recovery + Corollary 2 + memory bus)
+- **Ch8**: Discussion + CAAC demonstration (~3 pages per ADR-007) + limitations + future work
 
-## Theory: Corollaries (added 2026-05-27)
+## Theory: Corollaries (added 2026-05-27, reconciled 2026-05-29)
 
 ### Corollary 1 (Ceiling-Cliff Separation)
-Model capacity m determines baseline success p0(m), while cliff position r*
-is determined solely by compressor C and task threshold theta. When p0(m) < theta,
-no cliff is detectable (floor effect). When p0(m) >= theta, r* is invariant to m.
+Planner capacity m determines baseline success p0(m), while cliff position r*
+is determined solely by compressor C and task threshold θ_q **within the
+calibrated regime** (per ADR-006). When p0(m) < θ_q, no cliff is detectable
+(floor effect). When p0(m) >= θ_q AND the planner does not recover from
+sub-threshold information via extended reasoning, r* is invariant to m.
 - Implemented: `validate_model_independence()` in cliff_prediction.py
-- Validated: Family-c, all 3 models, tau spread=24%
+- Validated: Family-c, all 3 local models (1.5B/3.8B/8B), τ spread=24%
+- Validated at frontier: Qwen 72B (τ_diff 0.8%), DeepSeek V4 Pro (CI contains synth)
+- Calibrated-regime exception: GPT-oss 120B scoped out per ADR-006
 
 ### Corollary 2 (Information Density Scaling)
-theta ~ d (fraction of task-critical tokens). Dense quantitative tasks
+**θ_info** ~ d (fraction of task-critical tokens). Dense quantitative tasks
 (d ~ 0.5) cliff early; distributed qualitative tasks (d ~ 0.1) cliff late.
 - Implemented: `estimate_task_theta()`, `validate_task_theta()` in cliff_prediction.py
-- Validated: MHR theta=0.484 vs C1-a theta=0.881
+- Validated: C1-a θ_info=0.967 > MHR θ_info=0.484 > HotpotQA θ_info=0.373
+- **θ_info ≠ θ_q** — see CONTEXT.md. Different quantities, different methods.
+- Thesis-only positioning per Q11; not load-bearing for any external venue.
 
-### Per-family theta validation
-- `full_validation_per_family()` uses per-family theta instead of global
-- Match rate still 22% (phi3-extractive predicts infinity — compressor issue)
-- Position in paper: "first-order approximation like Kaplan power laws"
+### Per-family θ_q validation (compounding-error model)
+- `full_validation_per_family()` IS called (audit was wrong on this)
+- Match rate: 33% strict per-family with CTR (4/12); 58% at 25% tolerance (7/12)
+- Position in thesis: "first-order model with bootstrap-CI uncertainty band" per Q7 D — predicted-τ* band overlaid with empirical-τ* replaces audit-flagged broken predicted_vs_empirical figure
+- Bootstrap-CI machinery is the active-sprint rigor lift (Task 3, ~2h)
 
 ## Compression Cache (added 2026-05-27)
 
@@ -224,35 +255,39 @@ Precomputed compression cache separates compression from evaluation:
 - All runners accept `--cache <path>` to skip compression
 - H1/H2, H3, frontier can run fully locally with cache
 
-## Remaining Work (Thesis)
+## Remaining Work (Thesis, ~1 week sprint per Q13)
 
-- H1/H2 v2 rerun with truncation compressor (currently running on GPU, ~7h remaining)
-- Thesis writing: Ch5, Ch6, Ch7 results sections
-- Figures: cliff curves, model-size bar charts, pipeline comparison
+Tracked as harness tasks 1–9 (see TaskList). Punch list:
 
-## NeurIPS Upgrade Plan (see neurIPS.md for full details)
+1. **[IN PROGRESS]** Reconcile CLAUDE.md and insights.txt with audit-confirmed status
+2. **[PENDING]** Wire derive_theta + CTR into CAAC and rerun sweep (~7h GPU + 3h)
+3. **[PENDING]** Compute bootstrap CI on θ_q and generate predicted-τ* band figure (~2h)
+4. **[PENDING]** Audit hygiene cleanup — _find() fix, partial.csv deletion, frontier seed plumbing, STATUS_NONCANONICAL markers (~2h)
+5. **[PENDING]** Write Ch5 (compounding-error model + cliff + Corollary 1) (~1 day)
+6. **[PENDING]** Write Ch6 (H3 NOT SUPPORTED honestly) (~0.5 day)
+7. **[PENDING]** Write Ch7 (H4 unbiased + Corollary 2 + memory bus) (~1 day)
+8. **[PENDING]** Write Ch8 (Discussion + CAAC demonstration + limitations) (~1 day)
+9. **[PENDING]** Final polish, reproducibility check, submit (~0.5 day)
 
-### Implementation Checklist (P0 — Must-Have)
+## NeurIPS / ICLR — DEFERRED per Q13 (thesis-only scope)
 
-- [ ] **THEORY**: Theorem 1 proof (coordination cliff bound) — `paper/sections/theorem.tex`
-- [x] **THEORY**: `src/m6/theory/cliff_prediction.py` — predicted_tau() + comparison plot (DONE)
-- [x] **ALGORITHM**: `src/m6/compressors/caac.py` — Cliff-Aware Adaptive Compression wrapper (DONE)
-- [x] **ALGORITHM**: `src/m6/experiments/run_caac.py` — CAAC vs fixed-ratio experiments (DONE, smoke verified)
-- [x] **EXPERIMENT**: `src/m6/experiments/run_frontier.py` — GPT-4o-mini cliff sweep via OpenAI (DONE, needs API key)
-- [x] **EXPERIMENT**: Run H6 MultiHopRAG on GPU (DONE — h6_final, Corollary 2 SUPPORTED)
-- [ ] **EXPERIMENT**: Run frontier validation (~$20 API cost)
-- [ ] **EXPERIMENT**: Run CAAC vs baselines on C1 (~4h GPU)
-- [x] **EXPERIMENT**: Run full H1/H2 with 10 ratios + all fixes (DONE — h1_h2_final; v2 with truncation running)
-- [x] **FIGURES**: `src/m6/figures/generate.py` — 6 figure generators (DONE, auto-discovers CSVs)
-- [ ] **PAPER**: NeurIPS 9-page paper draft
+NeurIPS 2026 main, NeurIPS 2026 D&B, NeurIPS workshop, and ICLR 2027 are
+all skipped for this sprint. The codebase retains CAAC, the frontier
+runners, theta-validation machinery, and the compounding-error model
+implementation; the original `neurIPS.md` is preserved unedited as a
+future-work bookmark.
 
-### Implementation Checklist (P1 — Should-Have)
+Reasons:
+- Audit revealed sufficient fragility (CTR rerun + bootstrap CI + proof
+  writing all required) that the May 2026 NeurIPS deadline was hostile
+  even if open.
+- Thesis (~1 week) is the only deliverable; ICLR 2027 path can be
+  revived later via the ADR-006/007/008 bookmarks.
+- See ADR-008 "Revisit when" condition.
 
-- [ ] HotpotQA cliff sweep (50 questions, ~2h GPU)
-- [ ] CAAC ablation: theta sensitivity {0.5, 0.6, 0.7, 0.8}
-- [ ] CAAC ablation: N sensitivity {1, 2, 3, 4, 5}
-- [ ] Per-fragment backing-off analysis
-- [ ] Selective Context as 4th compressor (~80 lines)
-- [ ] GPT-4o spot check at ratios {1, 4} (~$15)
-- [ ] Appendix with full result tables
-- [ ] Docker compose for reproducibility
+Items intentionally NOT done in this sprint:
+- Theorem 1 formal LaTeX proof (downgraded to model derivation, ADR-008)
+- GPT-4o-mini frontier spot check (declined, Q9)
+- Selective Context as 4th compressor (Q9 declined; thesis has 4 incl. truncation)
+- HotpotQA was claimed open; audit-stale — DONE since 2026-05-28
+- CAAC theta/N sensitivity ablations — DONE (§54 in insights, informative null)

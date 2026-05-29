@@ -23,6 +23,7 @@ import pandas as pd
 from m6.theory.cliff_prediction import (
     extract_token_recall_curve,
     full_validation,
+    full_validation_per_family,
     predicted_success_smooth,
     predicted_tau,
     q_required,
@@ -156,9 +157,11 @@ def main():
     parser = argparse.ArgumentParser(description="Validate Theorem 1 against empirical data")
     parser.add_argument("--csv", type=str, required=True, help="H1/H2 sweep_results.csv path")
     parser.add_argument("--n-compression-passes", type=int, default=1, help="Number of compression passes")
-    parser.add_argument("--theta", type=float, default=0.5, help="Success threshold")
+    parser.add_argument("--theta", type=float, default=0.5, help="Success threshold (global validation only)")
+    parser.add_argument("--recall-column", type=str, default="critical_token_recall",
+                        help="Column name for per-family theta derivation (default: critical_token_recall)")
     parser.add_argument("--plot", action="store_true", help="Generate validation figure")
-    parser.add_argument("--out", type=str, default="figures", help="Output dir for plots")
+    parser.add_argument("--out", type=str, default="figures", help="Output dir for plots/JSON")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -166,15 +169,33 @@ def main():
     print("=" * 60)
     print()
 
+    print("--- Global theta validation ---")
     results = run_validation(args.csv, n_compression_passes=args.n_compression_passes, theta=args.theta)
     print_validation(results)
 
-    # Save JSON
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "theorem1_validation.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
-    print(f"\nResults saved to {out_dir / 'theorem1_validation.json'}")
+    print(f"\nGlobal results saved to {out_dir / 'theorem1_validation.json'}")
+
+    print()
+    print("--- Per-family theta validation (Corollary 2) ---")
+    try:
+        pf_results = full_validation_per_family(
+            args.csv,
+            n_compression_passes=args.n_compression_passes,
+            recall_column=args.recall_column,
+        )
+        print_validation(pf_results)
+        pf_summary = pf_results.get("_summary", {})
+        per_family_theta = pf_summary.get("per_family_theta", {})
+        print(f"\nPer-family thetas: {per_family_theta}")
+        with open(out_dir / "theorem1_validation_per_family.json", "w") as f:
+            json.dump(pf_results, f, indent=2, default=str)
+        print(f"Per-family results saved to {out_dir / 'theorem1_validation_per_family.json'}")
+    except Exception as e:
+        print(f"  [skip] per-family validation failed: {e}")
 
     if args.plot:
         generate_plot(args.csv, args.out, n_compression_passes=args.n_compression_passes, theta=args.theta)

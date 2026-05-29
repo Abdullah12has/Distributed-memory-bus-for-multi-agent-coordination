@@ -1,377 +1,555 @@
-This chapter reviews prior work that grounds the four contributions of the
-thesis. It is organised into five strands. Section~\ref{sec:rw_compression}
-covers context compression and agentic memory; Section~\ref{sec:rw_multiagent}
-covers multi-agent systems and the closest published industry analogue;
-Section~\ref{sec:rw_rag} covers retrieval-augmented generation, long-context
-benchmarks, and the evaluation suite that frames C3;
-Section~\ref{sec:rw_privacy} covers privacy-aware retrieval; and
-Section~\ref{sec:rw_fcg} situates the work within the Future Computing Group
-programme at the University of Oulu and the TalentAdore industry use case.
+This chapter surveys the prior work the four contributions of this
+thesis build on. It is organised into seven strands.
+Section~\ref{sec:rw_transformer} introduces the transformer
+architecture and the per-token compute and memory cost that
+context-compression aims to reduce.
+Section~\ref{sec:rw_scaling} sketches the
+scaling-law trajectory and the inference-cost asymmetry that
+followed.
+Section~\ref{sec:rw_cost} surveys the published
+energy and economic measurements of inference at scale, which
+underpin the motivation chapter.
+Section~\ref{sec:rw_compression} covers the modern training-free
+context-compression literature.
+Section~\ref{sec:rw_multiagent} covers multi-agent LLM systems
+and agentic memory.
+Section~\ref{sec:rw_rag} covers retrieval-augmented generation,
+long-context benchmarks, and the evaluation suite that frames C3.
+Section~\ref{sec:rw_privacy} covers privacy-aware retrieval and
+the inference-disclosure literature.
+Each section closes by naming the gap that this thesis fills
+relative to the prior work it surveys; the consolidated gap
+statement is Section~\ref{sec:rw_gap}.
 
-\section{Context Compression and Agentic Memory}
+\section{The Transformer Architecture and the Cost of Context}
+\label{sec:rw_transformer}
+
+The artefacts of this thesis are built around large language
+models whose architectural foundation is the
+transformer~\cite{vaswani2017attention}. The transformer's
+defining mechanism is \emph{self-attention}: each token in a
+sequence computes a weighted sum of representations of every
+other token in the same sequence, with the weights determined by
+the compatibility of learned query and key projections of the
+respective tokens. For a sequence of length~$N$ and a hidden
+size~$d$, the self-attention mechanism produces $N^2$
+compatibility scores (a quadratic-in-$N$ memory and compute cost)
+and a final $N \times d$ output. The transformer block
+interleaves self-attention with a position-wise feed-forward
+network whose cost is linear in $N$ but proportional to the
+square of the hidden size $d$. Stacking $L$ such blocks gives
+total prefill compute approximately $L \cdot (N^2 d + N d^2)$
+floating-point operations per forward pass and a memory
+footprint dominated by the key-value cache of size
+$L \cdot N \cdot d_{\text{kv}}$ bytes per request, which grows
+linearly in $N$ and is paid for every token through the
+autoregressive decoding loop.
+
+The decoder-only sub-family of the transformer architecture is
+the one this thesis evaluates. The original
+transformer~\cite{vaswani2017attention} was encoder--decoder; the
+encoder-only line gave us BERT and its descendants; the decoder-
+only line gave us GPT-2, GPT-3, GPT-4, and the open-source
+families that this thesis's planners are drawn from (Qwen,
+Llama, DeepSeek, Phi-3). The reasons decoder-only architectures
+came to dominate large-scale deployment are three. First, the
+training objective is uniform across all token positions
+(next-token prediction), which scales cleanly with data and
+parameters. Second, the autoregressive decoding loop allows the
+key-value cache to be amortised across token positions after the
+prefill, which makes each generated token cheap relative to the
+context that was loaded. Third, the in-context-learning
+behaviour that motivated agentic systems is a decoder-only
+phenomenon: the model conditions its output on a long prefix
+without further training. The practical implication for context
+compression is that the cost a deployed decoder-only model pays
+per query is roughly $2 \cdot P \cdot N$ floating-point
+operations during prefill (where $P$ is the parameter count) and
+a per-decoded-token cost that is dominated by the key-value cache
+loaded from the prefill. Halving the prefill-length $N$ halves
+both costs. This is the lever context compression operates on.
+
+The scaling laws of large language models give one final piece of
+the cost picture. Kaplan \emph{et~al.}~\cite{kaplan2020scalinglaws}
+showed that the loss of a transformer trained on next-token
+prediction follows an approximate power-law in parameters,
+training tokens, and compute, with prescriptive implications for
+how to allocate a fixed compute budget between model size and
+training data. Hoffmann \emph{et~al.}~\cite{hoffmann2022chinchilla}
+refined this with the \emph{Chinchilla} prescription that
+parameters and training tokens should scale proportionally for
+compute-optimal training. The training-time scaling laws gave the
+field a recipe to spend training compute productively; what they
+did not give is a corresponding recipe to spend
+\emph{inference} compute productively. Inference cost is paid
+per query for the deployment lifetime of the model, and at
+production scale it dominates training cost over a small number
+of months. Context compression is to inference cost what scaling
+laws are to training cost: a structural lever that converts a
+linear cost in some axis into a constant cost.
+
+\emph{What this thesis adds.} The cost framing this section
+provides is the motivation backdrop. What is missing in prior
+work is a structural characterisation of how aggressive
+compression interacts with the per-token cost reduction it
+delivers when the downstream task requires combining information
+across multiple compressed fragments rather than reading a
+single answer out of a single fragment. The cliff measurement of
+Chapter~\charef{experiments} fills that gap.
+
+\section{The Scaling Era of LLMs}
+\label{sec:rw_scaling}
+
+The trajectory from GPT-2 (1.5B parameters, 2019) to GPT-3
+(175B, 2020) to GPT-4 (undisclosed, 2023) to the frontier of
+2025--2026 (Llama-3, Qwen-2.5, DeepSeek V3 and V4, Claude
+Sonnet 4.x, GPT-oss) marks a four-order-of-magnitude growth in
+deployed model size. Each step was accompanied by a near-
+linear increase in the cost per query and a corresponding
+increase in the demand for context-engineering techniques that
+control how much input the model reads at inference. As of the
+writing of this thesis, the frontier API price for a
+high-end model is approximately USD~3 per million input tokens
+and USD~15 per million output tokens, which corresponds to
+approximately EUR~$2.76$ and EUR~$13.80$ at the time of
+writing. The on-premises amortised marginal cost on a typical
+mid-range GPU deployment is roughly EUR~$0.05$ per million
+tokens once hardware is paid for. The two- to three-orders-of-
+magnitude gap between frontier-cloud and on-premises cost is what
+makes context compression an operational concern: cutting
+context length by half on a frontier-cloud workload saves real
+money per query.
+
+The model-side trends are accompanied by a context-window
+trend. The 2K-context GPT-2 era gave way to 4K, 8K, 32K, 128K,
+and now multi-million-token contexts on the frontier. The
+long-context-benchmark literature (Section~\ref{sec:rw_rag})
+documents that the model's effective use of those long contexts
+is less complete than the nominal window
+size~\cite{liu2024lostinmiddle, hsieh2024ruler}: tokens placed in
+the middle of a long context are recovered less reliably than
+tokens at the start or the end. Long contexts make the case for
+compression even stronger; tokens that the model will not
+effectively use are pure cost.
+
+\emph{What this thesis adds.} The model-scale trend motivates the
+question that Corollary~1 of Chapter~\charef{experiments}
+answers: does the cliff position depend on which point on the
+model-scale curve the planner is at? The frontier validation on
+Qwen-72B and DeepSeek~V4~Pro is the cross-architecture answer ---
+no, within the calibrated regime --- that the scaling-era trend
+makes interesting in the first place.
+
+\section{The Cost of Running LLMs at Scale}
+\label{sec:rw_cost}
+
+The motivation chapter of this thesis frames the work in terms
+of the per-token cost an operator pays. This subsection surveys
+the published measurements that anchor that framing.
+
+\paragraph{Energy.}
+Luccioni, Jernite, and Strubell's 2024 \emph{Power Hungry
+Processing} study~\cite{luccioni2024powerhungry} measures the
+wall-power cost of inference for a broad set of open-weight
+models on a single A100 GPU server. The headline number is that
+text generation on a $\sim 6$B-parameter open model costs
+$\sim 0.5$~Watt-hours per prompt-and-completion of typical
+length, which is within an order of magnitude of the energy cost
+of a single web search. The number scales near-linearly with
+model size, and the per-prompt energy at frontier-scale models
+(tens to hundreds of billions of parameters) is correspondingly
+larger. The study also separates the per-token amortised cost
+from the per-request fixed cost, and shows that for short
+prompts the fixed cost dominates while for long prompts the
+per-token cost dominates. The relevant implication for
+compression is that the operational regime context-compression
+operates in is the long-prompt regime, where the per-token cost
+is what compression directly cuts.
+
+\paragraph{Token economics.}
+Industry pricing as of the writing of this thesis sits at
+approximately USD~3 per million input tokens for the frontier
+``base'' tier and USD~15 per million for the frontier ``output''
+tier, with reasoning-augmented tiers priced higher. At a steady
+state of one million calls per day and an average prompt of
+$10{,}000$ tokens, that is USD~$30{,}000$ per day of input cost
+alone for a frontier model. Halving the prompt length saves
+USD~$15{,}000$ per day --- the kind of magnitude that funds an
+entire compression-engineering team. The on-premises amortised
+marginal cost is two orders of magnitude lower per token, but
+the absolute hardware and operations cost of running on-
+premises is high enough that the same compression lever is
+operationally valuable. The TalentAdore production accounts that
+this thesis's cost model is calibrated against confirm the
+pricing as of the writing of the manuscript.
+
+\paragraph{Politeness as waste.}
+The industry-anecdotal observation that the compute cost of
+processing user politeness at OpenAI's frontier products amounted
+to ``tens of millions of dollars'' annually was made by Sam
+Altman in 2025~\cite{altman2025pleasethankyou}. The exact figure
+is reported as industry observation rather than as a
+peer-reviewed measurement; the direction is consistent with the
+Luccioni numbers~\cite{luccioni2024powerhungry} and is plausible
+on a back-of-the-envelope. Every ``Hello'', ``Thanks'', restated
+history, and repeated system prompt is converted directly into
+kilowatt-hours and dollars. The thesis uses the framing as the
+opening rhetorical hook (Chapter~\charef{introduction}); the
+substantive question of how aggressively the wasted tokens can be
+removed without losing the answer is what the rest of the thesis
+measures.
+
+\paragraph{Multi-agent multiplier.}
+Anthropic's report on their multi-agent research
+system~\cite{anthropic2025multiagent} observes that token usage
+explains approximately $80\%$ of the performance variance they
+see, and that a substantial fraction of that token cost is the
+shared context that flows between agents in each round. The
+follow-on report on context engineering for AI
+agents~\cite{anthropic2025contextengineering} and the report on
+context editing and memory tools~\cite{anthropic2025contextediting}
+describe an $84\%$ token reduction on a 100-turn web-search
+evaluation. These are industry observations rather than
+controlled measurements; what they do is establish that the
+cost-of-context question is operationally pressing for production
+multi-agent deployments.
+
+\emph{What this thesis adds.} Prior work establishes that
+inference cost is real, that compression cuts it, and that
+deployed multi-agent systems are dominated by token cost. What is
+missing is the structural answer to \emph{how aggressively
+compression can be applied before coordination breaks}. The cliff
+characterisation of Chapter~\charef{experiments} is that answer.
+
+\section{Context Compression --- the Breakthrough Works}
 \label{sec:rw_compression}
 
-\subsection{Hard-prompt token filtering}
+The training-free context-compression literature has matured in
+the past three years into four recognisable families. This
+subsection surveys the four, with a comparison table at the end
+that maps the families against the design dimensions that matter
+for multi-fragment evaluation. Each family closes with a
+``what is missing in prior work'' line that the rest of the
+thesis addresses.
 
-The first generation of practical context-compression techniques operated
-at the token level. Jiang \emph{et al.}~\cite{jiang2023llmlingua} introduced
-LLMLingua, which uses a small autoregressive language model to score
-tokens by their per-step perplexity contribution and drop those whose
-removal least disturbs the conditional distribution. The same line of work
-produced LongLLMLingua~\cite{jiang2024longllmlingua}, which extends the
-coarse-to-fine ranking with a question-aware step to handle the retrieval
-setting, and LLMLingua-2~\cite{pan2024llmlingua2}, which trains an
-XLM-RoBERTa token classifier on data distilled from a more capable model,
-yielding a task-agnostic compressor. Because the underlying
-XLM-RoBERTa model is supported by PyTorch on both CPU and Apple's MPS
-backend, the compressor runs natively on Apple Silicon without
-modification. Pan~\emph{et al.} report compression ratios up to
-$5\times$ with less than two percentage points of F1 loss on
-MeetingBank summarisation and GSM8K reasoning tasks, and their
-data-distillation approach eliminates the need for question-aware
-coarse-to-fine ranking at inference time, making the compressor
-substantially faster than the original LLMLingua.
+\subsection{Token-level pruning (the LLMLingua family)}
 
-This thesis takes LLMLingua-2 as the principal hard-prompt baseline.
-The model is bundled with the official \texttt{llmlingua} package, which
-makes it the de facto baseline against which any new compressor must be
-calibrated. The thesis includes a stop-the-line criterion that
-NarrativeQA F1 must reproduce within $2$~pp and HotpotQA F1 within $3$~pp
-of reported numbers~\cite{kocisky2018narrativeqa, yang2018hotpotqa}.
+The first practical context-compression technique to see broad
+adoption was LLMLingua~\cite{jiang2023llmlingua}, which uses a
+small autoregressive language model to score tokens by their
+per-step perplexity contribution and drop those whose removal
+least disturbs the conditional distribution. LongLLMLingua
+\cite{jiang2024longllmlingua} extends the coarse-to-fine ranking
+with a question-aware step to handle long retrieval-augmented
+contexts. LLMLingua-2~\cite{pan2024llmlingua2} trains an
+XLM-RoBERTa token classifier on data distilled from a more
+capable model, producing a task-agnostic compressor that is
+faster at inference than the original LLMLingua because it does
+not require running a generative model at compression time. The
+LLMLingua-2 classifier is the principal hard-prompt compressor of
+this thesis; its evaluation centres on NarrativeQA F1
+within $2$~pp and HotpotQA F1 within $3$~pp of reported
+numbers~\cite{kocisky2018narrativeqa, yang2018hotpotqa} as the
+calibration target.
 
-\subsection{Soft-prompt compression}
+\emph{What is missing in prior work.} All three LLMLingua papers
+report single-agent question-answering F1 retention at modest
+compression ratios. None measures whether the surviving content
+is sufficient for a downstream planner to combine information
+across multiple compressed fragments into a correct answer. H1
+of Chapter~\charef{experiments} measures exactly that and
+finds that the single-agent F1 metric does not predict
+coordination success.
 
-A parallel line of work compresses passages into a small number of
-continuous embedding slots that occupy the same positions in a frozen
-decoder's attention windows. Mu~\emph{et al.}~\cite{mu2023gist}
-introduced \emph{gist tokens}, special positions trained with a masked
-attention pattern so that the model learns to compress instruction
-prefixes into a small number of virtual tokens, reducing prompt length
-by up to $26\times$ with negligible quality loss on instruction-following
-tasks. Chevalier~\emph{et al.}~\cite{chevalier2023autocompressor}
-extended this idea with \emph{AutoCompressor}, which fine-tunes a language
-model to process long documents segment by segment and produce
-\emph{summary vectors} at each segment boundary; the summary vectors are
-prepended to the next segment's input, creating a recurrent compression
-mechanism trained with an unsupervised next-token prediction loss over
-the segmented document. Their demonstration that summary vectors can
-carry sufficient information to support downstream language modelling
-across segment boundaries is the design principle this thesis builds on;
-the ICAE architecture below adapts it by adding LoRA to the encoder and
-freezing the decoder.
+\subsection{Selective and instruction-aware compression}
 
-Ge~\emph{et al.}~\cite{ge2024icae} formalised this architecture as the
-\emph{In-context Autoencoder (ICAE)}, which trains a LoRA-adapted encoder
-to produce a fixed number of memory tokens from an input context; these
-memory tokens, when prepended to the frozen decoder's input, allow it to
-reconstruct the original context or answer questions about it. The ICAE
-achieves $4\times$ compression with minor accuracy degradation on
-NaturalQuestions and other reading-comprehension benchmarks. Wang~\emph{et
-al.}~\cite{wang2024icf} present the In-Context Former, a faster cross-
-attention variant that drops the reconstruction objective in favour of
-direct task prediction. Fei~\emph{et al.}~\cite{fei2024semantic} compress
-at the semantic-unit level rather than the token level, preserving
-sentence boundaries and discourse markers that token-level methods may
-discard. Rae~\emph{et al.}~\cite{rae2020compressive} establish that
-compressed memory in transformers has a degradation curve that is smooth
-and monotonic in the single-context regime --- a baseline that the
-coordination-cliff hypothesis (H2) explicitly tests against in the
-multi-agent setting.
+Li \emph{et~al.}'s \emph{Selective
+Context}~\cite{cheng2024xrag, li2025promptsurvey} prunes tokens
+with low self-information under the model's own conditional
+distribution; the technique requires no training but does
+require running a scoring forward-pass at compression time. Xu
+\emph{et~al.}'s \emph{RECOMP} compresses long retrieval contexts
+with a small task-aware extractor trained to summarise the
+retrieved passages for the downstream question. The
+instruction-aware filter of this thesis sits in the same family
+but takes the deliberate simplification of using a TF-IDF
+pruning step followed by a cross-encoder re-ranker
+(\texttt{BAAI/bge-reranker-base}) and a stop-word/short-token
+trim, with no LM in the loop. The simplification gives a
+deterministic, training-free, low-cost baseline that the more
+sophisticated compressors must beat.
 
-The trainable arm of this thesis is an ICAE-style compressor with the
-dual-objective loss documented in Section~\ref{sec:training} of
-Chapter~\charef{implementation}. The construction follows Ge~\emph{et
-al.}~\cite{ge2024icae} for the architecture and
-Chevalier~\emph{et al.}~\cite{chevalier2023autocompressor} for the
-segment-level language-modelling objective. The contrastive term is an InfoNCE
-loss~\cite{oord2018cpc, chen2020simclr} sampled over
-positive--negative source-fragment pairs.
+\emph{What is missing in prior work.} The task-awareness in this
+literature is question-conditioned: the compressor takes the
+downstream question as input and prunes against it. In a
+multi-fragment workflow the planner's question is not the
+fragment-level task; the fragment-level task is to preserve
+information that a planner-as-yet-unknown will combine with
+information from other fragments. The thesis's
+instruction-aware filter and the empirical evaluation of all
+four compressors on multi-fragment families address this gap.
 
-\subsection{Compression for RAG}
+\subsection{Learned compression (parameter-cost compressors)}
 
-A third strand of work pushes compression into the retrieval-augmented
-generation pipeline. Cheng~\emph{et al.}~\cite{cheng2024xrag} propose
-\emph{xRAG}, which compresses retrieved chunks to a single soft-prompt
-token, anchoring the extreme end of the ratio spectrum.
-Guo~\emph{et al.}~\cite{guo2025dynamic} make compression
-\emph{relevance-conditional}: chunks whose retrieval scores exceed a
-threshold are kept verbatim, those below are compressed, and those well
-below are discarded. The third pipeline of this thesis (P3) follows
-their structural design directly, while the first two pipelines (P1 and
-P2) reproduce the classical \emph{compress--then--retrieve} and
-\emph{retrieve--then--compress} configurations against which P3 must
-demonstrate a benefit. Li~\emph{et al.}~\cite{li2025promptsurvey}
-publish a survey of prompt compression methods that consolidates this
-design space and provides the taxonomic vocabulary used throughout
-this thesis.
+Mu \emph{et~al.}~\cite{mu2023gist} introduced \emph{gist tokens},
+special positions trained with a masked attention pattern so that
+the model learns to compress instruction prefixes into a small
+number of virtual tokens. Chevalier
+\emph{et~al.}~\cite{chevalier2023autocompressor} extended this
+with \emph{AutoCompressor}, which fine-tunes a language model to
+process long documents segment by segment and produce summary
+vectors. Ge \emph{et~al.}~\cite{ge2024icae} formalised the
+architecture as the \emph{In-context Autoencoder (ICAE)}, which
+trains a LoRA-adapted encoder to produce a fixed number of
+memory tokens from an input context. Wang
+\emph{et~al.}~\cite{wang2024icf} present the In-Context Former,
+a faster cross-attention variant. Rae
+\emph{et~al.}~\cite{rae2020compressive} introduced the
+Compressive Transformer architecture, which is the closest
+single-context analogue of the cliff bound this thesis derives.
 
-\subsection{LLM-as-operating-system memory hierarchies}
+\emph{What is missing in prior work.} The learned-compression
+papers require training, which introduces both a training-data
+asymmetry between compressors (which makes cross-compressor
+comparison less clean) and an operational deployment cost (every
+new compressor needs its own fine-tune). This thesis deliberately
+stays training-free; the LLMLingua-2 wrapper, the
+instruction-aware filter, the Phi-3-Mini extractive span
+selector, and the truncation baseline are all inference-only,
+which makes the cliff comparison turn on the
+algorithm-of-action rather than on training-budget asymmetry.
+The learned-compression literature could be re-evaluated under
+the multi-fragment cliff methodology of this thesis as a
+follow-on study; the thesis does not do so directly.
 
-Packer~\emph{et al.}~\cite{packer2023memgpt} introduced \emph{MemGPT},
-which models the LLM as an operating system that pages information between
-a fast in-context working set and a slow archive, using function calls to
-manage the boundary between main context and external storage.
-Xu~\emph{et al.}~\cite{xu2025amem} propose \emph{A-MEM}, which extends
-this with Zettelkasten-style linking between memory entries, creating a
-structured knowledge base from the agent's past observations.
-Chhikara~\emph{et al.}~\cite{chhikara2025mem0}
-and Rasmussen~\emph{et al.}~\cite{rasmussen2025zep} target the production
-end of the spectrum with embedding-based extraction (\emph{Mem0}) and
-temporal knowledge-graph memory (\emph{Zep}). Yu~\emph{et
-al.}~\cite{yu2025memagent} learn to retrieve from past actions via
-reinforcement learning. The memory bus in this thesis is not a
-replacement for any of these but a substrate on top of which they could
-sit: the storage layer protocols are factored so that an OS-style pager,
-a knowledge graph, or an episodic store all conform to the same
-contract.
+\subsection{Extractive small-LLM span selection}
 
-\section{Multi-Agent Systems and Coordination}
+Recent work uses small instruction-tuned LLMs as extractive
+compressors that produce verbatim spans of the source rather than
+abstractive summaries. The candidate small LLMs are the Phi-3
+family~\cite{phi3} and other $\sim 3$B-parameter instruction-tuned
+models. Extractive compression is privacy-friendly because the
+compressed output is by construction a subset of the source
+tokens; this is one of the reasons it appears in this thesis as
+a compressor option.
+
+\emph{What is missing in prior work.} The published guidance on
+how to enforce the extractive constraint reliably is thin; small
+LLMs frequently insert function-word filler even when told not
+to. The Phi-3-Mini extractive compressor of this thesis ships a
+post-hoc verifier with a $15\%$ novel-token tolerance and an
+LLMLingua-2 fallback that together salvage outputs whose
+extractive fraction is above $50\%$; the architecture is
+documented in detail in
+Section~\ref{sec:compressors} of Chapter~\charef{implementation}
+and is one of the engineering contributions of the thesis.
+
+\subsection{Comparison table}
+
+\begin{table}[h]
+\centering
+\caption{The compressor families this thesis surveys, along the
+design dimensions that matter for multi-fragment evaluation. The
+third column is the property H1 of Chapter~\charef{experiments}
+turns on: no prior compressor was evaluated on a controlled
+multi-fragment coordination sweep before this thesis.}
+\label{tab:rw_comparison}
+\small
+\begin{tabular}{p{4.5cm}p{2cm}p{2cm}p{2cm}p{2.5cm}}
+\hline
+Family & Training\hspace*{0pt}-free? & Task\hspace*{0pt}-aware? & Eval'd on multi\hspace*{0pt}-fragment? & Deployed in this thesis? \\
+\hline
+LLMLingua family~\cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2} & yes (inference-only) & question-conditioned & no & LLMLingua-2 \\
+Selective Context, RECOMP & yes & yes & no & --- \\
+Gist Tokens / AutoCompressor / ICAE~\cite{mu2023gist, chevalier2023autocompressor, ge2024icae} & no (training required) & varies & no & --- \\
+Extractive small-LLM (Phi-3 family)~\cite{phi3} & yes (inference-only) & yes & no & Phi-3-Mini ext. \\
+Instruction-aware filter & yes & yes & no & yes (this thesis) \\
+Truncation (prefix-keep) & yes & no & no & yes (baseline) \\
+\hline
+\textbf{This thesis (multi-fragment cliff sweep)} & \textbf{yes} & \textbf{yes} & \textbf{yes} & \textbf{four compressors} \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Multi-Agent LLM Systems and Agentic Memory}
 \label{sec:rw_multiagent}
 
-\subsection{Multi-agent frameworks}
+The multi-agent LLM-systems literature has grown rapidly since
+2023. The most-cited frameworks are
+AutoGen~\cite{wu2023autogen} (an open-source framework for
+multi-agent conversation; appeared at the ICLR 2024 LLM-Agents
+Workshop rather than as a main-conference paper),
+MetaGPT~\cite{hong2024metagpt} (ICLR 2024 main),
+CAMEL~\cite{li2023camel} (NeurIPS 2023),
+Reflexion~\cite{shinn2023reflexion} (NeurIPS 2023),
+MemGPT~\cite{packer2023memgpt} (preprint, not yet
+peer-reviewed at the time of writing of this thesis), and
+Generative Agents~\cite{park2025collaborative} (UIST 2023). Each
+framework has its own implicit answer to the question of how
+shared context flows between agents and what an individual agent
+needs to see. None of the frameworks formally bounds the
+information loss introduced when that shared context is
+compressed.
 
-Wu~\emph{et al.}~\cite{wu2023autogen} introduced \emph{AutoGen}, a
-conversational multi-agent framework with role-based agents and tool
-use that became the de facto research vehicle for studying
-planner-worker-critic topologies. The v0.4 rewrite introduced an
-async event-driven core and the \texttt{RoundRobinGroupChat} primitive
-that this thesis uses as the skeleton for its planner-worker-critic loop.
-Hong~\emph{et al.}~\cite{hong2024metagpt} introduced \emph{MetaGPT},
-which encodes standardised operating procedures (SOPs) as structured
-artefacts passed between agents; the SOP pattern informs the sub-task
-assignment protocol of the planner in this thesis. Li~\emph{et
-al.}~\cite{li2023camel} explored role-playing dialogues for autonomous
-agents (\emph{CAMEL}). Shinn~\emph{et al.}~\cite{shinn2023reflexion}
-introduced \emph{Reflexion}, which formalises the critic loop as verbal
-reinforcement learning --- a self-reflection mechanism where the agent
-generates linguistic feedback on its own outputs and uses that feedback
-to improve subsequent attempts. The critic agent in this thesis emits a
-structured \texttt{DONE} or \texttt{REVISE} verdict in the spirit of
-Reflexion.
+The agentic-memory line of work
+\cite{packer2023memgpt, xu2025amem, chhikara2025mem0,
+rasmussen2025zep, saleh2025memindex, saleh2025messagebrokers}
+addresses the related question of how to store and retrieve
+agent state across long horizons. The closest published academic
+analogue to this thesis's memory bus is
+MemIndex~\cite{saleh2025memindex}, which the three-layer memory-
+bus architecture of Chapter~\charef{implementation} explicitly
+extends. The MemGPT-style ``LLM as operating system''
+framing~\cite{packer2023memgpt} is related but is concerned with
+single-agent long-horizon memory rather than multi-agent shared
+state. Mem0~\cite{chhikara2025mem0} is a production-oriented
+agentic-memory service.
 
-\subsection{Token-efficient multi-agent coordination}
-
-A small but growing literature directly attacks the multi-agent
-token-efficiency problem. Zhang~\emph{et al.}~\cite{zhang2024agentprune}
-introduce \emph{AgentPrune}, which sparsifies the communication graph
-between agents by learning which inter-agent messages can be dropped
-without degrading task performance. Wang~\emph{et
-al.}~\cite{wang2025agentdropout} propose \emph{AgentDropout}, which
-stochastically drops entire agents during multi-agent inference,
-discovering that many agents in over-provisioned teams contribute
-redundant computation. Ye~\emph{et al.}~\cite{ye2025kvcomm} introduce
-\emph{KVCOMM}, which shares KV-cache prefixes across agents to amortise
-the communication cost of transmitting large context windows between
-cooperating LLMs.
-
-Park~\emph{et al.}~\cite{park2025collaborative} introduce
-\emph{Collaborative Memory}, which pushes per-fragment access-control
-metadata into a shared memory layer for multi-user agent systems. Their
-work demonstrates that dynamic access control can be implemented at the
-memory level rather than at the application boundary, enabling agents to
-selectively share information based on trust levels. This is the closest
-published precedent for the C4 tag-preserving extension and the structural
-ancestor of the per-slot tag head in Section~\ref{sec:c4_design} of
-Chapter~\charef{implementation}.
-
-\subsection{The closest published industry analogue}
-
-Anthropic's published descriptions of their multi-agent research system
-provide the closest industry analogue to the empirical question of this
-thesis. Their engineering blog~\cite{anthropic2025multiagent} describes
-an orchestrator-worker topology for multi-agent research in which
-\emph{token usage} is identified as the dominant factor in system
-performance, and their context-engineering
-write-up~\cite{anthropic2025contextengineering} discusses techniques for
-managing context in long-horizon agentic tasks, including
-\emph{compaction} (of which tool-result clearing is the lightest form),
-\emph{structured note-taking} as a form of agentic memory, and
-\emph{sub-agent architectures}, alongside a separate treatment of
-\emph{just-in-time retrieval} for context loading. These techniques
-frame the design choices in C3 (RAG pipeline placement). Their announcement of
-context editing and the memory tool on the Claude Developer
-Platform~\cite{anthropic2025contextediting} reports significant
-token reductions via context editing on multi-turn evaluation tasks.
-These results are the strongest signal in the public literature that
-aggressive context management materially affects multi-agent
-performance; H2 in this thesis is the first attempt the author is aware
-of to characterise the shape of that degradation empirically as a
-function of compression ratio.
-
-\subsection{Context engineering for multi-agent assistants}
-
-Haseeb~\cite{haseeb2025contextengineering} studies context engineering
-in multi-agent code assistants, finding that the distribution of
-training data (monolithic QA versus multi-turn dialogue traces) affects
-coordination quality independently of single-agent accuracy. The
-stretch goal S3 (Chapter~\charef{summary}) would implement his approach
-as a baseline comparator on C1.
+\emph{What is missing in prior work.} The multi-agent and
+agentic-memory frameworks treat compression as an implicit
+deployment optimisation; none measures the coordination-quality
+cost of compression structurally or bounds the loss
+quantitatively. The cliff measurement of
+Chapter~\charef{experiments} and the inference-disclosure
+measurement of the H4 section provide the missing quantitative
+foundation. The memory bus of Chapter~\charef{implementation} is
+designed as the reference target for that foundation.
 
 \section{Retrieval-Augmented Generation and Long-Context Benchmarks}
 \label{sec:rw_rag}
 
-\subsection{Retrieval-augmented generation}
+Retrieval-augmented generation as a paradigm dates to Lewis
+\emph{et~al.}~\cite{lewis2020rag}. The landmark works since
+include RAPTOR~\cite{sarthi2024raptor} (recursive abstractive
+processing for tree-organised retrieval, ICLR 2024),
+GraphRAG~\cite{edge2024graphrag} (a Microsoft preprint at the
+time of writing, not yet at a peer-reviewed venue),
+HippoRAG~\cite{gutierrez2024hipporag, gutierrez2025hipporag2}
+(NeurIPS 2024 and follow-on), and
+Self-RAG~\cite{asai2024selfrag} (ICLR 2024). The pipeline
+catalogue this thesis evaluates (P1, P2, P3) places compression
+on the retrieval critical path explicitly; the closest published
+analogue to the post-retrieval-compression pipeline (P2) is the
+LongLLMLingua configuration~\cite{jiang2024longllmlingua}, and
+the closest published analogue to the joint
+relevance-conditional pipeline (P3) is the dynamic-routing
+framework of Guo \emph{et~al.}~\cite{guo2025dynamic}.
 
-Lewis~\emph{et al.}~\cite{lewis2020rag} introduced the original
-retrieval-augmented generation framework, which combines a parametric
-generator with a non-parametric retrieval index and demonstrated
-state-of-the-art results on open-domain question answering. The descendant
-literature has explored hierarchical indices that recursively summarise
-document clusters~\cite{sarthi2024raptor}, graph-structured
-summaries that capture entity relationships across
-documents~\cite{edge2024graphrag}, neurobiologically inspired memory
-organisation that mirrors hippocampal indexing~\cite{gutierrez2024hipporag,
-gutierrez2025hipporag2}, and self-reflective gating that decides on the
-fly whether to retrieve at all based on the model's confidence in its
-own parametric knowledge~\cite{asai2024selfrag}. Anthropic's
-contextual-retrieval write-up~\cite{anthropic2024contextualretrieval}
-reports that prepending model-generated chunk-level context to each
-document chunk before embedding improves retrieval quality across
-codebases, fiction, arXiv preprints, and scientific papers --- a useful
-pre-processing comparator for P1 in the C3 catalogue.
+The long-context-benchmark literature
+(\cite{bai2024longbench, hsieh2024ruler, liu2024lostinmiddle,
+mialon2023gaia, liu2024agentbench, yen2025helmet}) measures how
+effectively a model uses a long context. The
+``lost in the middle'' result~\cite{liu2024lostinmiddle} is the
+canonical observation that information placed in the middle of a
+long context is recovered less reliably than information at the
+boundaries. RULER~\cite{hsieh2024ruler} extends the
+needle-in-a-haystack methodology to a broader set of long-context
+tasks. LongBench~\cite{bai2024longbench} is the standard
+multi-task benchmark. None of these benchmarks measures the
+multi-fragment-coordination task structure of this thesis;
+they measure single-agent long-context comprehension. They are
+complementary to the cliff measurement rather than competitive
+with it: long-context benchmarks measure the capacity of the
+model, while the cliff measurement measures the compression-
+quality effect on a task structure the long-context benchmarks
+do not include.
 
-The C3 catalogue of this thesis (P1, P2, P3) sits at the intersection of
-retrieval and compression. P1 is the \emph{compress-then-retrieve}
-configuration, where the index stores compressed chunks; P2 is the
-\emph{retrieve-then-compress} configuration that recovers the
-LongLLMLingua setup~\cite{jiang2024longllmlingua}; P3 is the
-\emph{joint} configuration that routes chunks through one of three
-branches based on retrieval relevance, following the structural design of
-Guo~\emph{et al.}~\cite{guo2025dynamic}.
+The multi-hop question-answering benchmarks
+HotpotQA~\cite{yang2018hotpotqa} (EMNLP 2018), 2WikiMultiHopQA
+(COLING 2020), and MultiHopRAG~\cite{addison2024cfedrag,
+yang2018hotpotqa} (EMNLP 2024 Findings; the canonical paper for
+the MultiHopRAG dataset is by Tang and Yang and is referenced in
+the project-internal documentation), are the real-data benchmarks
+on which Corollary~2 of Chapter~\charef{experiments} validates
+the information-density-scaling claim. The transfer is
+qualitative: the absolute cliff positions differ between
+synthetic and real benchmarks because the information density
+$\theta_\text{info}$ differs, but the cliff structure
+(existence, sharpness as a function of $\theta_\text{info}$)
+transfers.
 
-\subsection{Long-context benchmarks}
+\emph{What is missing in prior work.} The RAG and long-context
+benchmark literatures measure orthogonal properties to this
+thesis. The cliff measurement complements them rather than
+competing: RAG benchmarks measure retrieval quality, long-context
+benchmarks measure model capacity, and the cliff measurement
+measures the multi-fragment compression-quality effect that
+neither captures. The H3 catalogue of three RAG-plus-compression
+pipelines under matched cost regimes fills the
+compression-on-the-retrieval-critical-path measurement gap.
 
-Liu~\emph{et al.}~\cite{liu2024lostinmiddle} document the
-\emph{lost-in-the-middle} phenomenon: language models attend
-disproportionately to the beginning and end of their context windows,
-with a U-shaped attention pattern that causes information placed in the
-middle of long contexts to be disproportionately ignored. This finding
-motivates compression as a strategy not just for cost reduction but for
-quality improvement --- by compressing away padding and low-relevance
-material, the remaining content occupies positions where the model's
-attention is stronger. Bai~\emph{et al.}~\cite{bai2024longbench}
-maintain LongBench, a suite of long-context tasks covering
-single-document QA, multi-document QA, summarisation, few-shot learning,
-synthetic retrieval, and code completion, that this thesis uses as an
-external calibration anchor for the compressor baselines.
-
-\subsection{Agent-task benchmarks}
-
-GAIA~\cite{mialon2023gaia} and AgentBench~\cite{liu2024agentbench}
-motivate the agent-task framing of this thesis. GAIA provides
-multi-step reasoning tasks at three difficulty levels that require an
-agent to use tools, browse the web, and synthesise information across
-sources. AgentBench evaluates agents across diverse environments
-including operating systems, databases, and web browsing. The C1
-benchmark is \emph{not} a competitor to either; it isolates the specific
-question of coordination-quality-versus-compression, which neither GAIA
-nor AgentBench poses directly.
-
-\section{Privacy-Aware Retrieval}
+\section{Privacy in Agentic Memory and Compressed Retrieval}
 \label{sec:rw_privacy}
 
-The tag-preserving extension (C4) is grounded in a small but active
-literature on privacy-aware retrieval. Zhou~\emph{et
-al.}~\cite{zhou2025privacyrag} propose a privacy-aware variant of RAG
-that filters retrieved documents against requester-side policy before
-they reach the generator, preventing the model from conditioning on
-information the requester is not authorised to see. Bassit and
-Boddeti~\cite{bassit2025securerag} push the privacy guarantee deeper,
-providing cryptographic guarantees on the retrieval side so that
-even the retrieval index cannot learn which documents a requester
-accessed.
+The privacy-aware-retrieval literature has two strands.
+The first protects the retrieval index itself, on the assumption
+that direct access to the index would leak protected facts.
+Examples include PrivacyRAG~\cite{zhou2025privacyrag} and
+SecureRAG~\cite{bassit2025securerag}. The second strand protects
+the model weights from training-data extraction, which is a
+property of the training pipeline rather than of the deployed
+retrieval-and-compression service.
 
-Li~\emph{et al.}~\cite{li2025securitylingua} introduce
-\emph{SecurityLingua}, a red-team treatment of prompt compression that
-constructs adversarial prompts specifically designed to exploit the
-token-dropping behaviour of compressors. Their demonstration that
-compressed prompts can be manipulated to bypass safety filters motivates
-the S2 stretch goal (Chapter~\charef{summary}), which would run a
-SecurityLingua-style sweep against the tag-preserving variant.
+The inference-disclosure metric this thesis contributes (C4) is
+distinct from both: it measures leakage \emph{through the
+compressor itself}, on the assumption that the retrieval index
+is access-controlled but the compressed summaries are exposed to
+the planner and to any downstream reader the planner shares them
+with. The threat model is intuitive: an adversary who can query
+the planner can ask questions about the protected fact, and the
+disclosure rate is the fraction of those questions on which the
+planner's answer recovers the protected fact given that it has
+the compressed summary as evidence. The H4 measurement
+operationalises this in a controlled setup; the memory-bus
+policy layer of Chapter~\charef{implementation} operationalises
+the resulting disclosure budget as a deployment-time enforcement
+mechanism.
 
-The NIST AI Risk Management Framework~\cite{nistairmf} is cited as the
-lattice from which the 5-tier classification hierarchy
-(\textsc{public} $<$ \textsc{internal} $<$ \textsc{confidential} $<$
-\textsc{restricted} $<$ \textsc{secret}) used by the tag vector
-in Section~\ref{sec:datamodel} of
-Chapter~\charef{implementation} is derived. This thesis does not claim
-NIST compliance; the framework provides a vocabulary for the
-classification tiers, not a certification target.
+The CFedRAG framework~\cite{addison2024cfedrag} is a related
+piece of work on coordination of federated retrieval-augmented
+generation; it addresses the retrieval-index-level privacy
+question rather than the compressor-level disclosure question
+that this thesis takes up.
 
-\section{The FCG Programme and the Industry Setting}
-\label{sec:rw_fcg}
+\emph{What is missing in prior work.} No published academic
+work, to the author's knowledge, measures inference disclosure
+through the compressor at the summary level. Privacy-aware
+retrieval protects the index; this thesis protects the summary.
+The two are complementary, and a future system would presumably
+combine them.
 
-The thesis sits within the Future Computing Group's institutional AI
-service economy research programme at the University of Oulu. The
-programme envisions a marketplace in which AI service providers
-(institutional LLM deployments, cloud APIs, on-premises inference
-clusters) compete to serve agent requests, with a neutral exchange
-earning per-unit fees on volume~\cite{loven2025paper1}. Three internal
-architecture documents specify the target platform: the system
-architecture~\cite{fcgsystemarch2026}, the software
-architecture~\cite{fcgsoftwarearch2026}, and the integrator-internal
-architecture~\cite{fcgintegratorarch2026}. The software architecture
-specifies a dual messaging topology --- NATS for the real-time path and
-Kafka for the durable audit trail --- that the thesis collapses into
-SQLite and FastAPI for single-machine evaluation, as discussed in
-Section~\ref{sec:architecture} of Chapter~\charef{implementation}.
+\section{The Gap This Thesis Closes}
+\label{sec:rw_gap}
 
-The financial analysis~\cite{fcgfinancial2026} projects that monthly
-compute costs for research-active staff fall from approximately
-EUR~20/month in Phase~1 to approximately EUR~11/month in Phase~2, with
-frontier cloud pricing at approximately EUR~2.76 per million input tokens
-and EUR~13.80 per million output tokens, and on-premises amortised
-marginal cost at EUR~0.05 per million tokens. These numbers ground the
-cost model in Section~\ref{sec:rag_pipelines} of
-Chapter~\charef{implementation}. The use-case
-document~\cite{fcgusecase2026} narrates a week of an institutional
-researcher and is the source of the Vignette~3.7 (Period-end project
-reporting) workflow that anchors the C1 benchmark: eight specialised
-agents gather reporting data across eight university systems with an
-estimated 80\% cloud-payload reduction and a per-report cost of
-approximately EUR~2.15 in Phase~2.
+Four sentences, each one mapping to one of the four contributions
+of Chapter~\charef{introduction}.
 
-Saleh~\emph{et al.}~\cite{saleh2025memindex} introduce \emph{MemIndex},
-the FCG group's baseline architecture for distributed agent memory,
-which organises memory into event-driven layers with publish-subscribe
-semantics. The three-layer split (access, compression, storage) used in
-Chapter~\charef{implementation} is a direct extension of MemIndex with
-compression promoted to a first-class layer. The companion
-ACM Computing Surveys paper~\cite{saleh2025messagebrokers} surveys
-message brokers for generative AI, evaluating traditional and modern
-brokers against the GenAI workload. The survey's reference GenAI-agent architecture decomposes an agent
-into four components --- environment interaction, perception,
-decision-making (the ``brain'': memory, sub-goal decomposition,
-chain-of-thought, self-critic), and actuation --- with message brokers
-as the integration fabric. The planner-worker-critic loop of this thesis
-instantiates the perception--brain--actuation path as three concrete
-actors communicating through the memory bus.
+There is no shared multi-fragment coordination benchmark
+probing the cliff in a controlled, reproducible setup. C1 is the
+benchmark.
 
-The industry partner of this thesis, TalentAdore, supplies the
-production-pricing constants for the cost model in C3
-(GPT-4o-mini and Claude Haiku 4.5) and is the source of the
-EUR-per-workflow framing for the cost arm. Their interest in this thesis
-is the cost-vs-coordination trade-off curve.
+There is no published operational bound that predicts cliff
+position from compressor-side and task-side measurements within
+a defined regime. The compounding-error model and its
+cross-architecture frontier validation are the bound.
 
-\section{Synthesis and Positioning}
-\label{sec:rw_synthesis}
+There is no honest catalogue of RAG-plus-compression pipeline
+placement under matched cost regimes, with the cost model
+explicit in EUR per workflow. The C3 catalogue is the
+catalogue, and its honest finding is that the assumed
+sign-flip does not appear.
 
-The literature offers strong single-agent compression
-techniques (LLMLingua-2, ICAE, gist tokens, AutoCompressor), a maturing
-multi-agent runtime ecosystem (AutoGen, MetaGPT, CAMEL, Reflexion), a
-maturing RAG-plus-compression literature (xRAG, LongLLMLingua, dynamic
-compression for RAG), and an emerging privacy-aware retrieval literature
-(Privacy-Aware RAG, SecureRAG, SecurityLingua). It offers indirect
-evidence from industry that context management materially affects
-multi-agent performance (Anthropic's research-system writeup, Anthropic's
-context-engineering primitives).
+There is no published academic measurement of inference
+disclosure through the compressor at the summary level. The H4
+measurement, integrated with the memory bus's policy layer, is
+the measurement.
 
-What the literature does not offer is a systematic empirical
-characterisation of how compression degrades multi-agent coordination
---- whether the coordination curve is smooth like the single-agent QA
-curve, as Rae~\emph{et al.}~\cite{rae2020compressive} report for
-single-context compressed memory, or whether it has a cliff that
-single-agent metrics cannot anticipate. The thesis is positioned
-squarely on that gap, with the four contributions C1--C4 working
-together to make the question empirically tractable on a single
-workstation.
+The closest published industry analogue to C2 is Anthropic's
+multi-agent system report~\cite{anthropic2025multiagent},
+labelled honestly as industry observation rather than
+controlled measurement. The closest published academic analogues
+are the long-context benchmark suite and the LLMLingua line of
+work, which measure orthogonal properties on the single-agent
+axis. The thesis sits at the intersection of these three
+threads, and contributes the controlled cross-compressor
+multi-fragment evaluation that the prior work does not provide.

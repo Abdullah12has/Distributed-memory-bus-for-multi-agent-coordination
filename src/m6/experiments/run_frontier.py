@@ -161,9 +161,13 @@ Your response:"""
             },
             json={
                 "model": model,
-                "messages": [{"role": "user", "content": user_msg}],
-                "max_tokens": 512,
+                "messages": [
+                    {"role": "system", "content": "You are a precise assistant. Always respond with exactly one line starting with ANSWER: in the requested format. Do not explain your reasoning."},
+                    {"role": "user", "content": user_msg},
+                ],
+                "max_tokens": 1024,
                 "temperature": 0.1,
+                "seed": seed,
             },
             timeout=120.0,
         )
@@ -325,10 +329,67 @@ def _compute_api_cost(df: pd.DataFrame) -> float:
     )
 
 
+def _bootstrap_tau(
+    df: pd.DataFrame,
+    n_boot: int = 500,
+    seed: int = 0,
+) -> dict:
+    """Bootstrap a CI on tau by resampling workloads.
+
+    Why workloads (not individual rows): workloads are the natural unit of
+    independent variability — each is a distinct task instance. Resampling
+    rows (workload × ratio × seed) would underestimate variance because
+    rows from the same workload are correlated. Resampling seeds alone
+    (3 seeds) gives too few independent draws.
+
+    Returns dict with tau_ci, tau_median, n_boot_valid (number of
+    bootstrap samples where fit_piecewise produced a finite tau).
+    """
+    if df.empty or "workload_id" not in df.columns:
+        return {"tau_median": float("nan"), "tau_ci_low": float("nan"),
+                "tau_ci_high": float("nan"), "n_boot_valid": 0}
+
+    workloads = df["workload_id"].unique()
+    rng = np.random.default_rng(seed)
+    taus: list[float] = []
+    for _ in range(n_boot):
+        sampled = rng.choice(workloads, size=len(workloads), replace=True)
+        sub = pd.concat([df[df["workload_id"] == w] for w in sampled])
+        agg = sub.groupby("ratio")["coord_success"].mean().reset_index()
+        if len(agg) < 3:
+            continue
+        try:
+            fit = fit_piecewise(agg["ratio"].to_numpy(),
+                                agg["coord_success"].to_numpy())
+            t = fit.get("tau", float("nan"))
+            if not np.isnan(t) and np.isfinite(t):
+                taus.append(float(t))
+        except Exception:
+            continue
+
+    if not taus:
+        return {"tau_median": float("nan"), "tau_ci_low": float("nan"),
+                "tau_ci_high": float("nan"), "n_boot_valid": 0}
+    arr = np.array(taus)
+    return {
+        "tau_median": float(np.median(arr)),
+        "tau_ci_low": float(np.percentile(arr, 2.5)),
+        "tau_ci_high": float(np.percentile(arr, 97.5)),
+        "n_boot_valid": len(taus),
+    }
+
+
 def compute_frontier_verdict(
     df: pd.DataFrame, synth_results_path: str | None
 ) -> dict:
-    """Compare frontier cliff to local model cliff."""
+    """Compare frontier cliff to local model cliff.
+
+    Reports both the point estimate of tau (from pooled ratio-means) and
+    a bootstrap CI (resampling workloads). The CI catches the fragility
+    flagged in the audit: with n=10 workloads × 6 ratios × 3 seeds, a
+    single workload's outcome can shift tau by 3× — the CI quantifies
+    this.
+    """
     agg = df.groupby("ratio")["coord_success"].mean().reset_index()
     frontier_fit = fit_piecewise(
         agg["ratio"].to_numpy(), agg["coord_success"].to_numpy()
@@ -337,9 +398,14 @@ def compute_frontier_verdict(
         str(r): float(s) for r, s in zip(agg["ratio"], agg["coord_success"])
     }
 
+    tau_boot = _bootstrap_tau(df)
+
     verdict: dict[str, Any] = {
         "model": df["model"].iloc[0] if not df.empty else "unknown",
         "frontier_tau": frontier_fit["tau"],
+        "frontier_tau_ci": [tau_boot["tau_ci_low"], tau_boot["tau_ci_high"]],
+        "frontier_tau_median_boot": tau_boot["tau_median"],
+        "frontier_tau_boot_n": tau_boot["n_boot_valid"],
         "frontier_drop_rel": frontier_fit["drop_rel"],
         "frontier_curve": frontier_curve,
         "frontier_baseline_coord": float(
@@ -388,21 +454,39 @@ def compute_frontier_verdict(
 
     if np.isnan(tau_f) or np.isnan(tau_s) or tau_s == 0:
         tau_diff_pct = float("nan")
-        tau_match = False
+        tau_match_point = False
+        tau_ci_contains_synth = False
     else:
         tau_diff_pct = abs(tau_f - tau_s) / abs(tau_s) * 100
-        tau_match = tau_diff_pct <= 25.0  # 25% tolerance for cross-model
+        tau_match_point = tau_diff_pct <= 25.0  # 25% tolerance, point estimate
+        # CI-based match: does the bootstrap CI on frontier tau contain
+        # synth_tau? This is more robust than the point-estimate diff,
+        # since with n=10 workloads a single outcome can flip tau by 3×.
+        ci_lo = tau_boot["tau_ci_low"]
+        ci_hi = tau_boot["tau_ci_high"]
+        if np.isnan(ci_lo) or np.isnan(ci_hi):
+            tau_ci_contains_synth = False
+        else:
+            tau_ci_contains_synth = bool(ci_lo <= tau_s <= ci_hi)
 
     verdict["comparison"] = {
         "synth_tau": synth_fit["tau"],
         "synth_drop_rel": synth_fit["drop_rel"],
         "tau_diff_pct": tau_diff_pct,
-        "tau_match": tau_match,
-        "theorem_validated": tau_match,
+        "tau_match_point": tau_match_point,
+        "tau_ci_contains_synth": tau_ci_contains_synth,
+        "tau_match": tau_match_point,  # back-compat alias
+        "theorem_validated": tau_ci_contains_synth,  # now uses CI, not point
         "note": (
-            "Theorem 1(iii) validated: frontier model cliff matches local model cliff"
-            if tau_match
-            else "Cliff position differs — may indicate model-dependent theta"
+            "Theorem 1(iii) validated: bootstrap CI on frontier tau contains synth tau."
+            if tau_ci_contains_synth
+            else (
+                "Cliff position differs even after accounting for bootstrap uncertainty. "
+                "Point estimate within 25% but CI excludes synth tau — possible cherry-pick "
+                "from limited workload count."
+                if tau_match_point
+                else "Cliff position differs — may indicate model-dependent theta"
+            )
         ),
     }
 

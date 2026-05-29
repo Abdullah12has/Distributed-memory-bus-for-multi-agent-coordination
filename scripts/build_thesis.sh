@@ -27,7 +27,7 @@ if [ ! -f "$MARKER" ]; then
   sudo tlmgr install \
     latexmk \
     newtx txfonts fontaxes boondox tex-gyre \
-    titlesec titlecaps chngcntr appendix newfile \
+    titlesec titlecaps ifnextok chngcntr appendix newfile \
     enumitem placeins multirow caption tocloft \
     csquotes xurl algorithm2e ifoddpage relsize \
     biblatex biber logreq \
@@ -36,6 +36,8 @@ if [ ! -f "$MARKER" ]; then
     etoolbox xstring ifthen \
     collection-fontsrecommended \
     doclicense xifthen ifmtarg \
+    tcolorbox environ pgf trimspaces tikzfill \
+    pict2e mdframed needspace zref \
     || echo "Warning: tlmgr install returned non-zero (some packages may already be installed)"
   touch "$MARKER"
   echo "✓ TeX packages installed."

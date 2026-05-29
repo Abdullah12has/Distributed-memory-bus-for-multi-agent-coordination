@@ -424,7 +424,7 @@ def _compute_auc(ratios: np.ndarray, success: np.ndarray) -> float:
         return 0.0
     order = np.argsort(x)
     x, y = x[order], y[order]
-    raw_auc = float(np.trapz(y, x))
+    raw_auc = float(getattr(np, "trapezoid", np.trapz)(y, x))
     # Normalize by the range so AUC is in [0, 1]
     span = float(x.max() - x.min())
     return raw_auc / span if span > 0 else 0.0

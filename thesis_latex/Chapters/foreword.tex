@@ -16,9 +16,27 @@ cost-per-workflow arm of the evaluation in a real industrial setting. I
 thank Mohammad Abaeiani, Faisal Khan, and Vu Truong for their willingness
 to coordinate around the demands of this thesis.
 
-The thesis was prepared on a single Apple M4 Pro 48~GB workstation. All
-training, evaluation, and inference fit within that envelope. The
-reproducibility package and the open-source reference implementation
-accompany this manuscript.
+The thesis was prepared on a single Apple M4 Pro 48~GB workstation
+with an RTX~5090 32~GB GPU host on the Tailscale mesh for the
+compression precomputation and the model-scaling and frontier-API
+sweeps. The compute envelope, the reproducibility package, and the
+open-source reference implementation are described in
+Appendix~\charef{appendix}, Section~D.
+
+\paragraph*{Use of generative-AI tools.}
+This thesis was prepared with the assistance of generative-AI
+tools. Specifically, Anthropic's Claude (accessed via the
+Claude Code command-line interface) was used to (a) draft and
+revise prose under the author's continuous supervision; (b)
+assist with code review, refactoring, and debugging of the
+experiment-orchestration and analysis scripts; and (c) cross-check
+verdict-table numbers against the on-disk results CSVs during the
+audit-reconciliation period. Every scientific claim, every
+experimental design choice, every results-interpretation paragraph,
+and the final manuscript text are the author's responsibility.
+Recorded design decisions reached with AI-assisted brainstorming
+are documented as architecture decision records (ADRs) in
+\texttt{docs/adr/} of the repository and are cited in this manuscript
+wherever they shape a load-bearing claim.
 
 \signature

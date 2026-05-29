@@ -40,7 +40,7 @@ class CompressionCache:
 
     @staticmethod
     def _key(compressor: str, ratio: float, fragment_id: str, task_hint: str | None = None) -> str:
-        return f"{compressor}|{ratio:.2f}|{fragment_id}|{_hint_key(task_hint)}"
+        return f"{compressor}|{ratio}|{fragment_id}|{_hint_key(task_hint)}"
 
     def store(
         self,
@@ -59,7 +59,11 @@ class CompressionCache:
         fragment_id: str,
         task_hint: str | None = None,
     ) -> str | None:
-        return self._entries.get(self._key(compressor, ratio, fragment_id, task_hint))
+        # Try exact key first, then fall back to no-hint variant
+        result = self._entries.get(self._key(compressor, ratio, fragment_id, task_hint))
+        if result is None and task_hint:
+            result = self._entries.get(self._key(compressor, ratio, fragment_id, None))
+        return result
 
     def save(self, path: str | Path) -> None:
         path = Path(path)
