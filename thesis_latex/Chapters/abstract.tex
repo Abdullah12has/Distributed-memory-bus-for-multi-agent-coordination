@@ -1,35 +1,67 @@
 \begin{thesisabstract}{english}
   \abstractmetadata
 
-Multi-agent systems built on large language models share their working state
-through a context window that is fundamentally bounded. As institutional
-deployments scale across many cooperating agents, the cost of moving that
-state grows fast enough to dominate operating expenses, and the temptation to
-compress it is correspondingly strong. The empirical question this thesis
-asks is whether single-agent metrics --- accuracy on a question-answering
-task, faithfulness on a retrieval task --- continue to predict the quality of
-\emph{coordination} between agents under compression, or whether compression
-introduces a regime in which coordination breaks faster than single-agent
-quality does.
+Large language models running in multi-step and multi-agent workflows
+pay for every token they read. Energy, latency, and money scale with
+context length, and a growing fraction of those tokens carry little
+information --- conversational filler, repeated history, restated
+system prompts. Context compression is the natural lever. The
+single-agent prompt-compression literature is mature; what has not yet
+been measured is whether compression that preserves single-agent
+question-answering accuracy also preserves the harder property a
+planner needs: combining information distributed across multiple
+fragments into a correct answer.
 
-The thesis contributes four artefacts. First, a multi-agent coordination
-benchmark inspired by a period-end reporting workflow that spans eight
-university systems, with three workload families and coordination-quality
-metrics that go beyond per-turn correctness. Second, an empirical
-characterisation of three compressor families --- LLMLingua-2, an
-instruction-aware heuristic filter, and an ICAE-style soft-prompt
-compressor --- across compression ratios from $1\times$ to $16\times$ at
-7B parameters, with a secondary 13B sanity arm, centred on the existence
-and shape of a \emph{coordination cliff}: a compression ratio beyond which
-coordination success degrades sharply even when single-agent QA accuracy
-degrades smoothly. Third, a catalogue of three retrieval-augmented
-generation pipelines combining retrieval and compression in different
-orders, benchmarked under matched retrieval quality with a cost model in
-EUR per query. Fourth, a tag-preserving compressor variant that lets
-provenance and access-control metadata travel alongside compressed memory
-slots, evaluated on preservation rate and accuracy delta. All four
-contributions are delivered with a single-machine reference implementation
-built on a 48~GB Apple Silicon workstation and an open-source repository
-with one-command reproduction of every headline figure.
+This thesis studies that question on \emph{multi-fragment LLM
+workflows}. The empirical evaluation uses either a deterministic
+regex parser or a single LLM call with all (compressed) fragments
+visible as the planner; multi-round agent simulation is outside the
+empirical scope. Four contributions are delivered: (C1)~a
+reproducible coordination benchmark of $150$ instances across three
+workload families --- cross-document fact aggregation,
+constraint-satisfaction planning, and multi-step retrieval; (C2)~an
+empirical characterisation of the \emph{coordination cliff}
+$\tau^{*}$ across four training-free compressors (LLMLingua-2,
+Phi-3-Mini extractive, an instruction-aware filter, and a truncation
+baseline), with a compounding-error model that predicts the cliff
+position from per-round token recall and a cross-architecture
+validation on Qwen-72B (within $0.8\%$ of the predicted position) and
+DeepSeek V4~Pro (bootstrap confidence interval contains the
+prediction) inside a formally-defined calibrated regime; (C3)~a
+catalogue of three RAG pipelines showing that compress-first is
+robustly preferred in both storage-bounded and accuracy-bounded
+regimes, challenging the post-retrieval-compression assumption of the
+LongLLMLingua line of work; and (C4)~a memory-bus reference
+implementation built around a tamper-evident audit log and a
+policy-aware compressor abstraction, together with a summary-level
+\emph{inference-disclosure} metric that quantifies how compression
+reduces the recoverability of protected facts to a downstream reader.
+
+Five hypotheses are tested across approximately one hundred thousand
+evaluation cells. H1 (single-agent question-answering accuracy
+decorrelates from coordination success under compression) is
+supported: Spearman~$\rho \in [-0.59, +0.38]$ across compressors,
+with $95\%$~bootstrap confidence intervals excluding $0.6$. H2 (a
+sharp cliff exists) is supported on eight of nine
+(compressor,~family) cells with paired Wilcoxon $p < 0.0001$. The
+original H5 is reframed and supported as \emph{Corollary~1
+(ceiling--cliff separation)}: model capacity sets the success
+ceiling $p_0$, not the cliff position $\tau^{*}$, within the
+calibrated regime. The original H6 is reframed and supported as
+\emph{Corollary~2 (information-density scaling)}: the cliff position
+varies with task information density, with $\theta_\text{info}=0.97$
+on a dense numeric-aggregation family and $0.37$--$0.48$ on
+distributed multi-document benchmarks (HotpotQA and MultiHopRAG).
+H4 (compression reduces inference disclosure) is supported with a
+documented reader-bias caveat. The thesis also contributes
+\emph{CAAC} --- a cliff-aware adaptive compression wrapper that
+operationalises the compounding-error bound as a runtime back-off,
+populating a complementary operating point on the
+(coordination,~ratio) frontier.
+
+The deliverable is the manuscript together with an open-source
+reference implementation reproducible from a single command on
+commodity hardware (Apple~M4 Pro 48~GB and an RTX~5090 32~GB
+workstation for the GPU-bound sweeps).
 
 \end{thesisabstract}

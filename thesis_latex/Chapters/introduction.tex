@@ -1,200 +1,302 @@
-\section{Motivation}
+\section{Motivation: Every Token Has a Cost}
 \label{sec:motivation}
 
-Large language models (LLMs) have moved from single-turn assistants to
-multi-agent systems in which a planner, several workers, and a critic
-cooperate on a shared task by reading and writing a common
-context~\cite{wu2023autogen, hong2024metagpt, shinn2023reflexion,
-anthropic2025multiagent}. The shared context is finite. As institutions
-deploy these systems at scale, the cost of moving state between agents
-grows fast enough to dominate operating expenses~\cite{fcgfinancial2026,
-anthropic2025contextengineering}. The closest published industry analogue,
-Anthropic's research team, reports that token usage alone explains
-approximately eighty percent of the performance variance in their
-multi-agent research system~\cite{anthropic2025multiagent}. Their context
-editing and memory-tool announcement reports an
-eighty-four percent token reduction on a 100-turn web-search evaluation,
-which is the practical setting in which compression is no longer optional
-but unavoidable~\cite{anthropic2025contextediting}.
+Large language models pay for every token they read. The cost is
+measurable at three layers: the energy and water needed to power a
+prefill and a decoding pass; the latency the user pays to wait for
+that pass to complete; and the dollar amount the operator pays per
+million tokens through an API or amortises through on-premises
+hardware. Peer-reviewed measurements of inference-side energy are
+recent --- Luccioni \emph{et~al.}'s 2024 \emph{Power Hungry
+Processing} study reports per-inference Watt-hour numbers for a
+broad set of open models, and finds that the wall-power cost of a
+single text-generation inference call on a modestly-sized model is
+within an order of magnitude of the wall-power cost of an
+internet search~\cite{luccioni2024powerhungry}. When the workload
+is a multi-step agentic system that issues thousands of internal
+inference calls to answer a single user request, those costs
+compound.
 
-Context compression as a research area is well developed in the
-single-agent setting. LLMLingua and its successors compress prompts with
-small classifier networks that drop low-utility tokens~\cite{jiang2023llmlingua,
-jiang2024longllmlingua, pan2024llmlingua2}. Soft-prompt
-approaches such as gist tokens, AutoCompressor, and the In-Context
-Autoencoder (ICAE) train a small adapter to summarise a passage into a
-fixed set of memory slots~\cite{mu2023gist, chevalier2023autocompressor,
-ge2024icae, wang2024icf}. Surveys consolidate the design space and the
-reported accuracy--ratio trade-offs~\cite{li2025promptsurvey,
-rae2020compressive}.
+A growing fraction of the tokens a deployed LLM reads do not
+change the answer. They are conversational filler (``Hello'',
+``Thanks''), repeated system prompts that scaffold every call,
+restated history that re-anchors a long conversation, boilerplate
+disclaimers, and structural framing that an attentive reader could
+elide without loss. The industry rough estimate, widely reported
+in 2025, was that OpenAI's compute bill for processing user
+politeness alone amounted to ``tens of millions of dollars''
+annually~\cite{altman2025pleasethankyou}. The number is reported
+as industry observation, not as peer-reviewed measurement, but the
+direction is consistent with the Luccioni
+result~\cite{luccioni2024powerhungry}: tokens that do not change
+the answer are converted directly into energy, latency, and
+operating expense.
 
-What the literature does not address directly is whether the single-agent
-accuracy curve continues to predict the quality of \emph{coordination}
-between agents under the same compression. A multi-agent task is not just
-a sum of single-agent QA accuracies; the planner has to assign sub-tasks
-based on a compressed view of the evidence, workers have to retrieve
-based on a compressed scratchpad, and the critic has to verify a draft
-answer against compressed source fragments. There is no shared empirical
-characterisation of how compression degrades that pipeline.
+Context compression is the natural lever. Per-token compute and
+per-token cost scale roughly linearly in sequence length once
+the prefill is past the GPU memory-bound regime; halving the input
+context halves the cost. The single-agent prompt-compression
+literature has matured rapidly over the past three years
+\cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2,
+mu2023gist, chevalier2023autocompressor, ge2024icae}. What has not
+yet been measured, and what this thesis sets out to measure, is
+whether the compression that preserves the standard single-agent
+question-answering metric --- token-overlap F1 against a ground-
+truth answer --- also preserves the harder structural property
+that a planner needs: combining information distributed across
+multiple fragments into a correct answer.
 
-The Future Computing Group (FCG) at the University of Oulu is building an
-institutional AI service economy that puts compression on the critical
-path of every multi-system workflow~\cite{fcgsystemarch2026,
-fcgsoftwarearch2026, fcgintegratorarch2026}. The flagship use case,
-\emph{Vignette~3.7 -- Period-end project reporting}, gathers reporting
-data across eight university systems via roughly eight specialised
-agents, achieves an estimated 80\% cloud-payload reduction, and lowers
-the per-report cost to about
-EUR~2.15~\cite{fcgusecase2026}. TalentAdore, the industry partner of this
-thesis, runs production workloads whose operating expenses are dominated
-by token cost; their interest is the
-cost-per-workflow story that compression makes possible. The
-master's-scale problem this thesis carves out is the question of whether
-compression preserves \emph{coordination}, and at what point it breaks.
+\section{The Multi-Fragment Workflow}
+\label{sec:multi_fragment}
 
-\section{Thesis statement and contributions}
-\label{sec:thesis_statement}
+The setting this thesis studies is the \emph{multi-fragment LLM
+workflow}: a task in which the answer cannot be read out of any
+single fragment in isolation and requires combining information
+across two or more fragments, each of which may be compressed
+independently before the planner sees it. Cross-document fact
+aggregation (sum eight numbers reported by eight different
+institutional systems), constraint-satisfaction planning
+(assign $N$ sub-tasks to $K$ capacity-bounded workers given
+specifications spread across fragments), and multi-step retrieval
+(chain references through a sequence of documents until a leaf
+answer is reached) are three representative examples; the C1
+benchmark of Chapter~\charef{implementation} constructs $50$
+instances of each. The setting is not a corner case. The FCG group
+at the University of Oulu's flagship use case ---
+\emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026}
+--- gathers reporting data across eight university systems via
+roughly eight specialised agents, achieves an estimated $80\%$
+cloud-payload reduction, and reduces the per-report cost to
+approximately EUR~$2.15$. TalentAdore, the industry partner of
+this thesis, runs production workloads whose operating expenses
+are dominated by token cost. Anthropic's own published report on
+their multi-agent research system notes that token usage explains
+approximately $80\%$ of the performance variance they
+observe~\cite{anthropic2025multiagent}; the corresponding
+context-engineering and context-editing reports describe an
+$84\%$ token reduction on a 100-turn web-search
+evaluation~\cite{anthropic2025contextediting,
+anthropic2025contextengineering}. These are industry observations
+on industry workflows; the master's-scale problem is the
+controlled cross-compressor, cross-task, cross-architecture
+measurement that turns the industry urgency into a technical
+question.
 
-This thesis designs, implements, and evaluates a distributed memory bus
-with a context-compression layer for multi-agent institutional systems.
-The empirical question is whether single-agent QA accuracy is a faithful
-predictor of multi-agent coordination success under compression, and the
-methodological question is whether such a coordination metric can be
-defined and measured.
+The technical question this thesis takes up does not include the
+multi-round agent-negotiation question that the
+``multi-agent'' framing of the FCG and Anthropic systems would
+imply. The empirical evaluation of this thesis uses either a
+deterministic regex-based information-extraction solver or a
+single LLM call with all (compressed) fragments visible as the
+planner. An AutoGen v0.4 multi-round agent backend integrated
+with the memory bus is shipped in the source tree
+(\texttt{src/m6/orchestrator/}~\cite{wu2023autogen}) but is not used
+in any reported result. The scope decision is documented as
+ADR-009 in the repository. The motivation is that round-to-round
+LLM variance dominates the compression signal at the C1
+compression ratios that this thesis sweeps; cleanly attributing
+coordination-quality drops to compression rather than to
+multi-round agent variance requires isolating the compressor on
+the critical path, which a single-LLM-call (or a deterministic
+regex) planner does. The memory bus is \emph{designed for} a
+multi-agent integration; the experimental scope is
+multi-fragment task solvability. The chapter on the system design
+(\ref{sec:scope} of Chapter~\charef{implementation}) restates
+this scope decision explicitly; every results chapter is
+calibrated against it.
 
-The thesis contributes four artefacts, corresponding to the four research
-questions accepted at the project's inception:
+\section{Problem Statement}
+\label{sec:problem}
 
-\begin{enumerate}
-\setlength\itemsep{2pt}
+\emph{How does context compression affect multi-fragment
+coordination quality across compressors, task structures, and
+planner scales --- and when and how can a memory-bus service
+exploit that understanding to compress safely, predictably, and
+privately?}
 
-\item \textbf{C1 --- A multi-agent coordination benchmark.}
-A reproducible synthetic benchmark inspired by Vignette~3.7: a planner, a
-configurable number of workers, and a critic exchanging compressed state
-through a shared scratchpad. Three workload families, configurable agent
-count, source-document characteristics, tag distributions, and
-coordination-quality metrics that go beyond per-turn correctness
-(planner-replan count, sub-task-assignment accuracy, rounds-to-completion,
-critic-flagged error rate). Released
-alongside the thesis with documentation and seed configurations.
+The question subdivides into four operationally distinct sub-
+questions, one per contribution.
+First, a benchmark question: what does a coordination-quality
+metric on a multi-fragment workflow look like, and how should it
+differ from single-agent question-answering accuracy?
+Second, a characterisation question: does compression introduce a
+\emph{coordination cliff} --- a compression ratio beyond which
+coordination success collapses sharply --- and what determines
+its position?
+Third, a deployment question: how should compression be combined
+with retrieval in a retrieval-augmented-generation pipeline, and
+what is the cost trade-off across pipeline architectures?
+Fourth, a governance question: can compression be measured as a
+privacy lever, and can a memory-bus service expose that lever as
+a deployment-time enforcement mechanism?
 
-\item \textbf{C2 --- Empirical characterisation of compression effects on
-multi-agent coordination.}
-Three compressor families --- LLMLingua-2 as a token-level hard-prompt
-filter~\cite{pan2024llmlingua2}, an instruction-aware heuristic filter,
-and an ICAE-style soft-prompt compressor that is the trainable
-arm~\cite{ge2024icae, chevalier2023autocompressor} --- evaluated on the
-C1 benchmark at compression ratios from $1\times$ to $16\times$ at
-7B, with a secondary 13B sanity arm. The headline empirical result is
-the existence and shape of a \emph{coordination cliff}~$\tau^{*}$: a
-compression ratio beyond which coordination success degrades sharply even
-when single-agent QA accuracy degrades smoothly.
+The thesis answers all four with four artefacts, each delivered
+end-to-end and reproducible from the open-source repository.
 
-\item \textbf{C3 --- Joint RAG plus compression pipeline catalogue.}
-Three pipeline architectures implemented end-to-end on FAISS and
-LlamaIndex~\cite{faiss, llamaindex}: P1 (compress, then retrieve), P2
-(retrieve, then compress; the classical LongLLMLingua
-setup~\cite{jiang2024longllmlingua}), and P3 (joint, conditional
-compression based on retrieval relevance scores, following the structure
-of~\cite{guo2025dynamic}). Each pipeline is benchmarked under matched
-retrieval quality, with a cost model in EUR per query fitted to
-TalentAdore production pricing for GPT-4o-mini and Claude Haiku 4.5 plus
-amortised local inference cost on the M4 Pro.
+\section{Contributions}
+\label{sec:contributions}
 
-\item \textbf{C4 --- Tag-preserving compressor variant and reference
-memory-bus integration.}
-A modification of the ICAE-style compressor that adds a per-slot
-tag-prediction head emitting an inherited provenance and
-access-control-list vector for each compressed
-fragment~\cite{park2025collaborative, nistairmf}. Evaluated on
-tag-preservation rate at ratios $\{2\times, 4\times, 8\times\}$ and on
-accuracy delta relative to the unmodified variant. Delivered with a
-reference memory-bus integration that exposes the read, write, subscribe,
-and audit interfaces.
+\paragraph{C1 --- A reproducible multi-fragment coordination
+benchmark.}
+\emph{The C1 benchmark} ships $150$ instances across three
+workload families (cross-document fact aggregation,
+constraint-satisfaction planning, multi-step retrieval), with
+synthetic provenance and access-control tag distributions, four
+coordination-quality metrics (final task success, sub-task
+assignment accuracy, rounds to completion, critic-flagged error
+rate), and a single-command regeneration script from a fixed
+seed. The benchmark is the substrate on which the cliff
+characterisation, the model-scaling result, and the inference-
+disclosure measurement all run; releasing it as part of the
+thesis lets other groups extend the characterisation to new
+compressors and new planner regimes.
 
-\end{enumerate}
+\paragraph{C2 --- Empirical characterisation of the coordination
+cliff and a compounding-error model that predicts it.}
+\emph{The cliff exists, is sharp, and is invariant to planner
+parameter count and architecture family within a defined
+calibrated regime.} The empirical work covers four training-free
+compressors --- LLMLingua-2~\cite{pan2024llmlingua2}, the Phi-3-
+Mini extractive span selector, an instruction-aware filter, and a
+truncation baseline --- at ten compression ratios across three
+families and across three Qwen-2.5 planner sizes (1.5B, 3.8B,
+8B), with a frontier validation arm on Qwen-2.5-72B and
+DeepSeek~V4~Pro that demonstrates cross-architecture cliff
+invariance to within $0.8\%$ on the Qwen scale-up and a bootstrap-
+CI-containment result on the cross-vendor case. The compounding-
+error model derives the cliff position from per-round
+critical-token-recall and a per-family recall threshold and
+recovers the empirical position within a useful first-order
+tolerance. An out-of-regime diagnostic on GPT-oss~120B identifies
+extended-reasoning planners as a structurally distinct case
+that the model's threshold-success assumption does not cover ---
+which is itself a contribution, since prior compression work
+treats reasoning regime implicitly.
 
-The four contributions form a sequence: build the testbed, use it to make
-a measurement the field has not made, embed compression into the RAG
-pipelines institutional agents actually use, and then probe what happens
-when compression carries metadata.
+\paragraph{C3 --- A catalogue of three retrieval-augmented-
+generation pipelines with a EUR-per-workflow cost model.}
+Three pipeline architectures (compress-first, retrieve-first,
+joint relevance-conditional routing) are implemented end-to-end on
+FAISS-CPU and HNSW and evaluated under matched storage-bounded
+and accuracy-bounded regimes. The original H3 hypothesis predicted
+a sign-flip in the optimal pipeline between regimes; the empirical
+work shows that compress-first is robustly preferred in both
+regimes, with the joint-routing variant leading both by a small
+margin. The compress-first preference \emph{reverses} a common
+assumption of the LongLLMLingua~\cite{jiang2024longllmlingua}
+line of work and is the substantive C3 finding, registered
+honestly as a reframing of the original predicate.
 
-\section{Scope and compute envelope}
-\label{sec:scope}
+\paragraph{C4 --- A memory-bus reference implementation and a
+summary-level inference-disclosure metric.}
+The memory bus is a FastAPI service with a tamper-evident SQLite
+audit log, a policy middleware that enforces a five-tier
+classification lattice over a $64$-bit access-control mask, an
+in-memory scratchpad with TTL eviction, and a FAISS-CPU vector
+store. The compressor abstraction is a Python protocol that all
+five compressor variants satisfy. The summary-level
+inference-disclosure metric quantifies how compression at
+$4\times$ reduces the rate at which a held-out local Llama-3.1-8B
+reader can recover protected facts from a compressed
+\textsc{confidential} fragment. The metric ranks compressors by
+privacy at iso-ratio, and the memory bus's policy layer
+operationalises the ranking as a deployment-time enforcement
+mechanism.
 
-The thesis runs on a single Apple M4~Pro 48~GB workstation
-using MLX for training and 7B/13B inference,
-Ollama for developer-experience
-inference, HuggingFace Transformers with PEFT for fine-tuning, FAISS-CPU
-for vector search, LlamaIndex for RAG orchestration, AutoGen v0.4 for
-agent runtime, and SQLite for the audit log~\cite{mlxframework,
-llamacpp, ollama, huggingfacepeft, faiss, llamaindex, wu2023autogen}.
-Every wallclock estimate in the thesis is dimensioned for that envelope.
+The thesis also presents \textbf{CAAC} (Cliff-Aware Adaptive
+Compression), a wrapper that operationalises the compounding-
+error bound as a runtime back-off: given a per-family recall
+threshold, CAAC binary-searches downward over compression ratios
+until the per-fragment critical-token-recall sits on the safe
+side of the cliff. CAAC is presented in
+Chapter~\charef{summary} as a constructive demonstration of the
+compounding-error model rather than as a fifth headline
+contribution; the demonstration is that the cliff bound is not
+only descriptive but operational.
 
-Three items are explicitly out of scope:
-production-grade governance enforcement (the tag-preserving compressor is
-a research prototype with measured properties, not a compliance tool);
-cross-tokenizer or cross-model-family compressed exchange; and a live
-production deployment on the FCG platform (the integration interface is
-delivered as a reference implementation that the FCG team can adopt).
+\section{What Is Novel}
 
-\section{Hypotheses}
-\label{sec:hypotheses_intro}
+The closest published industry analogue to C2 is Anthropic's
+report that token usage explains approximately $80\%$ of the
+performance variance in their multi-agent research
+workflow~\cite{anthropic2025multiagent}. That is an industry
+observation on a single workflow run by a single team; the C2
+contribution is the controlled cross-compressor, cross-family,
+cross-architecture sweep with a quantitative model, an empirical
+match-rate measurement, and a frontier-model validation. The
+closest published academic analogue is the single-agent
+question-answering evaluation of the LLMLingua line of
+work~\cite{jiang2023llmlingua, jiang2024longllmlingua,
+pan2024llmlingua2} and the long-context benchmarks
+LongBench~\cite{bai2024longbench} and
+RULER~\cite{hsieh2024ruler}; H1 shows that those evaluations
+\emph{over-report} compressor utility for multi-fragment
+deployment because the single-agent metric they measure does not
+predict coordination success. The multi-fragment-specific
+characterisation is the novelty.
 
-Four hypotheses guide the empirical work; each is grounded in a specific
-measurable comparison with an explicit falsifiable claim. All four are
-thesis hypotheses, and falsification of any one is itself reported as a
-thesis-worthy finding in the relevant chapter. The hypotheses are
-summarised in Chapter~\charef{experiments} and listed here only for
-completeness:
+The compounding-error model is novel in its application to
+multi-fragment compression evaluation. The derivation is short
+and the threshold-success assumption is a first-order
+approximation, but the combination of a quantitative
+position-prediction with a bootstrap-CI band on the prediction
+and a per-cell empirical match-rate measurement is, to the
+author's knowledge, not present in the prior compression
+literature.
 
-\begin{itemize}
-\setlength\itemsep{2pt}
-\item H1. Single-agent QA accuracy under compression is a poor predictor
-of multi-agent coordination success.
-\item H2. A coordination cliff $\tau^{*}$ exists and is task-dependent.
-A secondary 13B arm checks whether $\tau^{*}$ shifts with model size.
-\item H3. RAG pipeline placement matters: P1 and P2 dominate in different
-regimes, and P3 closes the gap on a combined accuracy-times-cost score.
-\item H4. A per-slot tag head preserves provenance tags at rate at least
-85\% at $4\times$ compression with accuracy degradation at most 5 pp.
-\end{itemize}
+The summary-level inference-disclosure metric (C4) is distinct
+from prior privacy-aware retrieval work
+\cite{zhou2025privacyrag, bassit2025securerag}, which protects
+the retrieval index from leaking; the metric this thesis
+contributes measures leakage \emph{through the compressor
+itself}, which is a separate axis. The memory-bus reference
+implementation makes the metric auditable as a deployment-time
+governance budget rather than a per-publication number.
 
-The narrative arc is: standard metrics are incomplete (H1), so a
-coordination cliff exists and is measurable (H2); RAG pipeline placement
-matters (H3); and governance metadata can ride along compression (H4).
+\section{Thesis Outline}
+\label{sec:outline}
 
-\section{Thesis structure}
-\label{sec:thesis_structure}
+The remaining chapters are organised as follows.
 
-Chapter~\charef{relatedwork} reviews related work in five strands:
-context compression and memory, multi-agent systems and agentic memory,
-RAG and long-context benchmarks, privacy-aware retrieval and adversarial
-robustness, and the FCG programme and its industry-relevance arm.
-Chapter~\charef{implementation} describes the system design and
-implementation: the three-layer memory-bus architecture, the compressor
-framework with its four variants, the C1 benchmark generator, the RAG
-pipeline catalogue, the agent runtime, and the inference-backend stack.
-Chapter~\charef{experiments} specifies the experimental protocol for
-each of the four hypotheses, the metrics, and the statistical analysis
-plan, with placeholder result sections marked clearly. The manuscript
-closes with Chapter~\charef{summary}, which discusses the limitations
-and the deliverables.
+Chapter~\charef{relatedwork} surveys the prior work the four
+contributions build on, organised into five strands: the
+transformer architecture and the cost of context, the modern
+training-free context-compression literature, multi-agent LLM
+systems, retrieval-augmented generation, and privacy in agentic
+memory. Each section closes by naming the gap that this thesis
+fills relative to the prior work it surveys.
 
-\section{Author's contributions and the role of artificial intelligence}
-\label{AI}
+Chapter~\charef{implementation} presents the artefacts the
+empirical evaluation runs on: the three-layer memory-bus
+architecture, the compressor framework, the C1 benchmark
+generator and scoring pipeline, the critical-token-recall metric,
+the compression cache, and the multi-fragment scope of the
+evaluation.
 
-The implementation, experimental design, training procedures, statistical
-protocol, and writing of this thesis are the independent work of the
-author, conducted under the supervision arrangement described in the
-foreword. Generative AI tools (Claude and ChatGPT) were used as writing
-aids in three documented capacities: as a literature-review assistant
-for locating and cross-referencing prior work, as a code-review assistant
-for catching defects in the reference implementation, and as a
-copy-editor for clarity and grammar in the manuscript. All technical
-decisions, architectural choices, experimental designs, statistical
-methods, hypothesis formulations, and conclusions are the author's own.
-No AI system produced any results or empirical claims in the thesis;
-every empirical result reported (when populated) is generated by the
-reproducible scripts in the open-source repository accompanying the
-manuscript.
+Chapter~\charef{experiments} presents the empirical work: H1
+(question-answering accuracy decorrelates from coordination
+success); H2 (a sharp coordination cliff exists, characterised
+across $12$ compressor-family cells); the compounding-error
+model that predicts the cliff position with a predicted-versus-
+empirical match-rate band; Corollary~1 (the cliff position is
+invariant to planner parameter count within the calibrated
+regime, validated on three frontier models); H3 (the
+RAG pipeline catalogue with the compress-first dominance
+result); H4 (the inference-disclosure measurement on the unbiased
+benchmark); and Corollary~2 (information-density scaling of the
+cliff across three benchmarks).
+
+Chapter~\charef{summary} synthesises the findings, presents CAAC
+as the constructive realisation of the compounding-error bound,
+enumerates the limitations, discusses the practitioner and
+field-level significance, compares the findings to industry
+observations, and names the future-work directions in order of
+expected impact.
+
+All artefacts --- the manuscript source, the code, the
+configuration files, the results CSVs, and the
+\texttt{docker-compose.yml} that brings the memory-bus reference
+service up locally --- are released under a permissive licence in
+the open-source repository. Appendix~\charef{appendix} describes
+the reproducibility package and the one-command reproduction
+recipe for every headline figure.

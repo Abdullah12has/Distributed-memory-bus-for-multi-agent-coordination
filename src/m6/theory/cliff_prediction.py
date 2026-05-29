@@ -1,69 +1,123 @@
 """Coordination Cliff Theorem — prediction, sharpness analysis, and validation.
 
-Theorem 1 (Coordination Cliff Bound):
-  Consider a coordination task where a compressor C with per-token retention
-  probability q(r) at compression ratio r is applied to each fragment ONCE
-  before the planner reads them. Let theta be the minimum fraction of
-  task-relevant tokens required for coordination success. Then:
+Two distinct quantities both named "theta"
+-------------------------------------------
+The literature and our code use the symbol theta for two related but
+DIFFERENT quantities. Conflating them is the single biggest source of
+confusion in this module — every consumer must specify which it means.
 
-    (i)   P(success | r) <= p0 * q(r)
-    (ii)  A coordination cliff exists at r* where q(r*) = theta
-    (iii) r* depends only on C (through q) and the task (through theta),
-          NOT on planner model capacity.
+  theta_q  (cliff-recall threshold):
+      The minimum fraction of *task-relevant tokens* that must survive
+      compression for coordination success. Derived by ``derive_theta()``,
+      which finds the empirical recall value at which coord_success first
+      drops below 0.5 in the H1/H2 sweep. Used by Theorem 1's prediction
+      machinery (``predicted_tau``, ``q_required``). Output JSON key:
+      ``mean_theta`` (with ``theta_kind="q_threshold"``).
 
-  Note: if compression is applied across N sequential passes (e.g.,
-  iterative summarization), the bound tightens to q(r)^N. In our
-  experiments, N=1 (single compression pass before coordination).
+      For C1 family-a with critical_token_recall: theta_q ≈ 0.247.
+      For C1 family-a with generic token_recall: theta_q ≈ 0.484.
 
-Theorem 2 (Cliff Sharpness via Concentration):
-  Under assumption A1 (memoryless compressor), the number of surviving
-  task-relevant tokens X ~ Binomial(M, q(r)), where M is the total number
-  of task-relevant tokens. By the Hoeffding-Chernoff bound:
+  theta_info  (information-density estimate):
+      The fraction of a task's content that is task-critical, estimated
+      as ``1 - normalized_AUC(success_curve)``. Computed by
+      ``estimate_task_theta()`` over an entire task's cliff sweep. Used by
+      Corollary 2's cross-task comparisons. Output JSON key:
+      ``theta_estimate`` (with ``theta_kind="info_density"``).
 
-    If q(r) > theta:  P(X/M < theta) <= exp(-2M(q(r) - theta)^2)
-    If q(r) < theta:  P(X/M >= theta) <= exp(-2M(theta - q(r))^2)
+      For C1 family-a: theta_info ≈ 0.97 (dense, cliffs early).
+      For HotpotQA: theta_info ≈ 0.37 (distributed, cliffs gradually).
 
-  As M -> infinity, P(success) converges to a step function at q(r) = theta.
-  The transition width in q-space scales as O(1/sqrt(M)), explaining why
-  the coordination cliff is SHARP (a phase transition), not gradual.
+These two quantities are NOT interchangeable. The theorem prediction
+machinery requires theta_q. The task-density narrative (Corollary 2)
+requires theta_info. When writing the thesis: name them explicitly as
+"theta_q" and "theta_info" (or "cliff-recall threshold" and "information
+density") and never reuse the bare word "theta" without qualification.
 
-Corollary 1 (Ceiling-Cliff Separation):
-  Model capacity m determines baseline success p0(m), while cliff position
-  r* is determined solely by compressor C and task threshold theta.
-  When p0(m) < theta, no cliff is detectable (floor effect).
-  When p0(m) >= theta, r* is invariant to m.
+Theorem 1 (Coordination Cliff under Threshold Success)
+-------------------------------------------------------
+GIVEN the threshold-success model
+    success_i = 1[ X_i / M_i >= theta_q ]
+where X_i is the count of task-relevant tokens surviving compression and
+M_i is the total count, and assuming the compressor's per-token retention
+is q(r) at compression ratio r, applied ONCE before the planner reads:
 
-  Evidence: H5 family-c shows all model sizes (1.5B, 3.8B, 8B) cliff at
-  the same ratio (~8x with LLMLingua-2), matching the deterministic solver.
-  H5 family-a: 1.5B/3.8B have p0 < theta (baseline ~3-17%), so no cliff
-  is detectable — this is a floor effect, not counter-evidence.
+    (i)   E[X_i/M_i] = q(r), so P(success | r) -> 1[q(r) >= theta_q]
+          in expectation.
+    (ii)  The cliff position is the ratio r* solving q(r*) = theta_q.
+    (iii) r* depends only on C (through q) and the task (through theta_q),
+          NOT on planner model capacity. This is the *content* of Theorem 1.
 
-Corollary 2 (Information Density Scaling):
-  For tasks with information density d (fraction of tokens that are
-  task-critical), theta ~ d. Dense quantitative tasks (d ~ 0.5) cliff
-  early; distributed qualitative tasks (d ~ 0.1) cliff late or show
-  gradual degradation rather than a sharp phase transition.
+  IMPORTANT (honest framing): statements (i) and (ii) are essentially the
+  *definition* of the threshold-success model — saying "the cliff happens
+  where q crosses theta_q" is restating the model, not deriving a new
+  result. The empirical content the thesis tests is statement (iii) plus
+  the prior claim that the threshold model fits the data well enough that
+  theta_q estimated on one task transfers to another.
 
-  Evidence: C1 family-a (numeric aggregation, theta=0.48) cliffs at 2.5x;
-  family-c (tree traversal, theta=0.38) cliffs at 6.7x; MultiHopRAG
-  (multi-hop QA, theta~0.08) shows gradual decline with tau~11.3x.
+  Note on multi-pass: if compression is applied across N sequential passes,
+  the bound tightens to q(r)^N (memoryless compounding). In our experiments
+  N=1; the N>1 path is implemented but not exercised.
 
-This module implements:
-  - predicted_tau(): compute r* from a token-recall curve
-  - q_required(): compute the minimum token recall for coordination
-  - chernoff_success_probability(): P(success) with finite-M sharpness
-  - chernoff_success_curve(): full curve with M-dependent sharpness
-  - cliff_sharpness(): transition width as a function of M
-  - derive_theta(): empirically derive theta from sweep data
-  - validate_prediction(): compare predicted vs empirical cliff positions
-  - validate_model_independence(): test Corollary 1 on H5 data
-  - estimate_task_theta(): derive theta from any coord_success curve
-  - validate_task_theta(): test Corollary 2 across tasks
+Theorem 2 (Cliff Sharpness via Chernoff Concentration) — the real theorem
+--------------------------------------------------------------------------
+Under assumption A1 (independent per-token retention), X_i ~ Binomial(M_i,
+q(r)). By Hoeffding-Chernoff:
+
+    If q(r) > theta_q:  P(X/M < theta_q) <= exp(-2M(q(r) - theta_q)^2)
+    If q(r) < theta_q:  P(X/M >= theta_q) <= exp(-2M(theta_q - q(r))^2)
+
+  As M -> infinity, P(success) converges to a STEP function at q(r) = theta_q.
+  The transition width in q-space scales as O(1/sqrt(M)). This is the
+  substantive theorem: it explains why the observed transition is SHARP
+  (a phase transition) rather than a smooth roll-off.
+
+Corollary 1 (Ceiling-Cliff Separation)
+---------------------------------------
+Model capacity m determines baseline success p0(m); cliff position r* is
+determined solely by C and theta_q. When p0(m) < theta_q, no cliff is
+detectable (floor effect — the model never gets above the threshold even
+without compression). When p0(m) >= theta_q, r* is invariant to m.
+
+  Empirical status: validated on H5 family-c only (3 models, tau spread
+  24%). Family-a/b are floor-effect cells for the 1.5B and 3.8B planners.
+  The corollary survives on 1/3 families — the writeup should frame this
+  as *conditional* on baseline competence.
+
+Corollary 2 (Information Density Scaling)
+------------------------------------------
+For tasks with information density d (the fraction of tokens that are
+task-critical), theta_info ~ d. Dense quantitative tasks (d ~ 0.5) cliff
+early; distributed qualitative tasks (d ~ 0.1) cliff late or show gradual
+degradation rather than a sharp phase transition.
+
+  This corollary uses theta_info (the AUC-based estimator), NOT theta_q.
+  The estimator difference matters: the same C1 family-a yields theta_q
+  ≈ 0.25 (recall threshold) and theta_info ≈ 0.97 (density estimate).
+  These measure different things.
+
+  Evidence: C1 family-a theta_info ≈ 0.97; MultiHopRAG theta_info ≈ 0.48;
+  HotpotQA theta_info ≈ 0.37. Larger theta_info ↔ denser task ↔ earlier
+  cliff position.
+
+This module implements
+-----------------------
+  - predicted_tau()                  — compute r* from a token-recall curve (uses theta_q)
+  - q_required()                     — minimum recall for coordination (= theta_q^(1/N))
+  - chernoff_success_probability()   — P(success) with finite-M sharpness
+  - chernoff_success_curve()         — full curve with M-dependent sharpness
+  - cliff_sharpness()                — transition width as a function of M
+  - derive_theta()                   — empirically derive theta_q from sweep data
+  - validate_prediction()            — compare predicted vs empirical cliff positions
+  - validate_model_independence()    — test Corollary 1 on H5 data
+  - estimate_task_theta()            — derive theta_info from a coord_success curve
+  - validate_task_theta()            — test Corollary 2 across tasks
+  - full_validation()                — global theta_q against H1/H2 sweep
+  - full_validation_per_family()     — per-family theta_q against H1/H2 sweep
 
 Usage:
     from m6.theory.cliff_prediction import predicted_tau, validate_prediction
 
-    # From H1/H2 sweep data
+    # From H1/H2 sweep data — uses theta_q (cliff-recall threshold).
     token_recall_curve = [(1.0, 1.0), (2.0, 0.52), (4.0, 0.11), ...]
     tau_star = predicted_tau(token_recall_curve, n_compression_passes=1, theta=0.5)
 """
@@ -141,19 +195,29 @@ def derive_theta(
     family: str = "a",
     recall_column: str = "token_recall",
 ) -> dict[str, Any]:
-    """Empirically derive theta from the H1/H2 sweep data.
+    """Empirically derive **theta_q** (cliff-recall threshold) from H1/H2 sweep.
 
-    For each compressor, finds the recall value at the ratio where
-    coord_success first drops below ``success_threshold``. Theta is the
-    average of these critical recall values.
+    Returns theta_q — the recall fraction at which coord_success first
+    drops below ``success_threshold``. This is the threshold that enters
+    Theorem 1's q(r*) = theta_q equation.
+
+    Do NOT confuse the output of this function with theta_info (the
+    AUC-based information-density estimator returned by
+    ``estimate_task_theta``). The two quantities are not interchangeable;
+    see the module docstring for the distinction.
 
     Args:
         recall_column: Which recall metric to use. Default "token_recall"
             (generic word overlap). Use "critical_token_recall" for
-            task-specific tokens when that column is available.
+            task-specific tokens when that column is available — the
+            critical-token estimator yields tighter theorem predictions
+            because it ignores filler tokens that survive compression
+            but do not contribute to task success.
 
     Returns:
-        Dict with per-compressor theta estimates and the mean.
+        Dict with per-compressor theta_q estimates and the mean. The
+        ``theta_kind`` field is always ``"q_threshold"`` so downstream
+        consumers can disambiguate from theta_info.
     """
     import pandas as pd
 
@@ -188,7 +252,13 @@ def derive_theta(
         "family": family,
         "success_threshold": success_threshold,
         "recall_column": col,
-        "note": "Empirically derived from H1/H2 sweep. Use mean_theta as theta parameter.",
+        "theta_kind": "q_threshold",
+        "note": (
+            "theta_q (cliff-recall threshold). Use as the `theta` parameter "
+            "to predicted_tau / q_required / validate_prediction. Do NOT "
+            "use this value as the information-density parameter in "
+            "Corollary 2 — for that, call estimate_task_theta() instead."
+        ),
     }
 
 
@@ -701,22 +771,35 @@ def estimate_task_theta(
     success_threshold: float = 0.5,
     recall_col: str | None = None,
 ) -> dict[str, Any]:
-    """Estimate theta for any task from its coord_success vs ratio curve.
+    """Estimate **theta_info** (information density) for a task.
 
-    If recall_col is available, theta = token_recall at the cliff ratio.
-    Otherwise, estimate from the success curve shape: theta ~ ratio at which
-    success drops below success_threshold, mapped through the compressor's
-    typical q(r) curve.
+    Returns theta_info — the AUC-based information-density estimate used
+    by Corollary 2 to compare tasks. theta_info ~ 1 - normalized_AUC of
+    the (coord_success / baseline) vs ratio curve. Dense tasks have high
+    theta_info (cliff early); distributed tasks have low theta_info (cliff
+    late or degrade gradually).
+
+    Do NOT confuse this with theta_q (the cliff-recall threshold) returned
+    by ``derive_theta()``. The same C1 family-a yields theta_q ~ 0.25
+    (recall threshold) and theta_info ~ 0.97 (density estimate) — they
+    measure different things.
+
+    If ``recall_col`` is provided AND not NaN at the cliff ratio, the
+    function ALSO reports a recall-based theta in ``theta_from_recall``
+    for diagnostic comparison, but the canonical ``theta_estimate`` is
+    the AUC-based estimate, which is more reproducible across compressors.
 
     Args:
         results_csv_path: CSV with at least ratio and coord_success columns.
         success_col: Column name for coordination success.
         ratio_col: Column name for compression ratio.
         success_threshold: Threshold for defining the cliff.
-        recall_col: Optional token_recall column for direct theta estimation.
+        recall_col: Optional token_recall column for diagnostic comparison.
 
     Returns:
-        Dict with estimated theta and supporting data.
+        Dict with theta_estimate (info-density), supporting data, and
+        ``theta_kind="info_density"`` so downstream consumers can
+        disambiguate from theta_q.
     """
     import pandas as pd
 
@@ -748,15 +831,20 @@ def estimate_task_theta(
     if len(ratios) >= 2 and baseline > 0:
         # Normalized AUC: area under (success/baseline) vs ratio
         norm_success = np.clip(success / baseline, 0, 1)
-        auc = float(np.trapz(norm_success, ratios) / (ratios[-1] - ratios[0]))
+        # np.trapezoid is the NumPy 2.0 spelling; older code used np.trapz
+        # which is deprecated and will be removed.
+        _trap = getattr(np, "trapezoid", None) or np.trapz  # noqa: NPY201
+        auc = float(_trap(norm_success, ratios) / (ratios[-1] - ratios[0]))
         # Map AUC to theta estimate: low AUC = high theta (info-dense), high AUC = low theta
         theta_from_curve = float(1.0 - auc)
     else:
         auc = float("nan")
         theta_from_curve = float("nan")
 
-    # Best estimate: prefer recall-based, fall back to curve-based
-    theta_est = theta_from_recall if not np.isnan(theta_from_recall) else theta_from_curve
+    # Canonical estimate: AUC-based (theta_info). The recall-based value is
+    # reported alongside for diagnostic comparison but should NOT be used
+    # as theta_info because it conflates the two distinct quantities.
+    theta_est = theta_from_curve
 
     return {
         "theta_estimate": theta_est,
@@ -766,6 +854,12 @@ def estimate_task_theta(
         "baseline": baseline,
         "normalized_auc": auc if not np.isnan(auc) else None,
         "n_ratios": len(ratios),
+        "theta_kind": "info_density",
+        "note": (
+            "theta_info (information-density estimate). For Corollary 2 "
+            "cross-task comparison only — do NOT feed this value into "
+            "predicted_tau / q_required (use derive_theta() for that)."
+        ),
     }
 
 

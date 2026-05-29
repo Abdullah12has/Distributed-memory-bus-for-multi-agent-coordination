@@ -382,7 +382,7 @@ def compute_h6_task_theta_verdict(
     if len(ratios) >= 2 and baseline > 0:
         norm_success = np.clip(success / baseline, 0, 1)
         span = float(ratios[-1] - ratios[0])
-        auc = float(np.trapz(norm_success, ratios) / span) if span > 0 else 0.0
+        auc = float(getattr(np, "trapezoid", np.trapz)(norm_success, ratios) / span) if span > 0 else 0.0
         theta_mhr = 1.0 - auc  # High AUC = low theta (robust to compression)
     else:
         auc = float("nan")
@@ -415,7 +415,7 @@ def compute_h6_task_theta_verdict(
                 if len(fam_ratios) >= 2 and fam_baseline > 0:
                     fam_norm = np.clip(fam_success / fam_baseline, 0, 1)
                     fam_span = float(fam_ratios[-1] - fam_ratios[0])
-                    fam_auc = float(np.trapz(fam_norm, fam_ratios) / fam_span) if fam_span > 0 else 0.0
+                    fam_auc = float(getattr(np, "trapezoid", np.trapz)(fam_norm, fam_ratios) / fam_span) if fam_span > 0 else 0.0
                     c1_thetas[fam] = 1.0 - fam_auc
 
             result["c1_thetas"] = c1_thetas

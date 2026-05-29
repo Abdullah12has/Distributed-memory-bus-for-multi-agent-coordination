@@ -26,7 +26,7 @@ from pydantic import (
 
 # ----- primitive aliases -----------------------------------------------------
 
-SlotId = Annotated[str, StringConstraints(min_length=8, max_length=128, pattern=r"^[\w\-]+$")]
+SlotId = Annotated[str, StringConstraints(min_length=8, max_length=128, pattern=r"^[\w\-/]+$")]
 FragmentId = Annotated[str, StringConstraints(min_length=1, max_length=256)]
 CompressorId = Annotated[str, StringConstraints(min_length=1, max_length=64)]
 

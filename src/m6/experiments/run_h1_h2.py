@@ -85,16 +85,13 @@ class SweepConfig:
 
 
 # ============================================================================
-# QA metrics (inline — avoids deep import chains)
+# QA metrics
 # ============================================================================
-def _normalize(s: str) -> str:
-    import re
-    import string
-
-    s = s.lower()
-    s = "".join(ch for ch in s if ch not in set(string.punctuation))
-    s = re.sub(r"\b(a|an|the)\b", " ", s)
-    return " ".join(s.split())
+# token_recall, critical_token_recall, and _normalize are re-exported here
+# from m6.metrics for backwards compatibility; m6.metrics is the canonical
+# location since 2026-05-29 (ADR-007). All consumers should prefer importing
+# from m6.metrics directly going forward.
+from m6.metrics import _normalize, critical_token_recall, token_recall  # noqa: F401
 
 
 def f1_score(prediction: str, reference: str) -> float:
@@ -115,67 +112,6 @@ def f1_score(prediction: str, reference: str) -> float:
 
 def em_score(prediction: str, reference: str) -> float:
     return float(_normalize(prediction) == _normalize(reference))
-
-
-def token_recall(source: str, compressed: str, gold_answer: str = "") -> float:
-    """Fraction of source tokens preserved in compressed text.
-
-    Used by the compounding-error model in Chapter 5: q = token_recall;
-    surviving info after N rounds ~ q^N.
-
-    Measures how many of the *source* tokens survive compression, not
-    gold-answer tokens (which may be aggregated and not appear in any
-    single fragment).
-    """
-    target_tokens = set(_normalize(source).split())
-    comp_tokens = set(_normalize(compressed).split())
-    if not target_tokens:
-        return 1.0
-    return len(target_tokens & comp_tokens) / len(target_tokens)
-
-
-def critical_token_recall(source: str, compressed: str, family: str) -> float:
-    """Fraction of task-critical tokens preserved in compressed text.
-
-    Unlike generic token_recall which counts all words, this focuses on
-    the tokens that actually determine coordination success:
-    - Family-a: multi-digit numbers (>=2 digits) — hours, budget values
-      that the solver must sum. Single digits excluded (noise).
-    - Family-b: all numbers (capacities, loads, task/agent counts) —
-      the solver needs these to produce valid assignments.
-    - Family-c: chain references (Entry X, entry X) AND final answers
-      (FINAL-XXXX) — the solver must follow the reference chain.
-    """
-    if family == "a":
-        # Multi-digit numbers only: the values being summed (174, 5608, etc.)
-        # Excludes single digits which are noise (dates, ordinals)
-        critical = set(re.findall(r"\b\d{2,}\b", source))
-    elif family == "b":
-        # All numbers in the spec: capacities [5,4,2,4,5], loads [2,2,1,...],
-        # agent/task counts. These determine feasible assignments.
-        critical = set(re.findall(r"\d+", source))
-    else:  # family c
-        # Chain references (Entry 0, entry 1) + final answer (FINAL-4483)
-        # The solver must follow "See entry X" links to find FINAL-XXXX
-        critical = set(re.findall(r"(?:entry \d+|FINAL-\d+)", source, re.IGNORECASE))
-    if not critical:
-        return float("nan")
-    critical = {c.lower() for c in critical}
-    compressed_lower = compressed.lower()
-    # Use regex word-boundary matching to avoid substring false positives
-    # (e.g. "1" matching inside "12", or "entry 0" matching "entry 01").
-    preserved = 0
-    for c in critical:
-        if re.fullmatch(r"\d+", c):
-            # Number: require word boundary
-            if re.search(r"(?<!\d)" + re.escape(c) + r"(?!\d)", compressed_lower):
-                preserved += 1
-        else:
-            # Multi-word pattern (e.g. "entry 0", "FINAL-4483"): use word-boundary regex
-            pattern = r"\b" + re.escape(c) + r"\b"
-            if re.search(pattern, compressed_lower):
-                preserved += 1
-    return preserved / len(critical)
 
 
 # ============================================================================

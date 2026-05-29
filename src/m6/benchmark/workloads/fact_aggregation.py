@@ -117,21 +117,40 @@ def _build_instance(
         fragments.append(frag)
 
         # Build a protected-fact entry if the fragment is confidential+.
-        # Questions are balanced: one "yes" (threshold below actual) and
-        # one "no" (threshold above actual) so priors-only baseline can't
-        # score 100% by always guessing the same answer.
+        #
+        # Both questions use the *same* comparator phrasing ("at least N").
+        # Whether the answer is yes or no is determined by the parity of
+        # the underlying value (hours_val or budget_val), which controls
+        # whether the threshold N sits below the actual value (yes) or
+        # above it (no). Using a single comparator phrasing prevents a
+        # surface-pattern reader from inferring the answer from the verb
+        # alone — the previous template used "at least"→yes / "exceed"→no,
+        # which made the question text itself a 100%-accurate predictor
+        # without seeing the context.
+        #
+        # Why parity rather than rng.integers(): the rng stream is shared
+        # with downstream calls within the same workload (note text,
+        # following fragments). Drawing extra bits here would shift the
+        # stream and change every fragment text, which would invalidate
+        # the precomputed compression_cache.json. Parity is a deterministic
+        # function of values that are already random, so the random bits
+        # are statistically uniform without disturbing the rng state.
         if int(tag.classification) >= int(Classification.CONFIDENTIAL):
             budget_val = per_system_budget[s]
             hours_val = per_system_hours[s]
+            h_yes = bool(hours_val % 2)
+            b_yes = bool(budget_val % 2)
+            h_thresh = hours_val - 5 if h_yes else hours_val + 5
+            b_thresh = budget_val - 5000 if b_yes else budget_val + 5000
             protected_facts.append(
                 ProtectedFact(
                     fragment_id=frag.fragment_id,
                     fact=f"{s}.budget={budget_val}",
                     yesno_questions=(
-                        f"Did {s} for project {project_id} record at least {hours_val - 5} hours?",
-                        f"Did {s} for project {project_id} exceed EUR {budget_val + 5000} in budget?",
+                        f"Did {s} for project {project_id} record at least {h_thresh} hours?",
+                        f"Did {s} for project {project_id} commit at least EUR {b_thresh} in budget?",
                     ),
-                    answers=("yes", "no"),
+                    answers=("yes" if h_yes else "no", "yes" if b_yes else "no"),
                 )
             )
 

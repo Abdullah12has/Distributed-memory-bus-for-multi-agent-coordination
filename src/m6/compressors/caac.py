@@ -5,7 +5,30 @@ and backs off compression when the predicted coordination success drops
 below a safety threshold. Based on Theorem 1 from the coordination cliff
 theory (see m6.theory.cliff_prediction).
 
-Algorithm:
+What CAAC is (and is not)
+-------------------------
+CAAC is a *safety-bounded* compressor: it knows when to stop. It does NOT
+strictly Pareto-dominate fixed-ratio compression — in fact under the strict
+Pareto criterion (no worse on coord_success AND on achieved compression
+ratio) CAAC dominates 0 / N ratios on the C1 benchmark, because backing off
+compression to preserve coordination is by construction a trade-off, not a
+free lunch.
+
+The empirical value of CAAC is therefore that *given a high target ratio
+where fixed compression collapses*, CAAC degrades gracefully: at target=16x
+on lingua2 the fixed compressor collapses to coord=0% (achieved 25.86x),
+while CAAC backs off to ~3.3x and retains coord ≈ 32.7%. This is a useful
+operating-point selector for callers that don't know in advance where the
+cliff lives, but should not be marketed as "dominance."
+
+A caveat: on tasks where the per-token recall is uniformly below theta
+(e.g. C1 family-a), CAAC's binary search exhausts and the algorithm just
+returns the `min_ratio=1.5` floor compression. That is not "intelligent
+backoff"; it is the configured floor. CAAC cannot rescue a task whose
+information density is above what its inner compressor can preserve.
+
+Algorithm
+---------
   1. Compute q_min = theta (for single-pass compression, N=1).
   2. For each fragment, compress at the target ratio.
   3. Measure token_recall of the compressed output.
@@ -25,7 +48,7 @@ Usage:
     caac = CAACCompressor(
         inner="lingua2",
         target_ratio=4.0,
-        theta=0.5,  # derive via cliff_prediction.derive_theta()
+        theta=0.5,  # derive via cliff_prediction.derive_q_threshold()
     )
     slot = caac.compress(fragment)
     text = caac.decompress(slot)
@@ -43,6 +66,7 @@ logger = logging.getLogger(__name__)
 from m6.compressors import make_compressor
 from m6.compressors.base import Compressor, ModelCard
 from m6.memory_bus.schemas import CompressedSlot, Fragment, TextSummary
+from m6.metrics import critical_token_recall as _ctr
 from m6.theory.cliff_prediction import q_required
 
 
@@ -53,17 +77,35 @@ def _normalize_token(t: str) -> str:
 def _token_recall(source: str, compressed: str) -> float:
     """Fast generic token-recall: fraction of source word-tokens preserved in compressed.
 
-    Note: this treats all tokens equally (conservative proxy). The theorem's q(r) refers
-    to task-relevant tokens specifically. For theorem validation, use critical_token_recall
-    from run_h1_h2.py which weights family-specific tokens (numbers for a, patterns for b/c).
-    CAAC uses generic recall for simplicity — it overestimates preservation, meaning CAAC
-    backs off slightly less than optimal (conservative direction).
+    Note: this treats all tokens equally (conservative proxy). For
+    family-aware safety checks, CAAC routes through
+    :func:`_safety_recall` which prefers critical-token recall from
+    :mod:`m6.metrics` and falls back to this generic recall when CTR
+    is undefined (NaN — typically when a fragment has no critical
+    tokens of its family's kind).
     """
     src_toks = set(_normalize_token(t) for t in re.findall(r"\w+", source))
     comp_toks = set(_normalize_token(t) for t in re.findall(r"\w+", compressed))
     if not src_toks:
         return 1.0
     return len(src_toks & comp_toks) / len(src_toks)
+
+
+def _safety_recall(source: str, compressed: str, family: str | None) -> float:
+    """Family-aware recall used by CAAC's safety check.
+
+    When ``family`` is provided, uses :func:`critical_token_recall`
+    (task-specific). When CTR returns NaN (no critical tokens in the
+    source — common for short or boilerplate fragments), falls back
+    to generic :func:`_token_recall`. When ``family`` is None, uses
+    generic token_recall directly (back-compat).
+    """
+    if family is None:
+        return _token_recall(source, compressed)
+    q = _ctr(source, compressed, family)
+    if q != q:  # NaN check (NaN != NaN)
+        return _token_recall(source, compressed)
+    return q
 
 
 class CAACCompressor:
@@ -86,6 +128,7 @@ class CAACCompressor:
         theta: float = 0.5,
         min_ratio: float = 1.5,
         binary_search_steps: int = 5,
+        family: str | None = None,
         **inner_kwargs: Any,
     ) -> None:
         """
@@ -93,17 +136,28 @@ class CAACCompressor:
             inner: Base compressor name or instance to wrap.
             target_ratio: Desired compression ratio (CAAC may use less).
             n_compression_passes: Number of times compression is applied (default 1).
-            theta: Minimum surviving information fraction for success.
-                Derive empirically via cliff_prediction.derive_theta().
+            theta: Minimum surviving information fraction for success
+                (theta_q — the cliff-recall threshold, not theta_info).
+                Derive empirically via cliff_prediction.derive_theta()
+                with ``recall_column="critical_token_recall"``. With
+                per-family theta, build one CAACCompressor per family.
             min_ratio: Lowest ratio CAAC will back off to (1.5 = always
                 achieve at least 1.5x compression, even when backing off).
             binary_search_steps: Max iterations for finding safe ratio.
+            family: C1 task family ("a", "b", or "c"). When set, CAAC's
+                safety check uses critical_token_recall for that family
+                (with fallback to generic token_recall when CTR is NaN).
+                When None, uses generic token_recall — legacy behavior.
+                Per ADR-007, the active configuration sets family +
+                per-family theta to make CAAC's selected operating
+                point task-adaptive.
             **inner_kwargs: Passed to make_compressor if inner is a string.
         """
         self.target_ratio = target_ratio
         self.n_compression_passes = n_compression_passes
         self.theta = theta
         self.min_ratio = min_ratio
+        self._family = family
         self._search_steps = binary_search_steps
         self._q_min = q_required(theta, n_compression_passes)
 
@@ -141,7 +195,7 @@ class CAACCompressor:
 
         # Step 1: try compressing at the full target ratio
         compressed_text = self._compress_at_ratio(fragment, ratio)
-        q = _token_recall(fragment.text, compressed_text)
+        q = _safety_recall(fragment.text, compressed_text, self._family)
 
         # Step 2: if token recall is safe, accept
         if q >= self._q_min:
@@ -170,7 +224,7 @@ class CAACCompressor:
         # Initialize to min_ratio compression (not uncompressed) to
         # guarantee at least min_ratio compression even on full backoff.
         best_text = self._compress_at_ratio(fragment, self.min_ratio)
-        best_q = _token_recall(fragment.text, best_text)
+        best_q = _safety_recall(fragment.text, best_text, self._family)
 
         for _ in range(self._search_steps):
             if hi - lo < epsilon:
@@ -180,7 +234,7 @@ class CAACCompressor:
                 # Below meaningful compression, just return original
                 break
             compressed = self._compress_at_ratio(fragment, mid)
-            q = _token_recall(fragment.text, compressed)
+            q = _safety_recall(fragment.text, compressed, self._family)
             if q >= self._q_min:
                 # Safe: try compressing more
                 best_text = compressed
@@ -199,14 +253,24 @@ class CAACCompressor:
         return best_text
 
     def _get_compressor_at_ratio(self, ratio: float) -> Compressor:
-        """Get or build an inner compressor at the given ratio (cached)."""
-        # Round to 2 decimals for cache-key stability
-        key = round(ratio, 2)
-        if key not in self._comp_cache:
-            self._comp_cache[key] = make_compressor(
-                self._inner_name, target_ratio=ratio, **self._inner_kwargs
+        """Get the inner compressor.
+
+        All supported inner compressors (lingua2, filter, phi3-extractive)
+        accept ``target_ratio`` per-call in their ``compress(...)`` method,
+        so we only need ONE compressor instance per ``_inner_name``. The
+        ratio argument is kept only for API symmetry and binary-search
+        introspection.
+
+        Previous behavior (one instance per rounded ratio) was a CUDA
+        memory leak under CAAC's binary-search loop: each new ratio
+        loaded a fresh ~2 GiB LLMLingua-2 model, exhausting the GPU.
+        """
+        del ratio  # intentionally unused — kept for API symmetry
+        if "_shared" not in self._comp_cache:
+            self._comp_cache["_shared"] = make_compressor(
+                self._inner_name, **self._inner_kwargs
             )
-        return self._comp_cache[key]
+        return self._comp_cache["_shared"]
 
     def decompress(self, slot: CompressedSlot) -> str:
         if isinstance(slot.payload, TextSummary):
