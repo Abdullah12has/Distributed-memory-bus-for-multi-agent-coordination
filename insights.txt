@@ -2852,7 +2852,6 @@ thesis_PLAN.md §8.
 
 ### Polish items NOT yet closed (human-required)
 
-- Tiivistelmä (Finnish abstract translation) — needs translator.
 - Fig 2.1 transformer schematic — decide between hand-drawn / TikZ /
   CC-BY image; LaTeX wiring step.
 - LaTeX template compilation (Oulu ITEE template) with draft1.md
@@ -2862,11 +2861,18 @@ thesis_PLAN.md §8.
   mid-sprint).
 - Final PDF build + submit.
 
+### Tiivistelmä — DROPPED (2026-05-30)
+
+The Finnish-abstract requirement is dropped from the manuscript scope.
+draft1.md front matter notes the omission; the Oulu template's
+Tiivistelmä environment is left empty or bypassed at LaTeX-wiring
+time.
+
 ### Task 9 status
 
 In progress on the human-required items; mechanical subset closed.
-After Tiivistelmä + LaTeX + reading-aloud + Lauri sign-off, Task 9
-becomes the submit-and-done step.
+After LaTeX + reading-aloud + Lauri sign-off, Task 9 becomes the
+submit-and-done step.
 
 
 ## 65. THESIS MANUSCRIPT FIRST FULL DRAFT (2026-05-30)
@@ -2954,9 +2960,11 @@ remain at sub-50pt scale, none worth chasing.
 
 ### Outstanding items for the user
 
-(1) Finnish translations in main.tex `\otsikko{}` and
-`\tiivistelma{}` are best-effort machine translations and need
-a Finnish speaker (Lauri) review before submission.
+(1) Finnish title in main.tex `\otsikko{}` is a best-effort
+machine translation and needs a Finnish speaker (Lauri) review
+before submission. The `\tiivistelma{}` (Finnish abstract) was
+dropped from the manuscript scope per 2026-05-30 decision; leave
+empty or bypass at the LaTeX wiring step.
 (2) Two figures from the ADR-007/008 punch list may not yet
 match their captions: `caac_pareto` is supposed to be a region
 plot (high-coord vs high-compression regions, q_min = theta_q

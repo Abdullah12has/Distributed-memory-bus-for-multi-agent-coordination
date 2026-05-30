@@ -35,9 +35,7 @@ Four contributions are reported. **C1**: a 150-instance reproducible benchmark o
 
 **Keywords:** context compression; multi-fragment LLM workflows; coordination cliff; inference disclosure; privacy; memory bus.
 
-### Tiivistelmä (~250 words, Finnish — TBD; Oulu template requires this section)
-
-*Placeholder: direct translation of the English Abstract above. Hand-translate the structured items and ask Lauri to refine on the final read; this is the only block of the manuscript where Finnish polish is load-bearing. See thesis_PLAN.md §8 reference-pass for translator option.*
+*(Finnish Tiivistelmä omitted from this manuscript. The English Abstract above is the sole abstract; the Oulu template's Tiivistelmä environment is left empty or bypassed at LaTeX-wiring time.)*
 
 ### Foreword / Acknowledgments
 
@@ -838,10 +836,10 @@ In C1 family-a (M ≈ 8 multi-digit numbers per workload), the bound predicts a 
 
 ## Pass-2 status (2026-05-30)
 
-This pass closes the manuscript draft pipeline: front matter (Title page, Abstract, Tiivistelmä placeholder, Foreword + AI-use declaration, ToC / Lists), Chapter 1 (Introduction with cost-of-context hook → multi-agent multiplier → blind spot → problem statement + ADR-009 scope disclosure → C1–C4 contributions → outline), and Chapter 2 (12–14 pp survey with paragraph-closing "what's missing" lines and the §2.5 compressor comparison table that anchors rubric #4). Chapters 3–8 from pass 1 are retained with the TBD-number refresh applied against canonical `results/*/` directories.
+This pass closes the manuscript draft pipeline: front matter (Title page, English Abstract, Foreword + AI-use declaration, ToC / Lists; Tiivistelmä dropped per 2026-05-30 decision), Chapter 1 (Introduction with cost-of-context hook → multi-agent multiplier → blind spot → problem statement + ADR-009 scope disclosure → C1–C4 contributions → outline), and Chapter 2 (12–14 pp survey with paragraph-closing "what's missing" lines and the §2.5 compressor comparison table that anchors rubric #4). Chapters 3–8 from pass 1 are retained with the TBD-number refresh applied against canonical `results/*/` directories.
 
 **Manuscript length estimate.** Front matter + Ch 1 + Ch 2 in pass 2 ≈ 8 500 words ≈ 22–25 pages; Ch 3–Ch 8 from pass 1 ≈ 11 500 words ≈ 30–34 pages; Appendices ≈ 8 pages. Total ≈ 60–67 pages at Oulu Master's thesis margins — well within the conventional 50–80-page envelope for a substantial empirical MSc thesis in CSE.
 
-**What remains.** Per the active sprint Task 9: terminology pass against `CONTEXT.md` (no bare "θ", no "Theorem 1" in prose, calibrated-regime qualifier on every model-independence claim — already mostly applied during pass 2); figure regeneration via `scripts/regen_figures.py` for any figure whose source CSV has moved (the bootstrap-band figure already regenerated 2026-05-30); reference-venue verification (each cited paper labelled per plan-v3 §9 conventions — AutoGen as ICLR Workshop, LLMLingua-2 as Findings of ACL, GraphRAG and MemGPT as preprints, Anthropic posts as industry); Tiivistelmä translation (Finnish abstract); LaTeX-template compilation (Oulu ITEE — title page matches ADR-009); reproducibility checklist (Docker, model cards, GitHub release tag); Lauri sign-off per thesis_PLAN §8 (post-submission convention, not mid-sprint).
+**What remains.** Per the active sprint Task 9: terminology pass against `CONTEXT.md` (no bare "θ", no "Theorem 1" in prose, calibrated-regime qualifier on every model-independence claim — already mostly applied during pass 2); figure regeneration via `scripts/regen_figures.py` for any figure whose source CSV has moved (the bootstrap-band figure already regenerated 2026-05-30); reference-venue verification (each cited paper labelled per plan-v3 §9 conventions — AutoGen as ICLR Workshop, LLMLingua-2 as Findings of ACL, GraphRAG and MemGPT as preprints, Anthropic posts as industry); LaTeX-template compilation (Oulu ITEE — title page matches ADR-009); reproducibility checklist (Docker, model cards, GitHub release tag); Lauri sign-off per thesis_PLAN §8 (post-submission convention, not mid-sprint).
 
 The terminology and framing are locked against `CONTEXT.md`, ADR-006, ADR-007, ADR-008, and ADR-009 throughout. All headline numbers trace to canonical `results/*/` directories with no remaining `TBD` cells in the verdict blocks.

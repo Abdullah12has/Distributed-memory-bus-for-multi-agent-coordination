@@ -284,7 +284,8 @@ JSON on disk (`h1_h2_v2`, `h4_unbiased`, `h5_final`, `h3_final`,
 `frontier_qwen72b`, `frontier_deepseekv4`, `hotpotqa_sweep`).
 See insights.txt §65 for the per-chapter status, per-table
 number-refresh notes, and the outstanding user-side items
-(Finnish translation review, region-plot regeneration for
+(Finnish title `\otsikko{}` review only — Tiivistelmä dropped
+per 2026-05-30 decision; region-plot regeneration for
 `caac_pareto`, predicted-τ* band figure for
 `predicted_vs_empirical`).
 
