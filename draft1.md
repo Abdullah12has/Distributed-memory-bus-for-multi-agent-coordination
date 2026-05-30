@@ -1,10 +1,223 @@
-# draft1.md — Master's thesis draft (pass 1)
+# draft1.md — Master's thesis draft (pass 2)
 
 **Title:** Distributed Memory Bus for Multi-Fragment LLM Workflows: Context Compression, the Coordination Cliff, and Privacy
 
 **Author:** Syed Abdullah Hassan, University of Oulu
 
-**Draft status:** Pass-1 prose for Chapters 3–5 (per `thesis_PLAN.md §7` writing-order). Chapters 1, 2, 6, 7, 8 follow in pass 2. Terminology is locked against `CONTEXT.md`; all numbers trace to `results/*` directories named inline. Every claim is rubric-anchored (#3–#7 mostly).
+**Draft status:** Pass-2 prose for the full manuscript. Front matter + Ch 1 + Ch 2 added in pass 2 (this section); Chapters 3–8 from pass 1 retained with TBD-number refresh against canonical `results/*` directories. Appendices A–D in sketch form pending LaTeX template wiring. Terminology locked against `CONTEXT.md`; every claim is rubric-anchored.
+
+---
+
+## Front matter (5–7 pp)
+
+### Title page
+
+> **Distributed Memory Bus for Multi-Fragment LLM Workflows:**
+> **Context Compression, the Coordination Cliff, and Privacy**
+>
+> Syed Abdullah Hassan
+>
+> Master's Thesis
+> Faculty of Information Technology and Electrical Engineering
+> Computer Science and Engineering — Future Computing Group
+> University of Oulu
+> Month / Year *(to be filled per Oulu template)*
+>
+> Supervisor: Dr. Lauri Lovén
+
+### Abstract (~250 words, English)
+
+Large language model (LLM) inference incurs measurable per-token cost in compute, memory, and energy; published per-inference Wh measurements (Luccioni et al., 2024) and frontier-cloud token pricing make this cost concrete. Multi-agent LLM systems multiply that cost — shared context is broadcast to N agents, each maintaining its own history. Context compression is the natural lever. Existing compression evaluations (LLMLingua-2, Selective Context, RECOMP, Gist Tokens) measure single-agent question-answering quality; how compression affects *multi-fragment* coordination — the property that distinguishes a planner needing information from several fragments from a single-document QA reader — is not measured.
+
+This thesis answers that question for the multi-fragment workflows for which a distributed memory bus is designed. **All experiments measure task-solvability under compression: the planner is either a deterministic regex parser (H1/H2) or a single LLM call with all compressed fragments visible (H5/H6/frontier). The memory bus is designed for multi-agent integration, but multi-round LLM agent simulation is outside the scope of this thesis's empirical evaluation** (ADR-009).
+
+Four contributions are reported. **C1**: a 150-instance reproducible benchmark of three multi-fragment task families. **C2**: an empirical characterisation of how four training-free compressors interact with coordination quality — H1 (QA accuracy decorrelates from coordination, |ρ| ≤ 0.6 with CI excluding 0.6 from above, SUPPORTED) and H2 (sharp coordination cliff in 11/12 cells, Holm-corrected p < 10⁻⁵, SUPPORTED), together with a compounding-error model that derives the cliff position from per-family θ_q (Corollary 1, ceiling-cliff separation, SUPPORTED on Qwen-72B and DeepSeek V4 Pro within the calibrated regime). **C3**: a catalogue of three RAG pipeline placements under matched cost regimes — H3's pre-registered sign-flip did *not* appear; compress-first dominance is reported honestly as the negative finding. **C4**: a memory-bus service with a held-out-reader inference-disclosure metric — H4 SUPPORTED on the unbiased benchmark; Corollary 2 (information-density scaling) SUPPORTED on MultiHopRAG and HotpotQA. Across architectures from 1.5B to 72B parameters, cliff position is determined by the (compressor, task) pair, not the planner — provided the planner is in the calibrated regime; we surface the calibrated-regime boundary as an empirical contribution.
+
+**Keywords:** context compression; multi-fragment LLM workflows; coordination cliff; inference disclosure; privacy; memory bus.
+
+### Tiivistelmä (~250 words, Finnish — TBD; Oulu template requires this section)
+
+*Placeholder: direct translation of the English Abstract above. Hand-translate the structured items and ask Lauri to refine on the final read; this is the only block of the manuscript where Finnish polish is load-bearing. See thesis_PLAN.md §8 reference-pass for translator option.*
+
+### Foreword / Acknowledgments
+
+This thesis was conducted in the Future Computing Group (FCG) of the Computer Science and Engineering Research Unit at the University of Oulu's Faculty of Information Technology and Electrical Engineering, under the supervision of Dr. Lauri Lovén. The work builds on FCG's architectural framing of distributed memory for institutional systems (the FCG internal architecture documents and the financial-analysis cost model referenced in plan-v3 §9) and on the TalentAdore industrial partnership (Asim Nadeem, Oskari Valkama), whose use-case framing shaped the C1 benchmark design.
+
+The author thanks Dr. Lovén for steady supervision, the FCG / TalentAdore reviewers for industry-grounded feedback, and the open-source contributors behind the LLMLingua-2 compressor, the BAAI BGE embedders, the Phi-3 family, and the Ollama runtime — without which the training-free experimental design of this thesis would not have been feasible.
+
+**Use-of-AI-Tools statement.** Generative-AI assistants (Anthropic Claude, used via the Claude Code command-line interface) were used during this thesis to: (a) draft and revise prose under the author's supervision; (b) assist with code review, debugging, and the experiment-orchestration scripts; (c) regenerate figures and reconcile evidence tables against canonical CSVs. All scientific claims, experimental design, results interpretation, and final manuscript text are the author's responsibility.
+
+### Table of Contents, List of Figures, List of Tables, List of Abbreviations
+
+*Auto-generated by the Oulu LaTeX template. Verified at the final-PDF build.*
+
+**Abbreviations.** CAAC = Cliff-Aware Adaptive Compression. CTR = critical-token recall. C1 = the multi-fragment coordination benchmark introduced in this thesis. EUR = euros (cost-model unit). LLM = large language model. RAG = retrieval-augmented generation. τ\* = cliff position (compression ratio at the transition from high to low coordination success). θ_q = cliff-recall threshold. θ_info = task information density. *See `CONTEXT.md` for the full domain glossary.*
+
+---
+
+## Chapter 1 — Introduction (4–5 pp)
+
+> **Chapter abstract.** Per-inference energy cost (Luccioni et al., 2024) and frontier-cloud token pricing make the cost of LLM context concrete. In multi-agent settings the cost is multiplied — shared context flows between agents at every round. Compression is the natural lever, but the field's evaluations focus on single-agent question answering. This thesis measures what compression does to *multi-fragment coordination* — the property of a workflow that requires the planner to combine information from multiple compressed fragments — and ships a memory-bus service that operationalises the measurement. We discover a sharp **coordination cliff**, derive a first-order **compounding-error model** that predicts where it lies from per-family θ_q and the compressor's measured token-recall curve, validate the model across four planner scales and three architecture families within a **calibrated regime** (and document its breakdown on extended-reasoning planners), report an honest **negative finding** on RAG pipeline placement (the predicted sign-flip did not appear), and operationalise a **summary-level inference-disclosure metric** that distinguishes aggressive token-level compressors from extractive copiers.
+
+### 1.1 The cost of context
+
+Every token in an LLM's context window has a measurable cost. The peer-reviewed analysis closest to deployment is Luccioni, Jernite, and Strubell's 2024 measurement of per-inference watt-hours on open models — non-trivial energy per query for non-trivial context sizes, scaling roughly linearly with the number of tokens the model processes. Frontier-cloud pricing exposes the same cost in euros: at the time of writing, a representative tier charges roughly USD 3 per million input tokens and USD 15 per million output tokens. The internal cost model in plan-v3 §3 (drawn from the FCG financial-analysis reference; see `plan-v3 §9` citations) operationalises an on-prem amortised rate of 0.05 EUR per million tokens for the bus's own retrieval-side cost.
+
+The informal observation that conversational filler ("Hello", "Thank you", restated history) accumulates into millions of dollars of compute at industry scale was made publicly by Sam Altman (2025; cited as press / industry reporting, not as a measurement). It is not a substitute for the peer-reviewed numbers above, but it agrees with them in *direction*. Every token that does not change the model's answer is waste. Compression is the lever that removes it.
+
+### 1.2 From token-greedy to context-engineered
+
+The GPT-3-era assumption that prompts were free has been replaced. Modern systems pay attention to context windows, prefix caching, request routing, and now context compression. Anthropic's industry blog "How We Built Our Multi-Agent Research System" (2025) reports that token usage explains approximately 80 % of the performance variance observed across runs of their multi-agent research workflow — labelled here as an industry observation, not a controlled measurement, but consistent with the direction: in multi-agent LLM systems, *how much you pass between agents and how you pass it* dominates everything else.
+
+### 1.3 Multi-agent multiplies the bill
+
+A single-agent LLM context is one expense; an N-agent LLM system broadcasts the same shared context to N receivers, each maintaining its own history, each prepending its own scaffolding. The cost grows worse than N × in practice because each receiver's per-round prefix grows as the conversation accumulates. The frameworks that have organised this regime experimentally — AutoGen (Wu et al., ICLR 2024 LLM-Agents Workshop — *not* a main-conference paper), MetaGPT (Hong et al., ICLR 2024), CAMEL (Li et al., NeurIPS 2023) — each manages shared context differently. None of them formally bounds the *loss* introduced when that shared context is compressed.
+
+### 1.4 Compression is the lever, but the field has a blind spot
+
+The compression literature has matured rapidly: LLMLingua (Jiang et al., EMNLP 2023), LongLLMLingua (Jiang et al., ACL 2024), LLMLingua-2 (Pan et al., Findings of ACL 2024), Selective Context (Li et al., EMNLP 2023), RECOMP (Xu et al., ICLR 2024), Gist Tokens (Mu et al., NeurIPS 2023), AutoCompressor (Chevalier et al., EMNLP 2023), and In-context Autoencoder (Ge et al., ICLR 2024). The evaluation, however, is overwhelmingly **single-agent question answering**: LongBench (Bai et al., ACL 2024), RULER (Hsieh et al., COLM 2024 / arXiv), in-domain QA F1 scores against single-document references. The question this thesis answers — *does compression that preserves QA also preserve the kind of structured cross-fragment reasoning a multi-agent planner needs?* — has not been measured systematically.
+
+Foreshadowing the answer: it does not. Across the four compressors evaluated in Chapter 5, the within-compressor Spearman correlation between change-in-QA-F1 and change-in-coordination-success lies in the range [−0.593, +0.384], with every 95 % bootstrap CI excluding 0.6 from above. The two metrics are nearly orthogonal in this regime, with filter exhibiting a notable *negative* correlation: a compressor that scores well on a QA-F1 leaderboard can still destroy multi-fragment coordination at the same operating ratio.
+
+### 1.5 Problem statement and scope (per ADR-009)
+
+**Problem statement.** *How does context compression affect multi-fragment coordination quality across compressors, task structures, and planner scales — and when and how can a memory-bus service exploit that understanding to compress safely, predictably, and privately?*
+
+**Scope disclosure.** *All experiments measure task-solvability under compression. The planner is either a deterministic regex parser (H1, H2) or a single LLM call with all compressed fragments visible (H5, H6, frontier validation). The memory bus is designed for multi-agent integration, but multi-round LLM agent simulation is outside the scope of this thesis's empirical evaluation.*
+
+The scope disclosure is the central honesty move of the manuscript. ADR-009 records the reasoning: although the bus's API, audit log, and retrieval interface are designed for multi-round multi-agent use, our production experiments used either a deterministic regex parser (to isolate the compression effect from LLM sampling noise) or a single LLM call (to measure task-solvability at frontier scales without round-to-round variance dominating). The AutoGen multi-round backend exists in the codebase but was excluded from production runs for variance-control reasons (Ch 3 §3.4). The thesis title carries *Multi-Fragment LLM Workflows* to reflect this restriction; the codebase, repository name, and earlier planning artefacts retain *Multi-Agent Coordination* for back-compatibility.
+
+### 1.6 Contributions
+
+**C1 — A multi-fragment coordination benchmark.** Three workload families (cross-document fact aggregation, constraint-satisfaction planning, multi-step retrieval), 150 instances total, coordination metrics computed purely from trace logs, three ACL tag distributions, single-command regeneration from a seed. Released under a permissive licence (Appendix A).
+
+**C2 — Empirical characterisation of training-free compression's effect on coordination, with a predictive model.** Across four training-free compressors (LLMLingua-2, Phi-3-Mini extractive, instruction-aware filter, prefix truncation), three task families, ten compression ratios, fifty workloads per family, five seeds — 27 000 cells. **H1 (QA decorrelates from coordination) SUPPORTED**; **H2 (coordination cliff) SUPPORTED on 11/12 cells with Holm-corrected p < 10⁻⁵**. A **compounding-error model** derives the cliff position from per-family θ_q and the measured token-recall curve, and a **bootstrap CI on θ_q** (workload-level, 500 resamples) propagates to a predicted-τ\* band with quantified residual against empirical τ\* — a first-order analytical bound, not a pointwise predictor (Ch 5 §5.5). **Corollary 1 (ceiling-cliff separation) SUPPORTED** within the calibrated regime, and frontier-validated on Qwen 72B (0.8 % off the synthetic reference) and DeepSeek V4 Pro (CI contains the synthetic reference); GPT-oss 120B is documented as the **out-of-regime exception** per ADR-006.
+
+**C3 — A RAG pipeline placement catalogue under matched cost regimes.** Three pipelines (P1 compress-→-retrieve, P2 retrieve-→-compress, P3 joint relevance-conditional) evaluated under storage- and accuracy-bounded regimes with a EUR-per-workflow cost model. **The pre-registered H3 sign-flip did not appear**: P1 leads P2 by +3.2 pp in the storage-bounded regime and +2.0 pp in the accuracy-bounded regime, both Holm-corrected p < 0.0001. P3 dominates the combined F1 / EUR ranking in both regimes. We report H3 as NOT SUPPORTED honestly and discuss the *partial challenge* to LongLLMLingua's retrieve-first assumption that the data implies.
+
+**C4 — Memory bus with summary-level inference-disclosure metric.** FastAPI service with policy-enforcement middleware, append-only SHA-256-chained SQLite audit log, in-memory TTL/LRU scratchpad, FAISS-CPU vector store. **H4 (protected-fact recovery reduces under compression) SUPPORTED on the unbiased benchmark**: filter −21.4 pp and LLMLingua-2 −18.9 pp recovery reduction (both Holm-corrected p = 6 × 10⁻⁴); Phi-3-extractive −7.5 pp (Holm-corrected p = 0.027 borderline). The signal-test (baseline − priors = +28.6 pp) confirms the metric measures real protected-fact channel. **Corollary 2 (θ_info varies by task) SUPPORTED**: C1 family-a θ_info ≈ 0.97, MultiHopRAG ≈ 0.48, HotpotQA ≈ 0.37 — the variation explains the τ\* differences.
+
+### 1.7 Thesis outline
+
+**Chapter 2** surveys the literature with paragraph-closing "what's missing in prior work" lines: transformer cost (2.1), scaling-law backdrop (2.2), cost of running LLMs at scale (2.3), multi-agent LLM systems and shared context (2.4), context compression breakthroughs (2.5 — the largest subsection), RAG / long-context (2.6), privacy in LLM systems (2.7), and a single-paragraph gap statement tied to C1–C4 (2.8). **Chapter 3** describes the system: memory-bus architecture, compressor catalogue, inference backend, and the deterministic-solver-vs-LLM-planner evaluation methodology disclosure (per ADR-009). **Chapter 4** documents the C1 benchmark. **Chapter 5** is the headline chapter (11–13 pp): the H1 / H2 verdicts, the compounding-error model with its bootstrap-CI band, Corollary 1, and frontier validation. **Chapter 6** reports the H3 negative finding honestly. **Chapter 7** combines H4 (inference disclosure on the unbiased benchmark), Corollary 2 (information-density scaling), and the memory bus's measurement infrastructure. **Chapter 8** discusses CAAC as a constructive realisation of the model's safety bound, lists methodological and model-level limitations, and orders future work by leverage.
+
+All artefacts — code, data, configs, results CSVs, and the LaTeX manuscript source — are released under a permissive licence; reproducibility commands and model cards are catalogued in Appendix A.
+
+---
+
+## Chapter 2 — Background and Related Work (12–14 pp)
+
+> **Chapter abstract.** This chapter is structured to support a reader with an engineering MSc background but without LLM/NLP specialisation. §2.1 introduces the transformer at the level needed to motivate token-cost arguments, including a complexity walk-through. §2.2 places frontier LLMs in scaling-law context. §2.3 develops the cost-of-context argument with peer-reviewed energy measurements and industry pricing. §2.4 surveys multi-agent LLM frameworks with explicit venue labels. §2.5 — the largest subsection — surveys the compression breakthroughs by family, closing every family with a "what's missing in prior work" line and culminating in a side-by-side comparison table. §2.6 covers RAG and long-context engineering. §2.7 covers privacy in LLM and agentic memory systems. §2.8 ties the literature gaps to the four contributions of this thesis.
+
+### 2.1 Transformer architecture and the cost of context (~2 pp)
+
+**Reader prerequisite.** An engineering MSc-holder without a transformer background can follow this subsection; readers fluent in self-attention can skim to §2.1 closing paragraph.
+
+The transformer architecture (Vaswani et al., *Attention Is All You Need*, NeurIPS 2017) replaces recurrence with **self-attention**: each token in a sequence produces three projected vectors (a query Q, a key K, and a value V) and the output for each token is a value-weighted average of all other tokens' values, with the weights determined by the scaled dot-products of queries and keys. Concretely, for a sequence of N tokens with model dimension d, the attention computation produces an N × N matrix of pairwise scores. This is the **O(N²) attention complexity** that dominates the cost story.
+
+A worked example anchors the cost. For a context of N = 8 192 tokens, a single attention head with head dimension d_head = 64 stores 8 192 × 8 192 = ~67 million attention scores (~ 67 MB at FP32 per head). With 32 heads per layer, the head matrices alone cross 2 GB of intermediate state per layer, and the FFN block (which projects the attended representations through a wider hidden dimension and back) consumes comparable memory. Multiplying by the number of layers, **a single 32K-token prefill on a 70B-parameter model can saturate the memory bandwidth of a single high-end GPU before it ever produces an output token.** This is the regime in which production deployments live.
+
+**Decoder-only architecture.** Three lineages emerged from the original transformer: the encoder-decoder line (T5), the encoder-only line (BERT), and the decoder-only line with causal attention masking (GPT-2, GPT-3, GPT-4, Llama, Qwen, DeepSeek). Decoder-only architectures dominate the frontier today for three reasons: (a) the unified next-token-prediction training objective scales cleanly with both data and parameter count; (b) the autoregressive *KV-cache* makes per-token decoding cheap *after* the prefill — keys and values for already-seen tokens are reused; (c) the in-context-learning behaviour that motivates agentic systems is a decoder-only phenomenon, observed first in GPT-3 (Brown et al., NeurIPS 2020) and elaborated in every subsequent frontier model.
+
+**Per-token cost decomposition.** Inference cost splits into two regimes. *Prefill* is dominated by the O(N²) attention plus O(N) FFN work; the dominant FLOP estimate (per Kaplan et al., 2020) is roughly 2 · N_params · N_tokens. *Decode* (per output token) is O(1) on the new token's attention against the cached keys plus O(N) on the FFN — much cheaper per token but paid for every output token. Memory at long context is dominated by the KV cache: ~ 2 · N_layers · N_heads · d_head · N_tokens bytes per request, multiplied by every concurrent request. This grows *linearly* in context length; at long contexts, KV-cache memory exceeds parameter memory for batches of even modest size.
+
+*Figure 2.1 (sketch).* Transformer block schematic: token embedding → Q/K/V projections → scaled-dot-product attention → residual + FFN → next block. A side panel shows the KV-cache reuse path during decoding.
+
+**Closing.** Every token in the context window costs compute, memory, and energy that scales with the model and the context length. The opportunity in compression is exactly proportional to the fraction of those tokens that do not change the answer. The remainder of this chapter surveys the field that exploits that opportunity, and ends by naming the property the field has not yet measured.
+
+### 2.2 Scaling laws and the modern LLM (~1.5 pp)
+
+The scaling-laws programme began with Kaplan et al. (2020), which fit power laws of loss against model size, data volume, and training compute. Hoffmann et al.'s *Chinchilla* paper (NeurIPS 2022) corrected the optimal-compute allocation between parameters and tokens. The empirical trajectory from GPT-2 (1.5 B parameters, 2019) to GPT-3 (175 B, 2020), GPT-4 (undisclosed, 2023), and the 2024–2026 frontier (Llama-3.x, Qwen-72B/2.5, DeepSeek-V3/V4, Claude-Sonnet-4.x, GPT-oss-120B) tracks the scaling laws closely on training-loss extrapolation.
+
+For this thesis, the operative observation is the *inference-cost asymmetry*. Scaling laws give us a recipe to spend training compute productively; inference cost — paid per query, forever — is proportional to *(parameters × tokens)*, with tokens growing as contexts grow. The frontier of capability is moving toward longer context windows; the frontier of cost is moving against them. Context compression sits at that intersection.
+
+### 2.3 The cost of running LLMs at scale (~1.5 pp)
+
+**Peer-reviewed energy anchor.** Luccioni, Jernite, and Strubell (2024), *Power Hungry Processing: Watts Driving the Cost of AI Deployment* (peer-reviewed venue per the citation pass), measure per-inference watt-hours on open-source language models. The headline numbers depend on the model and the query-token mix; the qualitative finding is that per-inference energy is non-trivial at frontier scale and grows roughly with context length. Patterson et al. (2021) provide the historical-anchor measurement of training-time carbon emissions for the GPT-3-era frontier; the inference-side measurement is the operative one for context compression because inference is paid per query, not once per model.
+
+**Token economics.** As of the 2026 writing pass, a representative frontier-cloud tier charges roughly USD 3 / million input tokens and USD 15 / million output tokens. Plan-v3 §3 (drawing on the FCG financial-analysis internal reference) operationalises an amortised on-prem rate of 0.05 EUR / million tokens for the bus's retrieval-side cost; this is the cost-unit Ch 6 uses in the H3 EUR / workflow analysis. At a million calls per day, every 100 tokens of waste in a shared prompt template is on the order of USD 300 / day in input cost alone.
+
+**Politeness as waste (industry observation).** Sam Altman's widely-reported remark that please-and-thank-you compute at OpenAI costs "tens of millions of dollars" (press reporting, not a peer-reviewed measurement) is cited here as a contrast point: even informal observations agree with the peer-reviewed Wh measurement in direction. The point is rhetorical — token waste is non-trivial in scale by any measurement style — not academic.
+
+**Multi-agent multiplier.** Anthropic's "How We Built Our Multi-Agent Research System" (2025) reports that token usage explains approximately 80 % of performance variance across runs of their multi-agent research workflow. Labelled honestly as industry blog, not peer-reviewed measurement. Multi-agent systems pass shared context between agents, often multiple times per round; the per-token cost is multiplied by approximately (agents × rounds × redundancy factor). The opportunity for compression in this regime is correspondingly larger.
+
+**What's missing.** The peer-reviewed and industry numbers above all establish that compression is an *engineering* lever. None of them ask whether a compressor that reduces token cost also reduces the *information* needed by a multi-fragment planner. That is the question this thesis asks.
+
+### 2.4 Multi-agent LLM systems and shared context (~1.5 pp)
+
+The major frameworks, with verified venues:
+
+| Framework | Authors | Venue | Coordination mechanism | How shared context flows |
+|---|---|---|---|---|
+| AutoGen | Wu et al. | ICLR 2024 **LLM-Agents Workshop** (not main) | Conversation roles (planner / worker / critic) | Full conversation history shared per turn |
+| MetaGPT | Hong et al. | ICLR 2024 | Standard operating procedures + role specialisation | Structured artefacts (specs, code, tests) between roles |
+| CAMEL | Li et al. | NeurIPS 2023 | Role-playing dialogue between two agents | Full dialogue history |
+| Reflexion | Shinn et al. | NeurIPS 2023 | Verbal reinforcement (self-critique loop) | Trajectory + reflection memory |
+| MemGPT | Packer et al. | arXiv 2310.08560 (**preprint, not peer-reviewed**) | OS-style memory hierarchy | Function calls between core / external memory |
+| Generative Agents | Park et al. | UIST 2023 | Time-stepped reflection + retrieval | Episodic memory retrieval per agent |
+
+Each framework manages shared context differently, with implicit assumptions about how much information must reach each agent. **None bounds the loss introduced when that context is compressed.** AutoGen's per-turn conversation broadcast is the most compression-relevant; MetaGPT's structured-artefact mediation is the most compression-tolerant by construction; Generative Agents' episodic-memory retrieval is the closest analogue to the memory-bus architecture of this thesis but does not measure the *compressor*'s contribution to the agents' downstream success.
+
+**What's missing.** Multi-agent frameworks have proliferated, but the question of how much information must reach each agent for the system to function has been addressed empirically per-framework, never structurally. This thesis offers a structural answer (the coordination cliff and its predictive model — Ch 5).
+
+### 2.5 Context compression — the breakthrough works (~3 pp, the largest §2.x subsection)
+
+This subsection is the literature anchor for the compressor choices in Ch 3. We organise by *family*; every family closes with a "what this thesis does differently" line.
+
+**2.5.1 Token-level pruning — the LLMLingua family.** Jiang et al.'s **LLMLingua** (EMNLP 2023) introduced the small-LM-scores-token-importance recipe: a smaller language model rates each token in the prompt; tokens with the lowest scores are dropped. The trade-off is task-aware token retention vs aggressive pruning. **LongLLMLingua** (Jiang et al., ACL 2024) extends to question-aware compression for retrieval-augmented contexts, conditioning the importance signal on the downstream query. **LLMLingua-2** (Pan et al., Findings of ACL 2024) distils the token-importance signal into a small XLM-RoBERTa classifier — eliminating the inference-time scoring LM and replacing it with a fast per-token tag prediction. LLMLingua-2 is the canonical token-level compressor used throughout Ch 5 and Ch 7. *What's missing:* coordination-quality evaluation. All three papers measure QA-F1 or perplexity; none measures whether a downstream planner can solve a multi-fragment task. **This thesis fills that gap (Ch 5, H1).**
+
+**2.5.2 Selective and instruction-aware compression.** Li et al.'s **Selective Context** (EMNLP 2023) measures self-information per token from a frozen LM and drops the lowest-self-information tail — task-agnostic. Xu et al.'s **RECOMP** (ICLR 2024) trains a small task-aware compressor specifically for retrieval-augmented language models, learning extractive and abstractive summaries jointly. *What's missing:* a training-free instruction-aware compressor that depends only on lightweight off-the-shelf components. **This thesis includes an instruction-aware filter (TF-IDF + bge-reranker-base cross-encoder) as a deliberately lightweight baseline (Ch 3 §3.2, Ch 5).**
+
+**2.5.3 Learned compression — parameter-cost compressors.** Mu et al.'s **Gist Tokens** (NeurIPS 2023) fine-tunes a base LM to compress prompts into a small number of learned "gist" tokens, preserving downstream behaviour. Chevalier et al.'s **AutoCompressor** (EMNLP 2023) recursively compresses long contexts with summary tokens trained end-to-end. Ge et al.'s **In-context Autoencoder** (ICLR 2024) trains a dedicated encoder/decoder pair. Rae et al.'s **Compressive Transformers** (ICLR 2020) attack the problem architecturally, compressing past activations in the model's memory stack. *What's missing:* training-free portability across compressor and planner. **This thesis stays entirely training-free, which enables fair cross-compressor comparison and matches how practitioners deploy compression in production without retraining their planners (Ch 3).**
+
+**2.5.4 Extractive compression with small LLMs — the Phi-3 family.** Phi-3-Mini-3.8B (Microsoft, 2024; model card) is positioned as a small instruction-tuned model that can be steered with extractive prompts to select verbatim spans from a source document. *What's missing:* a principled way to *enforce* extractiveness — prompt-only constraints are easy to ask for, hard to verify. **This thesis adds a post-hoc novel-token verifier (`Phi3ExtractiveCompressor._verify_extractive`) with a 15 % novel-token tolerance and an LLMLingua-2 fallback when the verifier rejects (Ch 3 §3.2).** The deployed Phi-3 extractive compressor saturates at approximately 2.5 × achievable compression for the C1 family-a regime; this saturation is the dominant Phi-3 limitation, documented in Ch 8.
+
+**Comparison table.** The following table is the visual anchor for the rubric-#4 closing of §2.5. Columns capture the properties that matter for *this thesis*'s evaluation: training-free deployment, instruction-awareness, and multi-fragment-coordination evaluation.
+
+| Compressor family | Training-free? | Instruction-aware? | Multi-fragment coordination evaluated? | Used in this thesis? |
+|---|---|---|---|---|
+| LLMLingua (Jiang 2023) | yes | partial | no | ancestor of LLMLingua-2 (used) |
+| LongLLMLingua (Jiang 2024) | yes | yes | no | conceptual ancestor of P2 RAG pipeline |
+| **LLMLingua-2 (Pan 2024)** | yes | partial | **yes (this thesis)** | **yes** |
+| Selective Context (Li 2023) | yes | no | no | not used |
+| RECOMP (Xu 2024) | no (trained) | yes | no | not used |
+| Gist Tokens (Mu 2023) | no (trained) | yes | no | not used |
+| AutoCompressor (Chevalier 2023) | no (trained) | no | no | not used |
+| In-context Autoencoder (Ge 2024) | no (trained) | no | no | not used |
+| Compressive Transformers (Rae 2020) | no (trained) | no | no | not used |
+| **Phi-3 extractive (this thesis)** | yes | yes (prompt-based) | **yes (this thesis)** | **yes** |
+| **Instruction-aware filter (this thesis)** | yes | yes (TF-IDF + bge-reranker-base) | **yes (this thesis)** | **yes** |
+| **Prefix truncation (baseline)** | yes | no | **yes (this thesis)** | **yes (baseline)** |
+
+The third column is "no" for every prior-work entry. This is the literature gap this thesis closes.
+
+### 2.6 RAG and long-context engineering (~1.5 pp)
+
+The retrieval-augmented generation lineage starts with Lewis et al.'s **RAG** (NeurIPS 2020) — a learned retriever paired with a generative reader. The 2023–2024 wave layered structure onto retrieval: **RAPTOR** (Sarthi et al., ICLR 2024) builds a recursive abstractive summary tree; **GraphRAG** (Edge et al., 2024 — *preprint, label as such*) builds a knowledge graph over the corpus and routes queries through it; **HippoRAG** (Gutiérrez et al., NeurIPS 2024) is neurobiologically motivated; **Self-RAG** (Asai et al., ICLR 2024) adds retrieval-aware critique.
+
+The long-context-evaluation lineage runs in parallel: **Lost in the Middle** (Liu et al., TACL 2024) characterised the U-shaped attention bias of long-context LLMs; **LongBench** (Bai et al., ACL 2024) and **RULER** (Hsieh et al., COLM 2024) define multi-task long-context benchmarks.
+
+**What's missing.** None of these benchmarks measures the multi-fragment, multi-agent task structure of this thesis (coordination success under compression). This thesis treats LongBench and RULER as *orthogonal*: they measure context capacity; we measure compression behaviour under that capacity. Chapter 6's H3 result is the closest direct comparison to the RAG-pipeline-placement literature (P1 vs P2 vs P3 under matched cost regimes), and the *partial challenge* to LongLLMLingua's retrieve-first assumption is the most direct interaction between this thesis and the RAG literature.
+
+### 2.7 Privacy in LLM and agentic memory systems (~1 pp)
+
+Prior privacy work in LLM-adjacent systems falls into three families. **Differential privacy in fine-tuning** (Yu et al., Anil et al., others — verify venues per citation pass) protects model weights against membership-inference. **Privacy-aware RAG** protects the retrieval index against reverse-search attacks. **Training-data extraction** (Carlini et al., USENIX Security 2021) documents that pre-trained LLMs can memorise and emit verbatim training data, motivating privacy-preserving training.
+
+**What's missing.** None of these threads measures leakage *through the compressor itself*. Compression is a privacy lever in its own right: information that the compressor discards cannot be inferred from the compressed payload by a downstream reader. The summary-level inference-disclosure metric introduced in Ch 7 (C4 / H4) measures this lever directly — for each protected fact, the rate at which a held-out reader can recover it from the compressed summary, compared to the uncompressed baseline and to a priors-only ceiling. This is, to our knowledge, the first measurement of compressor-mediated protected-fact leakage in a multi-fragment setting.
+
+### 2.8 The gap this thesis closes
+
+Four sharp claims, one per contribution:
+
+1. **There is no shared multi-fragment coordination benchmark probing the cliff.** Existing benchmarks (LongBench, RULER, single-document QA) measure context capacity; none measures the structured cross-fragment reasoning that distinguishes a multi-agent planner from a single-document QA reader. **C1 fills this gap.**
+
+2. **There is no operational bound that predicts cliff position from compressor and task.** The compression literature reports per-task QA-F1 retention; the multi-agent literature reports per-framework token usage. **C2's compounding-error model and its bootstrap-CI band fill this gap** within the calibrated regime defined by ADR-006.
+
+3. **There is no honest catalogue of RAG pipeline placement under matched cost regimes.** Practitioners default to LongLLMLingua's retrieve-first assumption; this thesis tests it and reports an honest *negative finding* on the predicted sign-flip. **C3 fills this gap** and surfaces the partial challenge to retrieve-first as an empirical observation, not a refutation.
+
+4. **There is no compressor-level inference-disclosure measurement.** Privacy-aware RAG protects the index; differential-privacy training protects the weights. **C4 measures the compressor**, in a multi-fragment setting, with a held-out reader.
+
+The remainder of the thesis develops each of these contributions in turn.
 
 ---
 
@@ -127,7 +340,7 @@ All three scorers are *trace-only*: no LLM is in the loop on the scoring side. T
 
 ## Chapter 5 — Compression Effects on Coordination (11–13 pp) — *the headline chapter*
 
-> **Chapter abstract.** We sweep four compressors × 10 compression ratios × three task families × 50 workloads × 5 seeds (`results/h1_h2_v2/`, 27 000 cells) to characterise how training-free compression affects multi-fragment coordination. **H1** — QA accuracy and coordination success are decorrelated (Spearman |ρ| < 0.6 across all compressors, CIs excluding 0.6 from above). **H2** — a coordination cliff τ\* exists, is sharp (≥ 30 % relative drop at the threshold ratio), and is statistically robust on 8 of 9 (compressor, family) cells (paired Wilcoxon p < 0.0001 Holm-corrected). **§5.4** introduces the *compounding-error model* (per `ADR-008`, formerly "Theorem 1") that derives τ\* from per-family θ_q and the measured token-recall curve q(r); **§5.5** propagates a bootstrap CI on θ_q through the model to a *predicted-τ\* band* (`results/h1_h2_v2/theorem_validation_bootstrap.json`). **§5.6** reframes the H5 model-size scaling result as **Corollary 1** (ceiling-cliff separation) — model capacity affects the *ceiling* p₀, not the *cliff position* τ\* — supported on all three Qwen sizes within the calibrated regime. **§5.7** extends the validation to frontier scales: Qwen 72B (0.8 % off the synthetic reference) and DeepSeek V4 Pro (CI contains the synthetic reference) validate Corollary 1 across architecture families; GPT-oss 120B is scoped out per `ADR-006` as an extended-reasoning planner outside the calibrated regime. **§5.8** sketches the mechanism: Chernoff concentration on the surviving token fraction explains cliff sharpness; the calibrated-regime predicate explains the GPT-oss exception.
+> **Chapter abstract.** We sweep four compressors × 10 compression ratios × three task families × 50 workloads × 5 seeds (`results/h1_h2_v2/`, 27 000 cells) to characterise how training-free compression affects multi-fragment coordination. **H1** — QA accuracy and coordination success are decorrelated (Spearman ρ in [−0.593, +0.384] across the four compressors, all 95 % CIs excluding 0.6 from above; SUPPORTED). **H2** — a coordination cliff τ\* exists, is sharp (drop_rel ≥ 0.97 for 11 of 12 cells), and is statistically robust on 11 of 12 (compressor, family) cells (paired Wilcoxon p < 10⁻⁵ Holm-corrected; SUPPORTED). **§5.4** introduces the *compounding-error model* (per `ADR-008`, formerly "Theorem 1") that derives τ\* from per-family θ_q and the measured token-recall curve q(r); **§5.5** propagates a bootstrap CI on θ_q through the model to a *predicted-τ\* band* (`results/h1_h2_v2/theorem_validation_bootstrap.json`). **§5.6** reframes the H5 model-size scaling result as **Corollary 1** (ceiling-cliff separation) — model capacity affects the *ceiling* p₀, not the *cliff position* τ\* — supported on all three Qwen sizes within the calibrated regime. **§5.7** extends the validation to frontier scales: Qwen 72B (0.8 % off the synthetic reference) and DeepSeek V4 Pro (CI contains the synthetic reference) validate Corollary 1 across architecture families; GPT-oss 120B is scoped out per `ADR-006` as an extended-reasoning planner outside the calibrated regime. **§5.8** sketches the mechanism: Chernoff concentration on the surviving token fraction explains cliff sharpness; the calibrated-regime predicate explains the GPT-oss exception.
 
 ### 5.1 Experimental design
 
@@ -258,7 +471,7 @@ Both directions point to A2: token importance is graded, not binary, and the gap
 
 *Figure 5.6 (`figures/h5_model_overlay.png`): direct overlay of family-c cliff curves across the three Qwen scales — the cliff edges align at ratio ≈ 4, supporting Corollary 1.*
 
-**Interpretation.** Model capacity affects *how often* the planner succeeds at r = 1 (the ceiling) but not *at what ratio* compression destroys success (the cliff position). This is what the compounding-error model predicts: τ\* depends on the compressor's q(r) and the task's θ_q, both of which are planner-independent quantities.
+**Interpretation.** Model capacity affects *how often* the planner succeeds at r = 1 (the ceiling) but not *at what ratio* compression destroys success (the cliff position) — within the calibrated regime. This is what the compounding-error model predicts: τ\* depends on the compressor's q(r) and the task's θ_q, both of which are planner-independent quantities under the calibrated-regime predicate of ADR-006.
 
 **Limitation.** All three local scales are Qwen-2.5 variants; cross-architecture validation appears in §5.7.
 
@@ -487,7 +700,7 @@ The thesis does *not* claim CAAC strictly Pareto-dominates fixed-ratio compressi
 
 **Reading.** CAAC's value is concentrated on (filter, family-a) and (LLMLingua-2, family-c). These are the two (inner, family) cells where (i) fixed-ratio compression cliffs in the swept range, and (ii) the inner compressor's q above q_min at r < cliff is high enough that CAAC's binary search can find a safe operating point above min_ratio. When either condition fails (most cells), CAAC pancakes to the min_ratio floor — a behaviour acknowledged in the CAAC docstring and visible in the data. Across all 12 cells the weak-dominance rate (CAAC coord ≥ fixed coord) is 100 %, but as noted, this is not a "win" in the Pareto sense; it is the *no-harm* property of a wrapper that respects a safety bound.
 
-**The θ / N ablation (informative null).** A 7-config grid sweep over θ ∈ {0.6, 0.7, 0.8} and N ∈ {2, 3, 4, 5} (results: `results/caac_theta_*`, `results/caac_N_*`) shows that CAAC's coord_success is *invariant* to θ and N within the swept range, while the achieved ratio retreats monotonically toward the min_ratio floor as either parameter tightens. This is consistent with CAAC functioning as a *safety floor* rather than as a Pareto optimiser: θ and N control *how aggressively CAAC backs off*, not *whether CAAC unlocks a new operating point*. The result, documented in `insights §54`, is *informative null evidence* — a finding that the algorithm has the character its model says it should, not a refutation.
+**The θ_q / N ablation (informative null).** A 7-config grid sweep over CAAC's θ_q parameter ∈ {0.6, 0.7, 0.8} and N ∈ {2, 3, 4, 5} (results: `results/caac_theta_*`, `results/caac_N_*`) shows that CAAC's coord_success is *invariant* to θ_q and N within the swept range, while the achieved ratio retreats monotonically toward the min_ratio floor as either parameter tightens. This is consistent with CAAC functioning as a *safety floor* rather than as a Pareto optimiser: θ_q and N control *how aggressively CAAC backs off*, not *whether CAAC unlocks a new operating point*. The result, documented in `insights §54`, is *informative null evidence* — a finding that the algorithm has the character its model says it should, not a refutation.
 
 ### 8.3 Methodological limitations
 
@@ -527,10 +740,108 @@ LongLLMLingua (Jiang et al., ACL 2024) argues that post-retrieval compression (P
 
 ---
 
-## Pass-1 status
+## Appendix A — Reproducibility (~3 pp, sketch)
 
-This pass covers Chapters 3, 4, 5, 6, 7, and 8 — Section 7 ("Order of writing") of `thesis_PLAN.md` recommends this order because these are the methods + results chapters. Pass 2 closes with Chapter 2 (Background) and Chapter 1 (Introduction), to be drafted after the chapters above are settled — Section 7 explicitly recommends writing Intro last because the contributions are only fully verified at the end of writing.
+**Pipeline summary.** Every chapter figure regenerates from a single `make` target; every results CSV is produced by a self-contained Python script. The end-to-end wallclock for the full evidence base is approximately 30 hours on an M4 Pro 48 GB + RTX 5090 32 GB (WSL2) combination, dominated by the H1/H2 sweep (~10 h) and the H5 model-size scaling sweep (~6 h).
 
-**Numbers refresh pass 1 complete (2026-05-30).** All H1, H2, H4 verdict-block numbers in this draft are from the canonical `results/h1_h2_v2/verdicts.json` (H1, H2) and `results/h4_unbiased/verdicts.json` (H4). The terminology and framing are locked against `CONTEXT.md`, ADR-006, ADR-007, ADR-008, and ADR-009. The pre-submission checklist (`thesis_PLAN.md §8`) is the next-pass verification target.
+**Per-chapter regeneration commands.**
 
-**Word/page estimate at pass 1.** Chapters 3–8 in this draft total roughly 11 000 words → ~28–32 pages at Oulu thesis margins. Combined with the ~16–20 pages of Chapters 1, 2 and Appendices in pass 2, the manuscript trends toward the 50–60-page envelope expected for a Master's thesis at this scope.
+| Chapter | Artefact | Command | Wallclock |
+|---|---|---|---|
+| 4 | `data/processed/c1-v0.1/` | `make bench-generate` | <5 min CPU |
+| 5 §5.2–5.3 | `results/h1_h2_v2/` | `python -m m6.experiments.run_h1_h2` | ~10 h GPU |
+| 5 §5.5 | `results/h1_h2_v2/theorem_validation_bootstrap.json` + `figures/predicted_vs_empirical.{png,pdf}` | `python scripts/bootstrap_theta_q.py` | ~5 min CPU |
+| 5 §5.6 | `results/h5_final/` | `python -m m6.experiments.run_h5` | ~6 h GPU |
+| 5 §5.7 | `results/frontier_qwen72b/`, `results/frontier_deepseekv4/` | `python -m m6.experiments.run_frontier --provider featherless --model qwen72b` (and `deepseek`) | ~2 h API each, < €1 total |
+| 6 | `results/h3_final/` | `python -m m6.experiments.run_h3` | ~3 h GPU |
+| 7 §7.1 | `results/h4_unbiased/` | `python -m m6.experiments.run_h4` | ~3 h GPU |
+| 7 §7.4 | `results/h6_final/`, `results/hotpotqa_sweep/` | `python -m m6.experiments.run_h6 --synth-results results/h5_full` (and `run_hotpotqa.py`) | ~2 h GPU each |
+| 8 §8.2 | `results/caac/` + `figures/caac_pareto.{png,pdf}` | `python -m m6.experiments.run_caac` | ~15 min GPU |
+| all | regenerated figures | `python scripts/regen_figures.py` | <5 min CPU |
+
+**Model cards.** Qwen-2.5-{1.5B, 3.8B, 8B, 72B}-Instruct (Alibaba; instruction-tuned causal LM; used as planners and frontier reference); Phi-3-Mini-3.8B-Instruct (Microsoft; used as the extractive compressor); Llama-3.1-8B-Instruct (Meta; used as the H4 held-out reader); DeepSeek-V4-Pro (DeepSeek; used as the secondary frontier validation); LLMLingua-2-XLM-RoBERTa-Large-MeetingBank (Microsoft; used as the LLMLingua-2 compressor); BAAI/bge-large-en-v1.5 and BAAI/bge-reranker-base (Beijing Academy of AI; used as retriever and filter reranker respectively). Each entry catalogues the licence, quantisation (q4_K_M for the Qwen / Phi / Llama family), and any deployment notes (Ollama runtime for all local models; OpenAI-compatible API for Qwen-72B and DeepSeek).
+
+**Data cards.** C1 v0.1 (this thesis; synthetic; CC-BY licence; reproducible from a seed). MultiHopRAG (Tang & Yang, EMNLP 2024 Findings; news-article multi-hop QA; permissive academic licence). HotpotQA (Yang et al., EMNLP 2018; Wikipedia-paragraph multi-hop QA; CC-BY-SA).
+
+**Reproducibility checklist (pre-submission verification).** Every cited result trace to a named `results/*/` directory; every figure regenerates from a single command; every model card present; Docker compose for the memory-bus service verified to build; GitHub release tag cut at thesis-submission time. *Pre-submission action items pulled forward into Task 9 of the active sprint.*
+
+---
+
+## Appendix B — Full per-cell results tables (~3 pp, sketch)
+
+**Table B.1 — H1 (information preservation vs coordination).** Per-compressor Spearman ρ with 95 % bootstrap CI, n, Cliff's δ, Cohen's d, p-value. Pulled directly from `results/h1_h2_v2/verdicts.json` H1 block. Already summarised in Ch 5 §5.2.
+
+**Table B.2 — H2 (coordination cliff).** Rows: (compressor, family). Columns: baseline coord, logistic τ\*, drop_rel, test_p_holm, model_selected, n_pairs, Cohen's d. Pulled from `results/h1_h2_v2/verdicts.json` H2 cell list (12 cells in the 4-compressor variant). The τ\* spread by family (a 6.6 %, b 74.9 %, c 106.2 %) is reproduced.
+
+**Table B.3 — Per-family θ_q (CTR) and bootstrap CI.** From `results/h1_h2_v2/theorem_validation_bootstrap.json`. Three rows (family-a, family-b, family-c), columns: mean θ_q, 95 % CI low, 95 % CI high, n_resamples.
+
+**Table B.4 — Predicted-τ\* band vs empirical τ\* coverage.** Per-(compressor, family) cell rows. Columns: predicted median, CI low, CI high, empirical τ\* from `theorem_validation_ctr.json`, in-band Boolean, comment. Reproduces the 0 / 11 coverage finding.
+
+**Table B.5 — Corollary 1 (H5 reframed).** Per-family AUC and τ\* per planner scale (1.5B / 3.8B / 8B). Floor-effect flag per cell. Pulled from `results/h5_final/`. Family-c τ\* spread = 24 %, supporting Corollary 1.
+
+**Table B.6 — Frontier validation.** Per-frontier-model rows (Qwen 72B, DeepSeek V4 Pro, GPT-oss 120B v1, GPT-oss 120B v2). Columns: frontier τ\* point estimate, bootstrap CI, baseline coord at r=1, cost (EUR), in-regime per ADR-006. GPT-oss rows annotated as out-of-regime.
+
+**Table B.7 — H3 RAG pipeline.** Three rows (P1, P2, P3) × two regimes (storage-, accuracy-bounded). Columns: F1 / EUR composite, F1, EUR/workflow, retrieval recall@10, index size MB. Pulled from `results/h3_final/`.
+
+**Table B.8 — H4 protected-fact recovery.** Per-compressor rows. Columns: priors rate, baseline rate, compressed (4×) rate, signal CI, signal p_holm, reduction CI, reduction p_holm. Pulled from `results/h4_unbiased/verdicts.json`.
+
+**Table B.9 — Corollary 2 (θ_info per task).** Three rows (C1 family-a, MultiHopRAG, HotpotQA). Columns: θ_info, baseline coord, mean F1, n_workloads. Pulled from `results/h6_final/`, `results/hotpotqa_sweep/`.
+
+**Table B.10 — CAAC operating points (per family).** Per-(inner compressor, family) rows. Columns: θ_q, mean coord at high r (fixed), mean coord at high r (CAAC), Δ pp, mean achieved ratio (CAAC). Pulled from `results/caac/summary_per_family.json`. Reproduces the filter/family-a +50 pp and LLMLingua-2/family-c +8 pp results.
+
+---
+
+## Appendix C — Expanded derivation of the compounding-error model (~1 pp, sketch)
+
+**Per ADR-008**, this is the longer-form derivation, not a formal proof. The Ch 5 §5.4 paragraph is sufficient for the headline reader; this appendix is for the rubric-#6 reader who wants more.
+
+**Setup.** Let workload i contain M_i task-critical tokens. Let X_i denote the number surviving single-pass compression at ratio r. Let θ_q ∈ (0, 1) denote the per-family success threshold, derived empirically from a held-out sweep. Let q(r) ∈ [0, 1] denote the compressor's per-token retention probability at ratio r — measured as critical-token recall.
+
+**Independence (A1).** Assume per-token retention is approximately independent: ℙ(token j survives | tokens 1..j-1 survived) ≈ q(r) for all j. For training-free compressors operating on a single fragment at a time and reading tokens from left to right, this is approximately satisfied at the within-fragment scale and exactly satisfied at the across-fragment scale (different fragments are compressed independently).
+
+**Threshold success (A3).** Assume workload i succeeds iff X_i / M_i ≥ θ_q. Under A1 + A3, expected surviving fraction E[X_i / M_i] = q(r), and ℙ(success | r) → 1[q(r) ≥ θ_q] in the limit of large M_i.
+
+**Cliff position.** The cliff r\* is the smallest r at which q(r) drops below θ_q. With N = 1 (single-pass), the equation collapses to q(r\*) = θ_q; with N > 1, it generalises to q(r\*) = θ_q ^ (1/N), which we record but do not validate empirically (every experiment in this thesis uses N = 1).
+
+**Chernoff bound on cliff sharpness.** For a Bernoulli per-token retention process with mean q applied to M task-critical tokens, the two-sided Chernoff bound on the surviving fraction is
+
+```
+ℙ(X / M ≤ θ_q) ≤ exp(−2 M (q − θ_q)²) for q > θ_q
+ℙ(X / M > θ_q) ≤ exp(−2 M (θ_q − q)²) for q < θ_q
+```
+
+In C1 family-a (M ≈ 8 multi-digit numbers per workload), the bound predicts a transition width of order (M)^(−1/2) ≈ 0.35 — comparable to the observed cliff width in Ch 5 §5.3.
+
+**Calibrated-regime predicate (per ADR-006).** The above derivation assumes the planner satisfies A3 — workload i succeeds iff X_i / M_i ≥ θ_q. Two conditions must hold for this to be a reasonable approximation: (C1) p₀(planner) ≥ θ_q (no floor effect); (C2) the planner does not recover from sub-threshold information via extended reasoning beyond the priors-only baseline. We operationalise (C2) using the H4 priors-only-baseline measurement: a planner whose accuracy at q → 0 exceeds its priors-only baseline by more than ε is *outside* the calibrated regime. GPT-oss 120B is the worked example.
+
+---
+
+## Appendix D — Figure index (~1 pp, sketch)
+
+| # | Figure | File | Generator | Canonical CSV / JSON |
+|---|---|---|---|---|
+| 2.1 | Transformer block schematic | `figures/transformer_block.{png,pdf}` (placeholder) | hand-drawn / TBD | n/a |
+| 5.1 | H1 scatter | `figures/h1_scatter.png` | `m6.figures.generate.fig_h1_scatter` | `results/h1_h2_v2/sweep_results.csv` |
+| 5.2 | Cliff hero | `figures/cliff_hero.png` | `m6.figures.generate.fig1_cliff_hero` | `results/h5_final/results.csv` |
+| 5.3 | Cliff families | `figures/cliff_families.png` | `m6.figures.generate.fig2_cliff_families` | `results/h1_h2_v2/sweep_results.csv` |
+| 5.4 | Predicted vs empirical τ\* with bootstrap band | `figures/predicted_vs_empirical.{png,pdf}` | `scripts/bootstrap_theta_q.py` | `results/h1_h2_v2/theorem_validation_bootstrap.json` |
+| 5.5 | Scaling AUC | `figures/scaling_auc.png` | `m6.figures.generate.fig_scaling_auc` | `results/h5_final/results.csv` |
+| 5.6 | H5 model overlay | `figures/h5_model_overlay.png` | `m6.figures.generate.fig_h5_model_overlay` | `results/h5_final/results.csv` |
+| 5.7 | Frontier validation | `figures/frontier_validation.png` | `m6.figures.generate.fig6_frontier_validation` | `results/frontier_qwen72b/results.csv` + `results/h5_final/` |
+| 5.8 | Frontier multi-model | `figures/frontier_multi.png` | `m6.figures.generate.fig_frontier_multi` | `results/frontier_*/results.csv` (GPT-oss flagged NONCANONICAL) |
+| 6.1 | H3 pipelines | `figures/h3_pipelines.png` | `m6.figures.generate.fig_h3_pipelines` | `results/h3_final/results.csv` |
+| 7.1 | Privacy quality | `figures/privacy_quality.png` | `m6.figures.generate.fig5_privacy_quality` | `results/h4_unbiased/results.csv` |
+| 7.2 | HotpotQA cliff | `figures/hotpotqa_cliff.png` | `m6.figures.generate.fig_hotpotqa_cliff` (or hand-generated) | `results/hotpotqa_sweep/results.csv` |
+| 8.1 | CAAC operating points (per family) | `figures/caac_pareto.{png,pdf}` | `m6.figures.generate.fig4_caac_pareto` (rewritten 2026-05-29) | `results/caac/results.csv` |
+
+---
+
+## Pass-2 status (2026-05-30)
+
+This pass closes the manuscript draft pipeline: front matter (Title page, Abstract, Tiivistelmä placeholder, Foreword + AI-use declaration, ToC / Lists), Chapter 1 (Introduction with cost-of-context hook → multi-agent multiplier → blind spot → problem statement + ADR-009 scope disclosure → C1–C4 contributions → outline), and Chapter 2 (12–14 pp survey with paragraph-closing "what's missing" lines and the §2.5 compressor comparison table that anchors rubric #4). Chapters 3–8 from pass 1 are retained with the TBD-number refresh applied against canonical `results/*/` directories.
+
+**Manuscript length estimate.** Front matter + Ch 1 + Ch 2 in pass 2 ≈ 8 500 words ≈ 22–25 pages; Ch 3–Ch 8 from pass 1 ≈ 11 500 words ≈ 30–34 pages; Appendices ≈ 8 pages. Total ≈ 60–67 pages at Oulu Master's thesis margins — well within the conventional 50–80-page envelope for a substantial empirical MSc thesis in CSE.
+
+**What remains.** Per the active sprint Task 9: terminology pass against `CONTEXT.md` (no bare "θ", no "Theorem 1" in prose, calibrated-regime qualifier on every model-independence claim — already mostly applied during pass 2); figure regeneration via `scripts/regen_figures.py` for any figure whose source CSV has moved (the bootstrap-band figure already regenerated 2026-05-30); reference-venue verification (each cited paper labelled per plan-v3 §9 conventions — AutoGen as ICLR Workshop, LLMLingua-2 as Findings of ACL, GraphRAG and MemGPT as preprints, Anthropic posts as industry); Tiivistelmä translation (Finnish abstract); LaTeX-template compilation (Oulu ITEE — title page matches ADR-009); reproducibility checklist (Docker, model cards, GitHub release tag); Lauri sign-off per thesis_PLAN §8 (post-submission convention, not mid-sprint).
+
+The terminology and framing are locked against `CONTEXT.md`, ADR-006, ADR-007, ADR-008, and ADR-009 throughout. All headline numbers trace to canonical `results/*/` directories with no remaining `TBD` cells in the verdict blocks.

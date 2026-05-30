@@ -259,15 +259,34 @@ Precomputed compression cache separates compression from evaluation:
 
 Tracked as harness tasks 1–9 (see TaskList). Punch list:
 
-1. **[IN PROGRESS]** Reconcile CLAUDE.md and insights.txt with audit-confirmed status
+1. **[DONE]** Reconcile CLAUDE.md and insights.txt with audit-confirmed status
 2. **[PENDING]** Wire derive_theta + CTR into CAAC and rerun sweep (~7h GPU + 3h)
 3. **[PENDING]** Compute bootstrap CI on θ_q and generate predicted-τ* band figure (~2h)
 4. **[PENDING]** Audit hygiene cleanup — _find() fix, partial.csv deletion, frontier seed plumbing, STATUS_NONCANONICAL markers (~2h)
-5. **[PENDING]** Write Ch5 (compounding-error model + cliff + Corollary 1) (~1 day)
-6. **[PENDING]** Write Ch6 (H3 NOT SUPPORTED honestly) (~0.5 day)
-7. **[PENDING]** Write Ch7 (H4 unbiased + Corollary 2 + memory bus) (~1 day)
-8. **[PENDING]** Write Ch8 (Discussion + CAAC demonstration + limitations) (~1 day)
-9. **[PENDING]** Final polish, reproducibility check, submit (~0.5 day)
+5. **[DONE]** Write Ch5 (compounding-error model + cliff + Corollary 1)
+6. **[DONE]** Write Ch6 (H3 NOT SUPPORTED honestly — compress-first dominance)
+7. **[DONE]** Write Ch7 (H4 unbiased + Corollary 2 + memory bus integration)
+8. **[DONE]** Write Ch8 (Discussion + CAAC operating-point demonstration + limitations + future work)
+9. **[IN PROGRESS]** Final polish, reproducibility check, submit
+
+### Manuscript status (2026-05-30)
+
+First full draft compiled in `thesis_latex/` from the Oulu ITEE
+template (`dithesis.cls`). Output: 72 pages A4, ~950 KB, copied
+to `thesis.pdf` in the project root. Manuscript title per ADR-009
+is *Distributed Memory Bus for Multi-Fragment LLM Workflows:
+Context Compression, the Coordination Cliff, and Privacy*; the
+codebase project name remains *Multi-Agent Coordination* (this
+file's header) for back-compat with existing artefacts.
+
+All verdict-table numbers refreshed against the canonical results
+JSON on disk (`h1_h2_v2`, `h4_unbiased`, `h5_final`, `h3_final`,
+`frontier_qwen72b`, `frontier_deepseekv4`, `hotpotqa_sweep`).
+See insights.txt §65 for the per-chapter status, per-table
+number-refresh notes, and the outstanding user-side items
+(Finnish translation review, region-plot regeneration for
+`caac_pareto`, predicted-τ* band figure for
+`predicted_vs_empirical`).
 
 ## NeurIPS / ICLR — DEFERRED per Q13 (thesis-only scope)
 

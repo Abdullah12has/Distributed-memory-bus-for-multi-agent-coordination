@@ -128,10 +128,10 @@ verdict.}
 \hline
 Compressor & $\rho$ & 95\%~CI & $p$-value & $n$ \\
 \hline
-Instruction-aware filter & $-0.593$ & $[-0.641, -0.542]$ & $<10^{-100}$ & $1350$ \\
-LLMLingua-2 & $+0.381$ & $[+0.345, +0.418]$ & $<10^{-40}$ & $1350$ \\
-Phi-3-Mini extractive & $+0.208$ & $[+0.148, +0.267]$ & $<10^{-8}$ & $750$ \\
-Truncation (baseline) & $+0.124$ & $[+0.069, +0.179]$ & $<10^{-5}$ & $1350$ \\
+Instruction-aware filter & $-0.593$ & $[-0.641, -0.542]$ & $7.3\!\times\!10^{-129}$ & $1350$ \\
+LLMLingua-2 & $+0.381$ & $[+0.344, +0.418]$ & $7.0\!\times\!10^{-48}$ & $1350$ \\
+Phi-3-Mini extractive & $+0.193$ & $[+0.131, +0.252]$ & $1.0\!\times\!10^{-7}$ & $750$ \\
+Truncation (baseline) & $+0.384$ & $[+0.349, +0.418]$ & $1.4\!\times\!10^{-48}$ & $1350$ \\
 \hline
 \textbf{All four} & --- & all CIs exclude $0.6$ & --- & \textbf{SUPPORTED} \\
 \hline
@@ -191,17 +191,17 @@ systematically over-optimistic compressor ranking.
 the coordination-success curve has a sharp cliff $\tau^{*}$ with a
 relative drop of at least $30\%$ and a paired-Wilcoxon $p$-value of
 at most $0.05$ after Holm correction across cells. \textbf{Verdict:
-SUPPORTED} on at least $8$ of the $9$ headline cells; the only
-exception is the instruction-aware filter on family-c, where the
-re-ranker preserves chain-reference tokens and no cliff is
-detectable below $r=16$.
+SUPPORTED} on $11$ of the $12$ cells; the only exception is the
+instruction-aware filter on family-c, where the re-ranker
+preserves chain-reference tokens and no cliff is detectable
+below $r=16$.
 \end{tcolorbox}
 
 \subsection{Result}
 
 Figure~\ref{fig:cliff_hero} is the chapter's most-quoted figure:
 the coordination-success curves for LLMLingua-2 on family-a, with
-the cliff visible at $\tau^{*}\approx 2.7\times$ and the curve
+the cliff visible at $\tau^{*}\approx 2.5\times$ and the curve
 falling from coordination~$\approx 1.0$ at $r=1$ to coordination
 $\approx 0.0$ by $r=6$. The drop is concentrated in a span of two
 compression ratios, which is the signature shape that the
@@ -216,14 +216,14 @@ $r=1$ to $\sim 0$ by $r=6$, with the cliff midpoint at
 $\tau^{*}\approx 2.7\times$. The shaded band is the workload-level
 $95\%$ bootstrap CI. This is the canonical reference image for the
 H2 finding; see Figure~\ref{fig:cliff_families} for the
-nine-cell grid.}
+twelve-cell grid.}
 \label{fig:cliff_hero}
 \end{figure}
 
 Table~\ref{tab:h2_tau} reports the empirical $\tau^{*}$, the
 relative drop, and the Holm-corrected $p$-value for each
-(compressor, family) cell. Eight of the nine cells reach the H2
-threshold of a $30\%$ relative drop with $p<0.05$ Holm-corrected.
+(compressor, family) cell. Eleven of the twelve cells reach the
+H2 threshold of a $30\%$ relative drop with $p<0.05$ Holm-corrected.
 The one cell that does not is \emph{filter}~$\times$~\emph{c}:
 the instruction-aware filter on the multi-step retrieval family.
 The reason is mechanical and consistent with the H1 finding ---
@@ -249,29 +249,29 @@ documented behaviour rather than a falsification.}
 \hline
 Cell & $\tau^{*}$ & rel.\ drop & Holm $p$ \\
 \hline
-LLMLingua-2 $\times$ a & 2.7 & 0.93 & $<10^{-12}$ \\
-LLMLingua-2 $\times$ b & 4.1 & 0.76 & $<10^{-8}$ \\
-LLMLingua-2 $\times$ c & 5.4 & 0.62 & $<10^{-6}$ \\
-Filter $\times$ a & 3.2 & 0.71 & $<10^{-9}$ \\
-Filter $\times$ b & 4.3 & 0.55 & $<10^{-6}$ \\
-Filter $\times$ c & --- & $<0.10$ & $0.31$ \\
-Phi-3-Mini ext. $\times$ a & 2.5 & 0.88 & $<10^{-10}$ \\
-Phi-3-Mini ext. $\times$ b & 3.6 & 0.61 & $<10^{-6}$ \\
-Phi-3-Mini ext. $\times$ c & 4.7 & 0.45 & $<10^{-4}$ \\
-Truncation $\times$ a & 1.9 & 0.95 & $<10^{-14}$ \\
-Truncation $\times$ b & 2.8 & 0.83 & $<10^{-10}$ \\
-Truncation $\times$ c & 3.4 & 0.68 & $<10^{-7}$ \\
+LLMLingua-2 $\times$ a   & 2.5 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+LLMLingua-2 $\times$ b   & 2.5 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+LLMLingua-2 $\times$ c   & 6.7 & 1.23 & $9.6\!\times\!10^{-10}$ \\
+Filter $\times$ a        & 2.5 & 1.60 & $8.5\!\times\!10^{-12}$ \\
+Filter $\times$ b        & 2.5 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+Filter $\times$ c        & --- & 0.00 & n.s. \\
+Phi-3-Mini ext.\ $\times$ a & 2.5 & 0.42 & $2.2\!\times\!10^{-6}$ \\
+Phi-3-Mini ext.\ $\times$ b & 2.5 & 0.97 & $2.5\!\times\!10^{-9}$ \\
+Phi-3-Mini ext.\ $\times$ c & 2.5 & 1.37 & $8.5\!\times\!10^{-12}$ \\
+Truncation $\times$ a    & 2.5 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+Truncation $\times$ b    & 2.5 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+Truncation $\times$ c    & 4.95 & 1.36 & $9.6\!\times\!10^{-10}$ \\
 \hline
-\multicolumn{3}{l}{\textbf{Verdict}: $8/9$ headline cells; truncation cliffs first.} & \textbf{SUPP.} \\
+\multicolumn{3}{l}{\textbf{Verdict}: $11/12$ cells significant; only filter $\times$ c lacks a cliff.} & \textbf{SUPP.} \\
 \hline
 \end{tabular}
 \end{table}
 
-The nine-cell grid in Figure~\ref{fig:cliff_families} reads the
+The twelve-cell grid in Figure~\ref{fig:cliff_families} reads the
 result at one glance: cliffs are sharp on the dense
 fact-aggregation family and shallow on the distributed multi-step
 retrieval family, the ordering between (LLMLingua-2 / filter /
-phi-3) is consistent within a family, and truncation cliffs at the
+Phi-3) is consistent within a family, and truncation cliffs at the
 lowest ratio of any compressor --- which is what the lower-bound
 argument predicts.
 
@@ -346,7 +346,7 @@ The derivation is a paragraph; it is not a formal proof, and the
 artefact is named the \emph{compounding-error model} rather than
 \emph{Theorem~1} throughout the manuscript. The change is
 deliberate: the empirical match rate (Section~\ref{sec:cem_match})
-is approximately $33\%$ strict and $58\%$ at $\pm 25\%$
+is $33\%$ within $\pm 25\%$ relative error and $67\%$ within $\pm 50\%$
 tolerance, which is the empirical-bound character of a model with
 quantified residuals rather than the formal character of a
 theorem with a proof. The codebase identifier
@@ -409,19 +409,23 @@ extended-reasoning planners that recover information via
 chain-of-thought --- the cliff position can shift substantially, as
 the GPT-oss~120B diagnostic in Section~\ref{sec:frontier} shows.
 
-\subsection{Predicted versus empirical $\tau^{*}$}
+\subsection{Predicted versus empirical \texorpdfstring{$\tau^{*}$}{tau*}}
 \label{sec:cem_match}
 
 For each (compressor, family) cell, $\theta_q$ is estimated from a
 training subset of the cliff sweep --- specifically the recall at
 which coordination success first drops below $0.5$ of the cell's
 $p_0$ --- via the \texttt{derive\_theta()} function in
-\texttt{src/m6/theory/cliff\_prediction.py}. A bootstrap CI is
-constructed on $\theta_q$ by resampling workloads. The predicted
-$\tau^{*}$ is then obtained by inverting $q(r) = \theta_q$ on the
-empirical critical-token-recall curve. Resampling $\theta_q$
-through this inverse map gives a \emph{predicted-$\tau^{*}$ band}
-that quantifies the model's uncertainty.
+\texttt{src/m6/theory/cliff\_prediction.py}. Under
+critical-token-recall the canonical per-family estimates on the
+\texttt{h1\_h2\_v2} sweep are $\theta_q^{\,(a)} = 0.632$,
+$\theta_q^{\,(b)} = 0.838$, and $\theta_q^{\,(c)} = 0.590$. A
+bootstrap CI is constructed on $\theta_q$ by resampling workloads.
+The predicted $\tau^{*}$ is then obtained by inverting
+$q(r) = \theta_q$ on the empirical critical-token-recall curve.
+Resampling $\theta_q$ through this inverse map gives a
+\emph{predicted-$\tau^{*}$ band} that quantifies the model's
+uncertainty.
 
 Figure~\ref{fig:predicted_vs_empirical} overlays the
 predicted-$\tau^{*}$ band on the empirical cliff curve for the
@@ -429,17 +433,17 @@ family-c LLMLingua-2 cell. Family-c is shown rather than the more
 spectacular family-a because the cliff is gradual enough on
 family-c that the predicted-versus-empirical \emph{gap} is
 visible --- the family-a cell drops from $1.0$ to $0$ in a single
-ratio step, which is also what the model predicts, so both the
-prediction and the empirical curve look like the same near-step
-function and the figure carries no information. The family-c
-panel shows that the compounding-error model is \emph{conservative}
-for family-c: it predicts the cliff at $r\approx 3.5$, the
-empirical cliff sits around $r\approx 6$--$7$, and the gap is
-$\Delta\tau^{*}\approx +0.64$ in the conservative direction. The
-gap is the second-order term that Corollary~2 explains
+ratio step, which the model also predicts closely, so both the
+prediction and the empirical curve collapse into the same
+near-step function and the figure carries no information. The
+family-c panel shows that the compounding-error model is
+\emph{conservative} for family-c: it predicts the cliff at
+$r\approx 2.85$ while the empirical cliff sits at
+$r\approx 6.7$, a $58\%$ relative under-prediction. The gap is
+the second-order term that Corollary~2 explains
 (Section~\ref{sec:corollary2}): family-c has lower information
-density than family-a, so the threshold-success approximation A2
-breaks earliest on family-c.
+density than family-a, so the threshold-success approximation
+A2 (binary token importance) breaks earliest on family-c.
 
 \begin{figure}[h]
 \centering
@@ -458,11 +462,15 @@ $\theta_\text{info}\approx 0.97$.}
 
 Aggregating the predicted-versus-empirical comparison across all
 twelve (compressor, family) cells gives an empirical match rate
-of $33\%$ for the strict definition ($|\tau^{*}_\text{empirical} -
-\tau^{*}_\text{predicted}| / \tau^{*}_\text{empirical} \le 10\%$)
-and $58\%$ at a $\pm 25\%$ tolerance. The numbers are presented
-honestly: the model is a useful first-order bound, not a tight
-predictor. The headline empirical claim it underwrites is the
+of $33\%$ ($4/12$ cells) at the
+$|\tau^{*}_\text{empirical} - \tau^{*}_\text{predicted}| /
+\tau^{*}_\text{empirical} \le 25\%$ criterion and $67\%$
+($8/12$ cells) at $\pm 50\%$. The numbers are reported honestly:
+the model is a useful first-order bound, not a tight predictor.
+The four cells that pass the strict criterion span all four
+compressors (lingua2/b, filter/a, truncation/a, truncation/b),
+which is consistent with the bound being structural rather than
+compressor-specific. The headline empirical claim it underwrites is the
 \emph{cliff-position dependence structure} --- $\tau^{*}$ is
 controlled by the (compressor, task) pair --- which Corollary~1
 turns into the model-independence claim, validated below.
@@ -493,14 +501,15 @@ evidence to a cross-architecture finding.
 This corollary is the reframing of the original H5 hypothesis,
 which predicted strict monotonicity of $\tau^{*}$ across planner
 scales. The empirical result on family-c across the three Qwen
-sizes is $\tau^{*}_{1.5\text{B}} = 4.1$, $\tau^{*}_{3.8\text{B}} =
-4.2$, $\tau^{*}_{8\text{B}} = 4.0$ --- a spread of $24\%$ within
-the bootstrap CI of each cell, which is what an invariance result
-looks like rather than a monotonicity result. The original H5
-predicate (gap $\ge 1.5$ ratio units) is not satisfied because the
-spread is far smaller than $1.5$; the reframed Corollary~1
-predicate (invariance within calibrated regime) is. The
-canonical results directory is \texttt{results/h5\_final/}.
+sizes is $\tau^{*}_{1.5\text{B}} = 3.69$, $\tau^{*}_{3.8\text{B}}
+= 4.68$, $\tau^{*}_{8\text{B}} = 4.01$ --- a spread of
+approximately $24\%$ within the bootstrap CI of each cell, which is
+what an invariance result looks like rather than a monotonicity
+result. The original H5 predicate (gap $\ge 1.5$ ratio units) is
+not satisfied because the spread is well below $1.5$; the
+reframed Corollary~1 predicate (invariance within the calibrated
+regime) is. The canonical results directory is
+\texttt{results/h5\_final/}.
 
 Figure~\ref{fig:scaling_auc} reports the
 area-under-the-coordination-curve as a function of planner scale
@@ -576,7 +585,7 @@ canonical results directories are
 \texttt{results/frontier\_gptoss120b/} (with
 \texttt{STATUS\_NONCANONICAL.txt}) for GPT-oss.
 
-\subsection{Qwen-2.5-72B-Instruct: in-regime, $0.8\%$ off}
+\subsection{Qwen-2.5-72B-Instruct: in-regime, \texorpdfstring{$0.8\%$}{0.8\%} off}
 
 The Qwen-2.5-72B sweep returns $\tau^{*} = 2.68$ against the
 synthetic reference of $2.70$ --- a relative difference of $0.8\%$
@@ -715,38 +724,40 @@ model~\cite{fcgfinancial2026}. The canonical results directory is
 
 \subsection{Result}
 
-Table~\ref{tab:h3} reports the per-regime F1 score and the
-EUR-per-workflow cost for each pipeline. The headline observation
-is that the ranking
-$P3 > P1 > P2$ in the storage-bounded regime and $P3 > P2 > P1$ in
-the accuracy-bounded regime --- so the \emph{leader} is the same
-in both regimes (P3), and the P1-vs-P2 relationship reverses
-between regimes \emph{but only slightly}: P1 is $1.3$~F1 above P2
-in the storage regime and $1.3$~F1 below in the accuracy regime.
-The H3 predicate (sign-flip with $\ge 5$~pp effect) is not
-satisfied because the effect is well under $5$~pp in both regimes.
+Table~\ref{tab:h3} reports the per-regime mean F1 and the
+per-query EUR cost for each pipeline. The headline observation is
+that the ranking $P3 > P1 > P2$ holds in \emph{both} regimes.
+P1 is above P2 by $3.2$ percentage points (pp) F1 in the
+storage-bounded regime and by $2.0$~pp in the accuracy-bounded
+regime, with $95\%$ paired-bootstrap CIs ($[1.84, 4.72]$~pp and
+$[1.15, 2.85]$~pp respectively) that comfortably exclude zero.
+The H3 sign-flip predicate is therefore \emph{not satisfied}: the
+optimal does not change between regimes, and P1 is the better of
+the two compressed-corpus pipelines in both. P3 (joint
+relevance-conditional routing) leads both regimes by a substantial
+margin.
 
 \begin{table}[h]
 \centering
-\caption{H3 verdict table. F1 and EUR-per-workflow cost by regime
-and pipeline from \texttt{results/h3\_final/}. The H3 sign-flip
-predicate ($\ge 5$~pp effect) is not satisfied because the
-P1-P2 gap is below $1.5$~pp in either regime; P3 leads both
-regimes by a comfortable margin. The reframed finding is the
-robust compress-first preference.}
+\caption{H3 verdict table. Mean F1 and per-query EUR cost by
+regime and pipeline from \texttt{results/h3\_final/} (n = 150
+workloads per cell). The H3 sign-flip predicate is not satisfied
+because P1 is above P2 in both regimes; P3 leads both. The
+reframed finding is the robust compress-first preference (P1
+$>$ P2).}
 \label{tab:h3}
 \small
 \begin{tabular}{lrr|rr}
 \hline
 & \multicolumn{2}{c|}{Storage-bounded}
 & \multicolumn{2}{c}{Accuracy-bounded} \\
-Pipeline & F1 & EUR/workflow & F1 & EUR/workflow \\
+Pipeline & F1 & EUR/query & F1 & EUR/query \\
 \hline
-P1 (compress, then retrieve) & 26.7 & 0.071 & 28.9 & 0.084 \\
-P2 (retrieve, then compress) & 25.4 & 0.083 & 30.2 & 0.099 \\
-P3 (joint, conditional)      & \textbf{28.0} & 0.099 & \textbf{31.3} & 0.117 \\
+P1 (compress, then retrieve) & $0.396$ & $2.7\!\times\!10^{-5}$ & $0.648$ & $3.3\!\times\!10^{-5}$ \\
+P2 (retrieve, then compress) & $0.364$ & $2.8\!\times\!10^{-5}$ & $0.628$ & $3.0\!\times\!10^{-5}$ \\
+P3 (joint, conditional)      & $\mathbf{0.820}$ & $3.1\!\times\!10^{-5}$ & $\mathbf{0.895}$ & $3.1\!\times\!10^{-5}$ \\
 \hline
-$p$-value (P1 vs P2, paired bootstrap) & \multicolumn{2}{c|}{$0.0001$} & \multicolumn{2}{c}{$0.0001$} \\
+$p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{2}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{2}{c}{$2\!\times\!10^{-4}$} \\
 \hline
 \end{tabular}
 \end{table}
@@ -888,9 +899,9 @@ reader-bias note.}
 \hline
 Compressor & priors & baseline & compr-$4\times$ & signal $\Delta$ & reduction $\Delta$ \\
 \hline
-Instruction-aware filter & 0.50 & 0.78 & 0.57 & $+0.29\ (p\!<\!10^{-4})$ & $-0.21\ (p\!<\!10^{-4})$ \\
-LLMLingua-2              & 0.50 & 0.78 & 0.59 & $+0.29\ (p\!<\!10^{-4})$ & $-0.19\ (p\!<\!10^{-4})$ \\
-Phi-3-Mini extractive    & 0.50 & 0.78 & 0.71 & $+0.29\ (p\!<\!10^{-4})$ & $-0.075\ (p\!=\!0.027)$ \\
+Instruction-aware filter & 0.50 & 0.78 & 0.57 & $+0.286\ (p_\text{Holm}\!=\!6\!\times\!10^{-4})$ & $-0.214\ (p_\text{Holm}\!=\!6\!\times\!10^{-4})$ \\
+LLMLingua-2              & 0.50 & 0.78 & 0.59 & $+0.286\ (p_\text{Holm}\!=\!6\!\times\!10^{-4})$ & $-0.189\ (p_\text{Holm}\!=\!6\!\times\!10^{-4})$ \\
+Phi-3-Mini extractive    & 0.50 & 0.78 & 0.71 & $+0.286\ (p_\text{Holm}\!=\!6\!\times\!10^{-4})$ & $-0.075\ (p_\text{Holm}\!=\!0.027)$ \\
 \hline
 \multicolumn{6}{l}{\textbf{Verdict}: Signal + Reduction both significant for all three. \textbf{SUPPORTED.}} \\
 \hline
@@ -1003,7 +1014,7 @@ distributed) and HotpotQA ($\theta_\text{info} \approx 0.37$,
 highly distributed).
 \end{tcolorbox}
 
-\subsection{$\theta_\text{info}$ versus $\theta_q$}
+\subsection{\texorpdfstring{$\theta_\text{info}$ versus $\theta_q$}{theta\_info versus theta\_q}}
 \label{sec:theta_info_def}
 
 A subtle point that the corollary reframing makes explicit: the
@@ -1125,7 +1136,7 @@ reframing was made before the chapter was written.}
 ID & Claim & Verdict & Canonical dir \\
 \hline
 H1 & QA-F1 decorrelates from coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
-H2 & Sharp coordination cliff exists & SUPPORTED ($8/9$) & \texttt{h1\_h2\_v2/} \\
+H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$) & \texttt{h1\_h2\_v2/} \\
 H3 & RAG sign-flip across regimes & NOT SUPPORTED (reframed as compress-first dominance) & \texttt{h3\_final/} \\
 H4 & Compression reduces inference disclosure & SUPPORTED on unbiased & \texttt{h4\_unbiased/} \\
 H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime & SUPPORTED (frontier) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b/}, \texttt{frontier\_deepseekv4/} \\

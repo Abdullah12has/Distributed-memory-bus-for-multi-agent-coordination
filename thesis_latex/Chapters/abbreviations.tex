@@ -7,56 +7,66 @@
     ACL & access control list \\
     ADR & architecture decision record \\
     API & application programming interface \\
+    AUC & area under the curve \\
     BCa & bias-corrected and accelerated (bootstrap CI) \\
+    CAAC & cliff-aware adaptive compression \\
     CI & confidence interval \\
     C1\,$\dots$\,C4 & contributions one through four of this thesis \\
     CSE & Computer Science and Engineering \\
-    DAG & directed acyclic graph \\
+    CTR & critical-token-recall (per-family task-relevant token recall) \\
     EM & exact match (QA metric) \\
+    EUR & euro (currency) \\
     FAISS & Facebook AI Similarity Search \\
     FCG & Future Computing Group \\
-    fp16 & 16-bit floating-point \\
-    GGUF & GPT-Generated Unified Format (llama.cpp model file format) \\
-    H1\,$\dots$\,H4 & hypotheses one through four \\
+    H1\,$\dots$\,H6 & hypotheses one through six \\
     HNSW & hierarchical navigable small world (vector index) \\
     HTTP & hypertext transfer protocol \\
-    int4 & 4-bit integer quantisation \\
     ICAE & in-context autoencoder \\
     ITEE & Information Technology and Electrical Engineering \\
+    JSON & JavaScript Object Notation \\
     KV cache & key--value cache (transformer attention) \\
-    LCS & longest common subsequence \\
     LLM & large language model \\
     LoRA & low-rank adaptation \\
     LRU & least recently used \\
-    M0\,$\dots$\,M5 & sibling thesis projects (Publication DB, Contract DB, Moodle/Patio, etc.) \\
     MLX & Apple's native ML framework for Apple Silicon \\
     MPS & Metal Performance Shaders (Apple PyTorch backend) \\
-    NCE & noise-contrastive estimation \\
     NIST AI RMF & NIST AI Risk Management Framework \\
     OAuth & open authorisation protocol \\
     OTel & OpenTelemetry \\
     P1\,$\dots$\,P3 & retrieval--compression pipeline variants one through three \\
-    PEFT & parameter-efficient fine-tuning \\
-    PII & personally identifiable information \\
+    pp & percentage points \\
     QA & question answering \\
     RAG & retrieval-augmented generation \\
+    REST & representational state transfer \\
+    SHA-256 & secure hash algorithm (256-bit) \\
     SQL & structured query language \\
     SQLite & a lightweight, embedded SQL database \\
     SSE & server-sent events \\
+    TF-IDF & term frequency--inverse document frequency \\
     TTL & time-to-live \\
     UUID & universally unique identifier \\
     WAL & write-ahead log \\
     \\
-    $L_{\textrm{recon}}$ & token-level reconstruction loss \\
-    $L_{\textrm{NCE}}$ & InfoNCE contrastive loss \\
-    $L_{\textrm{tag}}$ & per-slot tag-prediction loss (C4 only) \\
-    $\lambda$ & loss-term weighting coefficient \\
-    $M$ & number of memory slots in the soft-prompt compressor \\
-    $\rho$ & Spearman's rank correlation coefficient \\
-    $\tau^{*}$ & coordination cliff compression ratio \\
-    $r$ & nominal compression ratio (input/output token count) \\
-    $\delta$ & Cliff's delta (ordinal effect size) \\
-    $d$ & Cohen's $d$ (continuous effect size) \\
+    \multicolumn{2}{l}{\emph{Symbols of the compounding-error model
+                            (Chapter~4, Section~\ref{sec:cem}):}} \\[2pt]
+    $r$        & nominal compression ratio (source / output token count) \\
+    $q(r)$     & per-round critical-token-recall at ratio $r$ \\
+    $\theta_q$ & cliff-recall threshold (per-family) --- the minimum
+                  recall required for coordination success \\
+    $\theta_\text{info}$ & task information-density estimate
+                  (per-task, AUC-based; distinct from $\theta_q$) \\
+    $\tau^{*}$ & cliff position --- the ratio at which coordination
+                  success drops below the cliff threshold \\
+    $p_0$      & baseline coordination success at $r=1$
+                  (no-compression baseline) \\
+    $N$        & number of sequential compression passes (always $1$
+                  in the empirical chapters of this thesis) \\
+    \\
+    \multicolumn{2}{l}{\emph{Statistical symbols:}} \\[2pt]
+    $\rho$     & Spearman's rank correlation coefficient \\
+    $\delta$   & Cliff's delta (ordinal effect size) \\
+    $d$        & Cohen's $d$ (continuous effect size) \\
+    $p$        & two-sided $p$-value (typically Holm-corrected) \\
 
 \end{longtable}
 \setcounter{table}{0}

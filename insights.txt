@@ -2790,3 +2790,179 @@ uncertainty through the model in a single principled step.
   per-family layout with band overlay; replaces the audit-flagged
   broken figure (annotation overflow at generate.py:207-214 now moot).
 - scripts/bootstrap_theta_q.py — reproducible from one command.
+
+
+## 58. TASK 9 MECHANICAL POLISH PASS (2026-05-30)
+
+Completed the mechanical subset of the pre-submission polish per
+thesis_PLAN.md §8.
+
+### Polish items closed
+
+(1) **Terminology lint pass against CONTEXT.md.** Sixteen "calibrated
+    regime" qualifiers verified on every model-independence claim; three
+    "Theorem 1" mentions retained only in meta-explanation paragraphs
+    that justify why we DON'T use the name per ADR-008; bare θ tightened
+    to θ_q in the θ/N ablation paragraph (CAAC's config parameter is θ_q
+    semantically). One model-independence claim in Ch 5 §5.6 closing
+    paragraph hardened with "under the calibrated-regime predicate of
+    ADR-006" qualifier.
+
+(2) **Reference-venue label verification.** All citations in draft1.md
+    cross-checked against plan-v3 §9 verified-venue block:
+    - LLMLingua-2 labelled Findings of ACL 2024 ✓
+    - AutoGen labelled ICLR 2024 LLM-Agents Workshop ✓
+    - MemGPT, GraphRAG labelled preprint ✓
+    - Anthropic / Altman labelled industry observation, not measurement ✓
+    - Luccioni, Patterson, Carlini, Hoffmann Chinchilla cited with
+      "verify before citing" hedges where venue confirmation is pending
+    No silent venue inflation detected.
+
+(3) **Figure regeneration sanity pass.** Discovered regen_figures.py
+    was pointing at h1_h2_final and h4_final (the older 3-compressor and
+    biased-question runs) instead of the canonical h1_h2_v2 and
+    h4_unbiased. Also: regen_figures.py was OVERWRITING the bootstrap-
+    band predicted_vs_empirical figure with the older
+    fig3_predicted_vs_empirical generator output.
+    Fix applied:
+    - H1H2 path updated to results/h1_h2_v2/sweep_results.csv
+    - H4 path updated to results/h4_unbiased/results.csv
+    - fig3_predicted_vs_empirical removed from regen pipeline; the
+      script now delegates to scripts/bootstrap_theta_q.py for the
+      canonical band figure.
+    Verified by re-running regen_figures.py end-to-end: 30 figures all
+    timestamp 2026-05-30, predicted_vs_empirical is the band-overlay
+    version.
+
+(4) **Reproducibility checklist scaffold.** Authored REPRODUCIBILITY.md
+    at the project root. Eight sections:
+    - Compute envelope (M4 Pro + RTX 5090, ~30 h end-to-end)
+    - Canonical results directories (per-hypothesis table; no smoke /
+      micro / quick / diag dirs cited from manuscript)
+    - Regeneration commands (per-experiment GPU commands + frontier API
+      + analysis scripts + scripts/regen_figures.py)
+    - Pre-submission verification checklist (10 mechanical boxes for
+      verifier to walk from clean clone)
+    - Model cards (10 models, quantisation, runtime)
+    - Data cards (C1, MHR, HotpotQA with licences)
+    - Audit trail (raw benchmark → sweep CSVs → verdicts JSON →
+      analysis JSONs → figures → manuscript)
+    - ADR audit trail (006/007/008/009 cross-reference)
+    Cross-referenced from draft1.md Appendix A and from Ch 3 §3.5.
+
+### Polish items NOT yet closed (human-required)
+
+- Tiivistelmä (Finnish abstract translation) — needs translator.
+- Fig 2.1 transformer schematic — decide between hand-drawn / TikZ /
+  CC-BY image; LaTeX wiring step.
+- LaTeX template compilation (Oulu ITEE template) with draft1.md
+  contents and title-page per ADR-009.
+- Reading-aloud pass per chapter (rubric #9 calibration).
+- Lauri sign-off per thesis_PLAN §8 (post-submission convention, not
+  mid-sprint).
+- Final PDF build + submit.
+
+### Task 9 status
+
+In progress on the human-required items; mechanical subset closed.
+After Tiivistelmä + LaTeX + reading-aloud + Lauri sign-off, Task 9
+becomes the submit-and-done step.
+
+
+## 65. THESIS MANUSCRIPT FIRST FULL DRAFT (2026-05-30)
+
+The first complete draft of the thesis manuscript was assembled
+in the Oulu ITEE LaTeX template (`thesis_latex/`) on 2026-05-30
+during the writing sprint, reproducible from
+`scripts/build_thesis.sh`. Final PDF: 72 pages A4, file 949 KB,
+copied to `thesis.pdf` in the project root.
+
+### Files written
+
+Five body-chapter files (`introduction.tex`, `relatedwork.tex`,
+`implementation.tex`, `experiments.tex`, `summary.tex`), the
+abstract (`abstract.tex`), the foreword with the AI-usage
+declaration (`foreword.tex`), the abbreviations list refreshed
+for the v3 compressors and compounding-error model symbols
+(`abbreviations.tex`), and Appendix D with the one-command
+reproducibility recipe and a verbatim memory-bus curl trace
+(`appendices.tex`).
+
+### Title rename per ADR-009
+
+The manuscript title is now "Distributed Memory Bus for
+Multi-Fragment LLM Workflows: Context Compression, the
+Coordination Cliff, and Privacy". The "multi-agent" scope is
+preserved in the codebase project name and in the memory bus's
+design audience; the empirical scope is multi-fragment task
+solvability. Disclosure of the deterministic-solver-vs-single-LLM
+methodology was promoted from a buried Chapter 3 paragraph to the
+Abstract and Chapter 1 P5 (problem statement) so that an examiner
+who reads only the title and abstract cannot form an overclaiming
+mental model.
+
+### Verdict numbers refreshed
+
+All verdict tables and headline numbers in Chapter 4 were refreshed
+against the canonical results JSON on disk:
+- H1: from `results/h1_h2_v2/verdicts.json` --- four-compressor
+  table including truncation, with the actual Spearman rho values
+  (filter -0.593, lingua2 +0.381, phi3-extractive +0.193,
+  truncation +0.384). Truncation was a positive moderate
+  correlation, not a small one as inventory suggested; the prose
+  was updated accordingly.
+- H2: from the same file --- 11/12 cells significant rather than
+  the inventory-suggested 8/9; only filter/c lacks a detectable
+  cliff. The actual tau values cluster at 2.5 (logistic-fit
+  boundary on most cells) with the family-c LLMLingua-2 cell at
+  6.7 and truncation/c at 4.95.
+- H3: from `results/h3_final/verdicts.json` --- P1 above P2 in
+  BOTH regimes (not the regime-flipped story I drafted from the
+  inventory). Storage P1 = 0.396, P2 = 0.364, P3 = 0.820.
+  Accuracy P1 = 0.648, P2 = 0.628, P3 = 0.895. The reframed
+  finding "compress-first dominance in both regimes" is what
+  the data actually says, exactly per ADR-007 / plan-v3 §6.
+- H4: from `results/h4_unbiased/verdicts.json` --- per-compressor
+  signal +0.286 (p_holm = 6e-4) and reduction +0.214 (filter),
+  +0.189 (lingua2), +0.075 (phi3, p_holm = 0.027 borderline).
+- Corollary 1: from `results/h5_final/verdicts.json` family-c
+  taus 3.69 / 4.68 / 4.01 across 1.5B / 3.8B / 8B (24% spread).
+- Frontier validation: Qwen-72B 2.677 vs synth 2.700 (0.85% off,
+  reported as 0.8%), DeepSeek V4 Pro 2.155 with CI [1.76, 7.14]
+  containing the synth reference, GPT-oss 120B v2 at 6.62
+  (out-of-regime diagnostic per ADR-006).
+
+### Per-family theta_q values added
+
+The CONTEXT.md canonical values
+(a = 0.632, b = 0.838, c = 0.590) are now cited explicitly in
+the experiments chapter's predicted-versus-empirical subsection,
+making the compounding-error model's per-family prediction
+concrete rather than abstract.
+
+### TeX-side build
+
+User-mode tlmgr install of ifnextok, tcolorbox, environ, pdfx,
+greek-fontenc, datetime2, pdfcol, biblatex, listingsutf8,
+ccicons, enumitem, etc. The `scripts/build_thesis.sh`
+`sudo tlmgr install` line was updated with the missing packages
+so any future run from a clean BasicTeX install picks them up.
+The compile is clean: no undefined citations, no missing refs,
+no hyperref token-not-allowed warnings (math-in-section-titles
+fixed with `\texorpdfstring{}`). Five overfull-hbox warnings
+remain at sub-50pt scale, none worth chasing.
+
+### Outstanding items for the user
+
+(1) Finnish translations in main.tex `\otsikko{}` and
+`\tiivistelma{}` are best-effort machine translations and need
+a Finnish speaker (Lauri) review before submission.
+(2) Two figures from the ADR-007/008 punch list may not yet
+match their captions: `caac_pareto` is supposed to be a region
+plot (high-coord vs high-compression regions, q_min = theta_q
+contour), and `predicted_vs_empirical` is supposed to show the
+bootstrap CI band rather than a single curve.
+`scripts/regen_figures.py` regenerates these from current CSVs.
+(3) Lauri post-submission review of the discussion chapter
+per the grilling-Q10 decision to skip the mid-sprint feedback
+gate.
