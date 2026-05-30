@@ -52,11 +52,28 @@ is q(r) at compression ratio r, applied ONCE before the planner reads:
   where q crosses theta_q" is restating the model, not deriving a new
   result. The empirical content the thesis tests is statement (iii) plus
   the prior claim that the threshold model fits the data well enough that
-  theta_q estimated on one task transfers to another.
+  theta_q estimated on one task transfers to another. (iii) is itself
+  *conditional* on A3 holding with planner-independent theta_q; A3
+  planner-independence is empirically tested, not assumed for free.
 
   Note on multi-pass: if compression is applied across N sequential passes,
   the bound tightens to q(r)^N (memoryless compounding). In our experiments
   N=1; the N>1 path is implemented but not exercised.
+
+  A1 caveat — phi3-extractive: assumption A1 (per-token independence of
+  retention) holds approximately for token-level compressors (LLMLingua-2,
+  filter, truncation). It is *violated* by phi3-extractive, which selects
+  whole spans by LLM judgement: adjacent token-survival events are
+  correlated within a span. phi3-extractive is retained in `full_validation`
+  and `full_validation_per_family` as a deliberate robustness check of the
+  bound *outside* its formal regime; treat its match-rate cells as a
+  stress-test, not as a within-regime prediction.
+
+  A3 circularity caveat: A3 is currently motivated by the observed sharp
+  cliff and the cliff is in turn explained by A3 — the justification is
+  circular. Breaking it requires an independent A3 probe (directly varying
+  the surviving fraction of task-relevant tokens, not via compression).
+  Listed as a future-work item in the thesis limitations.
 
 Theorem 2 (Cliff Sharpness via Chernoff Concentration) — the real theorem
 --------------------------------------------------------------------------
@@ -316,17 +333,25 @@ def chernoff_success_curve(
 
 
 def cliff_sharpness(m: int, theta: float = 0.5) -> float:
-    """Quantify cliff sharpness: the ratio-range over which success drops from 90% to 10%.
+    """Cliff sharpness — *one-sided* (half-width) transition distance in q-space.
 
-    For a Binomial(M, q) model with threshold theta, the transition width
-    (in q-space) scales as O(1/sqrt(M)). Larger M = narrower transition.
+    Convention (made explicit because the audit found a 2x ambiguity here):
+    returns the **half-width** delta_q_half — the one-sided distance from
+    theta to the q value at which P(success) reaches 90% (equivalently, the
+    distance from theta to the q value at which P(success) drops to 10%).
 
-    Returns the approximate transition width in q-space.
+        delta_q_half = sqrt(ln(10) / (2M))   ≈ 1.07 / sqrt(M)
+
+    The full 90%-to-10% transition range is twice this:
+
+        delta_q_full = 2 * delta_q_half = sqrt(2 * ln(10) / M) ≈ 2.15 / sqrt(M)
+
+    Callers that want the full range should multiply the return value by 2.
+    The scaling is O(1/sqrt(M)); larger M = narrower transition.
     """
     if m <= 0:
         return float("inf")
-    # From Chernoff: P drops from 0.9 to 0.1 over delta_q where
-    # exp(-2M*delta_q^2) = 0.1, so delta_q = sqrt(ln(10)/(2M))
+    # Half-width: solve exp(-2M*delta_q^2) = 0.1, so delta_q = sqrt(ln(10)/(2M))
     return float(np.sqrt(np.log(10) / (2 * m)))
 
 
@@ -394,12 +419,18 @@ def validate_prediction(
     """Compare predicted vs empirical cliff position.
 
     Returns a dict with:
-        predicted_tau: from the theorem
+        predicted_tau: from the model
         empirical_tau: from piecewise/logistic fit
         abs_error: |predicted - empirical|
         rel_error_pct: relative error as percentage
         q_min: required per-round token recall
-        match: True if within 25% relative error
+        match: True if within 25% relative error (back-compat; binary)
+        match_25pct: alias for `match` (explicit naming)
+        match_50pct: True if within 50% relative error (looser tolerance)
+
+    For a *distribution* of relative errors (median / IQR / max), aggregate
+    `rel_error_pct` across cells at the call site; downstream code in
+    `validate_theorem.py` reports those summaries.
     """
     pred_tau = predicted_tau(token_recall_curve, n_compression_passes, theta)
     q_min = q_required(theta, n_compression_passes)
@@ -414,6 +445,8 @@ def validate_prediction(
             "n_compression_passes": n_compression_passes,
             "theta": theta,
             "match": False,
+            "match_25pct": False,
+            "match_50pct": False,
         }
 
     abs_err = abs(pred_tau - empirical_tau)
@@ -428,6 +461,8 @@ def validate_prediction(
         "n_compression_passes": n_compression_passes,
         "theta": theta,
         "match": rel_err <= 25.0,
+        "match_25pct": rel_err <= 25.0,
+        "match_50pct": rel_err <= 50.0,
     }
 
 
@@ -486,7 +521,7 @@ def full_validation(
     Returns a nested dict: {compressor: {family: validation_result}}.
     """
     if compressors is None:
-        compressors = ["lingua2", "phi3-extractive", "filter"]
+        compressors = ["lingua2", "phi3-extractive", "filter", "truncation"]
     if families is None:
         families = ["a", "b", "c"]
 
@@ -558,10 +593,12 @@ def cross_validate_theta(
 
         # Validate on held-out family
         val_results = {}
-        comps = compressors or ["lingua2", "phi3-extractive", "filter"]
+        comps = compressors or ["lingua2", "phi3-extractive", "filter", "truncation"]
         for comp in comps:
             try:
-                curve = extract_token_recall_curve(sweep_csv_path, comp, held_out)
+                curve = extract_token_recall_curve(
+                    sweep_csv_path, comp, held_out, recall_column
+                )
                 emp_tau = extract_empirical_tau(sweep_csv_path, comp, held_out)
                 val_results[comp] = validate_prediction(
                     curve, emp_tau, n_compression_passes, theta_cv
@@ -578,15 +615,26 @@ def cross_validate_theta(
     # Summary
     all_vals = [
         v
-        for fam_result in results.values()
+        for fam_key, fam_result in results.items()
+        if not fam_key.startswith("_")
         for v in fam_result["validations"].values()
         if isinstance(v, dict) and "match" in v
     ]
     n_match = sum(1 for v in all_vals if v["match"])
+    n_match_50 = sum(1 for v in all_vals if v.get("match_50pct", v["match"]))
     results["_summary"] = {
         "n_validated": len(all_vals),
         "n_match": n_match,
+        "n_match_50pct": n_match_50,
         "match_rate": n_match / max(len(all_vals), 1),
+        "match_rate_50pct": n_match_50 / max(len(all_vals), 1),
+        "n_compression_passes": n_compression_passes,
+        "recall_column": recall_column,
+        "per_family_theta_loo": {
+            fam_key: results[fam_key]["theta_cv"]
+            for fam_key in results
+            if not fam_key.startswith("_")
+        },
     }
     return results
 
@@ -608,7 +656,7 @@ def theta_sensitivity(
     if theta_values is None:
         theta_values = [0.3, 0.4, 0.5, 0.6, 0.7]
     if compressors is None:
-        compressors = ["lingua2", "phi3-extractive", "filter"]
+        compressors = ["lingua2", "phi3-extractive", "filter", "truncation"]
     if families is None:
         families = ["a", "b", "c"]
 
@@ -641,13 +689,19 @@ def theta_sensitivity(
 def validate_model_independence(
     h5_csv_path: str,
     baseline_threshold: float = 0.5,
-    tau_tolerance_pct: float = 50.0,
+    tau_tolerance_pct: float = 20.0,
     h1h2_csv_path: str | None = None,
 ) -> dict[str, Any]:
-    """Test Corollary 1: cliff position is model-independent.
+    """Test Corollary 1: cliff position is model-independent within the calibrated regime.
 
     For each family where at least 2 models have baseline >= baseline_threshold,
     fit piecewise cliffs and check that tau spread is within tau_tolerance_pct.
+
+    *Default tolerance.* tau_tolerance_pct defaults to 20%, matching the H2
+    falsifiable-claim spec (the original 50% default was loosened during
+    initial development and has been tightened on the audit's recommendation).
+    Callers that want the older looser tolerance for back-compat with
+    pre-2026-05-30 numbers must pass it explicitly.
 
     Optionally compares H5 taus to H1/H2 deterministic solver taus (different
     solver architecture, same compressor) for cross-architecture validation.
@@ -655,11 +709,12 @@ def validate_model_independence(
     Args:
         h5_csv_path: Path to H5 results CSV (planner_model, ratio, family, coord_success).
         baseline_threshold: Minimum baseline coord_success to include a model.
-        tau_tolerance_pct: Maximum allowed spread in tau across models (%).
+        tau_tolerance_pct: Maximum allowed spread in tau across models (%); default 20.
         h1h2_csv_path: Optional H1/H2 sweep CSV for cross-architecture comparison.
 
     Returns:
-        Dict with per-family results and overall verdict.
+        Dict with per-family results (incl. tau_spread_pct distribution per family)
+        and overall verdict.
     """
     import pandas as pd
 
@@ -952,7 +1007,7 @@ def full_validation_per_family(
     single global theta, since theta is task-specific (Corollary 2).
     """
     if compressors is None:
-        compressors = ["lingua2", "phi3-extractive", "filter"]
+        compressors = ["lingua2", "phi3-extractive", "filter", "truncation"]
     if families is None:
         families = ["a", "b", "c"]
 

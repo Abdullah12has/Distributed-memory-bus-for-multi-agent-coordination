@@ -143,8 +143,8 @@ workload families (cross-document fact aggregation,
 constraint-satisfaction planning, multi-step retrieval), with
 synthetic provenance and access-control tag distributions, four
 coordination-quality metrics (final task success, sub-task
-assignment accuracy, rounds to completion, critic-flagged error
-rate), and a single-command regeneration script from a fixed
+assignment accuracy, critical-token-recall, achieved compression
+ratio), and a single-command regeneration script from a fixed
 seed. The benchmark is the substrate on which the cliff
 characterisation, the model-scaling result, and the inference-
 disclosure measurement all run; releasing it as part of the
@@ -159,19 +159,36 @@ calibrated regime.} The empirical work covers four training-free
 compressors --- LLMLingua-2~\cite{pan2024llmlingua2}, the Phi-3-
 Mini extractive span selector, an instruction-aware filter, and a
 truncation baseline --- at ten compression ratios across three
-families and across three Qwen-2.5 planner sizes (1.5B, 3.8B,
-8B), with a frontier validation arm on Qwen-2.5-72B and
-DeepSeek~V4~Pro that demonstrates cross-architecture cliff
-invariance to within $0.8\%$ on the Qwen scale-up and a bootstrap-
-CI-containment result on the cross-vendor case. The compounding-
-error model derives the cliff position from per-round
-critical-token-recall and a per-family recall threshold and
-recovers the empirical position within a useful first-order
-tolerance. An out-of-regime diagnostic on GPT-oss~120B identifies
-extended-reasoning planners as a structurally distinct case
-that the model's threshold-success assumption does not cover ---
-which is itself a contribution, since prior compression work
-treats reasoning regime implicitly.
+families and across three local planners drawn from
+\textbf{three different architecture families}
+(Qwen-2.5-1.5B-Instruct, Phi-3-Mini-3.8B-Instruct,
+Llama-3.1-8B-Instruct; the original ``Qwen-2.5 1.5B/3.8B/8B''
+notation conflated three architectures and is corrected here),
+with a frontier validation arm on Qwen-2.5-72B and DeepSeek~V4~Pro
+that carries the corollary's binary verdict across the strict
+tolerance: Qwen-2.5-72B cliffs $\sim 7\%$ above the canonical
+synthetic reference $\tau^{*}=2.5$ and inside its bootstrap CI;
+DeepSeek~V4~Pro's bootstrap CI contains the synthetic reference.
+(The local three-architecture sweep on family-c shows a $24\%$
+tau spread, below the $50\%$ tolerance the validator originally
+shipped with but above the strict $20\%$ tolerance --- necessary
+but not sufficient; the load-bearing evidence is the
+cross-architecture frontier arm. The local arm is itself a
+cross-architecture invariance result across Qwen, Phi-3, and
+Llama, not a within-family parameter-count sweep.) The
+compounding-error model derives the cliff position from per-round
+\textbf{critical-token-recall} and a per-family recall threshold
+$\theta_q$ and recovers the empirical position within a useful
+first-order tolerance. The same machinery supports
+\textbf{Corollary~2 (information-density scaling)}: the cliff
+\emph{shape} varies with a task's information density
+$\theta_\text{info}$ (an AUC-based per-task quantity, distinct
+from $\theta_q$), validated on HotpotQA and MultiHopRAG against
+the C1 family-a synthetic reference. An out-of-regime diagnostic
+on GPT-oss~120B identifies extended-reasoning planners as a
+structurally distinct case that the model's threshold-success
+assumption does not cover --- which is itself a contribution,
+since prior compression work treats reasoning regime implicitly.
 
 \paragraph{C3 --- A catalogue of three retrieval-augmented-
 generation pipelines with a EUR-per-workflow cost model.}
@@ -181,8 +198,10 @@ FAISS-CPU and HNSW and evaluated under matched storage-bounded
 and accuracy-bounded regimes. The original H3 hypothesis predicted
 a sign-flip in the optimal pipeline between regimes; the empirical
 work shows that compress-first is robustly preferred in both
-regimes, with the joint-routing variant leading both by a small
-margin. The compress-first preference \emph{reverses} a common
+regimes (by 3.2 pp F1 storage, 2.0 pp F1 accuracy), and the
+joint relevance-conditional routing (P3) leads both
+\textbf{by a substantial margin (42 pp F1 storage, 25 pp F1
+accuracy)} at near-identical EUR-per-query cost. The compress-first preference \emph{reverses} a common
 assumption of the LongLLMLingua~\cite{jiang2024longllmlingua}
 line of work and is the substantive C3 finding, registered
 honestly as a reframing of the original predicate.
@@ -199,9 +218,12 @@ inference-disclosure metric quantifies how compression at
 $4\times$ reduces the rate at which a held-out local Llama-3.1-8B
 reader can recover protected facts from a compressed
 \textsc{confidential} fragment. The metric ranks compressors by
-privacy at iso-ratio, and the memory bus's policy layer
+disclosure rate at iso-ratio, and the memory bus's policy layer
 operationalises the ranking as a deployment-time enforcement
-mechanism.
+mechanism; Section~\ref{sec:h4_construct} documents that the
+ranking is monotonic in how aggressively each compressor destroys
+source tokens (truncation at the top), which calibrates the
+privacy interpretation against the destruction baseline.
 
 The thesis also presents \textbf{CAAC} (Cliff-Aware Adaptive
 Compression), a wrapper that operationalises the compounding-
@@ -279,12 +301,14 @@ success); H2 (a sharp coordination cliff exists, characterised
 across $12$ compressor-family cells); the compounding-error
 model that predicts the cliff position with a predicted-versus-
 empirical match-rate band; Corollary~1 (the cliff position is
-invariant to planner parameter count within the calibrated
-regime, validated on three frontier models); H3 (the
-RAG pipeline catalogue with the compress-first dominance
+invariant to planner parameter count and architecture family
+within a defined calibrated regime, validated on two frontier
+models --- Qwen-2.5-72B and DeepSeek V4 Pro --- with GPT-oss 120B
+reported as an out-of-regime diagnostic at the regime boundary);
+H3 (the RAG pipeline catalogue with the compress-first dominance
 result); H4 (the inference-disclosure measurement on the unbiased
-benchmark); and Corollary~2 (information-density scaling of the
-cliff across three benchmarks).
+benchmark); and Corollary~2 (the cliff \emph{shape} varies with
+task information density across three benchmarks).
 
 Chapter~\charef{summary} synthesises the findings, presents CAAC
 as the constructive realisation of the compounding-error bound,

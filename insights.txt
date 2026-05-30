@@ -2974,3 +2974,674 @@ bootstrap CI band rather than a single curve.
 (3) Lauri post-submission review of the discussion chapter
 per the grilling-Q10 decision to skip the mid-sprint feedback
 gate.
+
+## 66. CLIFF-THEOREM AUDIT FIXES + RERUN AT STRICT TOLERANCE (2026-05-30)
+
+In response to the Lovén "Cliff theorem proof audit" memo
+(dated 2026-05-28), we landed the remaining audit fixes across
+five files and reran the two validators whose outputs depended
+on the tightened defaults. The thesis manuscript and the
+codebase are now aligned with the audit recommendations.
+
+### Code changes
+
+- `src/m6/theory/cliff_prediction.py`
+  - `cliff_sharpness()`: docstring renames the return value as
+    the *half-width* (delta_q_half ≈ 1.07/sqrt(M)), with the
+    full 90%-to-10% range = 2 × delta_q_half explicit. Numerics
+    unchanged.
+  - `validate_prediction()`: now returns `match_25pct` and
+    `match_50pct` keys alongside the existing `match` (binary at
+    ±25%). Old `match` semantics preserved for back-compat.
+  - `validate_model_independence()`: default `tau_tolerance_pct`
+    tightened from **50 → 20** to match the H2 falsifiable-claim
+    spec (audit Issue 6(b)).
+  - `cross_validate_theta()`: latent bug fixed (was ignoring its
+    own `recall_column` parameter and silently using the
+    `extract_token_recall_curve` default); now honors the
+    parameter. `_summary` now exposes `n_match_50pct`,
+    `match_rate_50pct`, `per_family_theta_loo`, `recall_column`,
+    `n_compression_passes`.
+  - Default compressor list updated **3 → 4** (truncation
+    added) so `full_validation`, `full_validation_per_family`,
+    and `cross_validate_theta` align with the 4-compressor
+    thesis claim of 33% (4/12) match rate.
+  - Module docstring adds the A1 phi3-extractive caveat and the
+    A3 circularity caveat inline.
+
+- `src/m6/analysis/validate_theorem.py`
+  - New `--validation-mode {loo,in-sample,all}` flag, default
+    **`loo`** per audit recommendation. LOO-CV is now the
+    headline; in-sample is the sanity check.
+  - Print output now reports both ±25% and ±50% over the same
+    denominator (n=12 cells, NaN counts as MISS) and the full
+    relative-error distribution (median, IQR, max).
+
+### Prose changes
+
+- `draft3.md` §4.4.2 — A1 within-pass / phi3 caveat; A3
+  circularity acknowledgement in-place.
+- `draft3.md` §4.4.3 — explicit unit-bridge paragraph for the
+  `p₀ ≥ θ_q` calibrated-regime predicate.
+- `draft3.md` §4.4.4 — adds the LOO-CV match rates (25% at
+  ±25%, 75% at ±50%), the relative-error distribution
+  (median=35.3%, IQR=[20.5%, 43.4%], max=57.4%), and the
+  in-sample-vs-LOO gap framing.
+- `draft3.md` §4.5 Corollary 1 — verdict block updated to read
+  "SUPPORTED by frontier validation arm" with the local 24%
+  spread framed as necessary-but-not-sufficient at the strict
+  ±20% bar.
+- `draft3.md` §5.3 — adds "Corollary 1's local arm misses the
+  strict tolerance" limitation paragraph; A3 circularity
+  paragraph; A1 phi3 caveat paragraph.
+- `draft3.md` §5.6 — adds "Independent A3 probe" future-work
+  paragraph.
+- `thesis_latex/Chapters/experiments.tex` and
+  `thesis_latex/Chapters/summary.tex` — same three textual
+  changes mirrored into the LaTeX source (assumptions,
+  calibrated regime, limitations, future work); all
+  cross-references resolve.
+- `docs/coordination_cliff_theory.md` — dropped the spurious
+  `P(success | r) ≤ p₀·q(r)` linear bound (audit Issue 1's
+  last home); concentration form `P(success|r) → p₀·1[q ≥ θ]`
+  is now the canonical statement. Half-width vs full-width
+  sharpness convention named explicitly. Added a Corollary 1
+  subsection with the unit-bridge note, a Corollary 2
+  empirical-conjecture subsection, and a θ-circularity
+  mitigation subsection (bootstrap CI + LOO-CV pointer).
+
+### Rerun results — what changed
+
+Two validators have changing outputs at the new defaults.
+
+(a) `validate_model_independence(results/h5_final/results.csv,
+tau_tolerance_pct=20)` flips the Corollary 1 binary verdict on
+the local arm:
+
+  - tau_tolerance_pct=50: family-c spread=23.91% is_invariant=True
+    n_invariant_families=1/1 testable, corollary1_supported=True
+  - tau_tolerance_pct=20: family-c spread=23.91% is_invariant=False
+    n_invariant_families=0/1 testable, corollary1_supported=False
+
+The 23.91% local spread is **below the 50% bar but above the
+20% bar**. The corollary's binary verdict therefore now rests on
+the cross-architecture frontier arm (Qwen-72B within 0.8%,
+DeepSeek V4 Pro bootstrap CI contains the synthetic reference).
+The prose in draft3.md §4.5 and experiments.tex
+sec:corollary1 has been updated to make this load-bearing
+framing explicit. On-disk record:
+`results/h5_final/model_independence_20pct.json`.
+
+(b) `validate_theorem.py --validation-mode loo` (now CLI
+default) on `results/h1_h2_v2/sweep_results.csv` produces:
+
+  - In-sample per-family (4 compressors × 3 families = 12 cells):
+    4/12 (33%) at ±25%, 8/12 (67%) at ±50% — *matches existing
+    thesis prose exactly.*
+  - LOO-CV (n=12 cells): 3/12 (25%) at ±25%, 9/12 (75%) at
+    ±50%. Per-family LOO θ_q: a=0.714, b=0.611, c=0.735.
+  - Relative-error distribution: median 35.3%, IQR
+    [20.5%, 43.4%], max 57.4% (n=10 cells with finite
+    rel_error; 2 cells produce no-cliff predictions matched by
+    no-cliff or near-no-cliff empirical observations).
+
+The 33% in-sample vs 25% LOO gap is the size of the in-sample
+optimism in the headline number. New on-disk artefacts:
+`results/h1_h2_v2/theorem1_validation_loo.json` (LOO),
+`results/h1_h2_v2/theorem1_validation.json` (in-sample, global
+θ=0.5), `results/h1_h2_v2/theorem1_validation_per_family.json`
+(in-sample, per-family θ).
+
+### What did *not* change
+
+- H1, H2, H3, H4 verdicts and numbers (no scoring code touched).
+- CAAC numbers and verdict (no CAAC code touched).
+- Compressor implementations and the cliff sweep CSVs.
+- The thesis prose 33%/67% match rate (in-sample, 4 compressors)
+  — the numbers reproduce exactly because the defaults now align
+  with the 4-compressor configuration that produced
+  `theorem_validation_ctr.json` originally.
+
+### Decisions journal
+
+- The tighter `tau_tolerance_pct=20` default is the canonical
+  setting going forward; callers that want the older looser
+  tolerance for back-compat with pre-2026-05-30 numbers must
+  pass it explicitly.
+- The LOO-CV mode is the CLI default; in-sample is the sanity
+  check available via `--validation-mode in-sample` or `all`.
+- The thesis prose now leads with the in-sample match rate
+  (because that's what the headline figures use) but reports
+  both rates side by side, with the LOO rate framed as the
+  not-in-sample reference and the gap as the in-sample
+  optimism.
+
+## 67. STRONG AUDIT PASS — 5-TIER REWRITE OF DRAFT3.MD + LATEX MIRROR (2026-05-30)
+
+Following insights §66 (cliff-theorem audit fixes), a deeper audit of
+`draft3.md` and the four reviewer documents surfaced ~38 issues
+across five severity tiers. All five tiers landed in this pass; the
+LaTeX manuscript was rebuilt cleanly to 76 pages (was 71).
+
+### Tier 0 — Title rename
+
+Dropped "Distributed" from the manuscript title per audit-Q1
+recommendation. New title: *Memory Bus for Multi-Fragment LLM
+Workflows: Context Compression, the Coordination Cliff, and Privacy*.
+Rationale: the implementation is single-host (FastAPI + SQLite WAL +
+in-memory dict + FAISS-CPU), no replication / consensus / sharding.
+"Distributed" was aspirational. Touched: `thesis_latex/main.tex`
+(`\title{}` + `\otsikko{}` Finnish), `draft3.md:1`, `CLAUDE.md:1`,
+`thesis_PLAN.md:2`, `citations.bib` comment header,
+`docs/adr/ADR-009` (addendum). Codebase repository path retained
+for back-compat.
+
+### Tier 1 — 10 load-bearing factual fixes
+
+1. CAAC filter plateau was wrong in prose (64%) — canonical
+   `caac/summary.json` is **50%**. Fixed in `draft3.md:813` and
+   `summary.tex:216`.
+2. Five broken section cross-references in `draft3.md` — sectioning
+   shifted at some point during writing but the refs weren't
+   re-walked: `§4.3 → §4.4` (compounding-error model);
+   `§4.6 → §4.7` (H3); `§4.7 → §4.8` ×2 (H4); `§4.8 → §4.9`
+   (Corollary 2). LaTeX `\ref{}` labels are unaffected.
+3. §4.4.4 conflated phi3-extractive/c with filter/c on the
+   "no-cliff prediction matched by no-cliff observation" claim.
+   phi3/c has empirical τ*=2.5 with p<10^-11 (Table 4.2) — it is
+   not a no-cliff cell. Rewrote the paragraph to distinguish the
+   two, and to flag phi3 cells as outside A1's formal regime
+   (insights §66 / cliff-audit Issue A1).
+4. §4.4 line 568 conflated tolerance levels — said "33% strict and
+   67% at ±50%". Now correctly "33% within ±25% and 67% within
+   ±50%".
+5. Corollary 2 verdict was reframed in terms of cliff *shape*
+   (sharpness, pre-cliff plateau) rather than absolute *position*.
+   The data supports the shape claim — HotpotQA cliffs at τ*≈2.7
+   like dense C1-a, yet is the most distributed task (θ_info≈0.37);
+   the gradual-vs-precipitous degradation pattern is what
+   distinguishes them. The position-only claim was contradicted by
+   the same table that purportedly supported it.
+6. Abstract & C2 contribution now reflect the insights §66
+   Corollary 1 reframing — local Qwen-2.5 sweep on family-c shows
+   24% spread (below 50% tolerance, above strict 20% tolerance);
+   binary verdict rests on the cross-architecture frontier arm
+   (Qwen-72B 0.8% off, DeepSeek V4 Pro CI contains synth).
+7. Corollary 2 added to C2 contribution paragraph (was promised in
+   abstract + outline but absent from contributions list).
+8. Outline said "validated on three frontier models" — GPT-oss is
+   the out-of-regime *diagnostic*, not a validator. Now
+   "validated on two frontier models, with GPT-oss as an
+   out-of-regime diagnostic at the regime boundary".
+9. Bootstrap-CI band has zero empirical coverage (0/11 cells
+   inside the band; insights §57). Manuscript never disclosed
+   this; the figure caption read as if the band quantified the
+   model's accuracy. Added an explicit "band reflects sampling
+   uncertainty in θ_q only — empirical τ* falls outside the band
+   on all 11 testable cells; the match-rate paragraph reports the
+   actual accuracy" disclosure to both §4.4.4 prose and the
+   figure caption. Largest remaining honesty gap, now closed.
+10. C1 "rounds to completion" metric contradicted N=1 (CLAUDE.md
+    bugfix #27 — rounds is always 1, truthful). Replaced with
+    "critical-token-recall" and "achieved compression ratio".
+
+### Tier 2 — 7 rigor & methodology gaps
+
+1. Bootstrap method now named explicitly: **BCa with n_boot=1000**,
+   in both `§4.1.2` and the `§4.4.4` θ_q resampling pipeline. The
+   `efron1987bca` citation was missing from `citations.bib`;
+   downgraded to "per the construction in" cite to
+   `efron1993bootstrap` (the Bootstrap book covers BCa).
+2. Holm correction family size made explicit — applied **within
+   each hypothesis's family**: H2 (12 cells joint), H4 (3 conditions
+   joint per signal/reduction), H3 (3 pipelines joint per regime).
+   Family sizes deliberately kept narrow to avoid over-conservatism.
+3. Table 4.1 column header now names the p-value test (Spearman
+   two-tailed asymptotic) and the CI method (BCa, 1000 resamples).
+4. n=1350 in Table 4.1 now explained: 150 workloads × 9 ratios for
+   the three full-sweep compressors; 150 × 5 for Phi-3-Mini
+   extractive (whose ~2.5× compression ceiling collapses the upper
+   half of the ratio sweep).
+5. Cliff's δ and Cohen's d **dropped** from the symbols table —
+   they were defined but never used in any verdict. Replaced with
+   n_boot (which is used). Mirrored in `abbreviations.tex`.
+6. Wilson 95% CI on the 4/12 strict match rate noted explicitly:
+   approximately [13%, 61%]. Acknowledges the small-n nature of the
+   validation without inflating the headline.
+7. New §5.3 limitations paragraph "Predicted-τ* bootstrap band is
+   too tight" — cross-references with Tier 1 #9.
+
+### Tier 3 — 12 scope & framing items
+
+1. (Done in Tier 0.)
+2. Dropped "single strongest piece of evidence in the thesis"
+   superlative — replaced with "most direct evidence for Corollary
+   1's cross-architecture claim on the family-a × LLMLingua-2 cell".
+3. DeepSeek "comfortably contains" replaced with honest CI-width
+   disclosure (5.4 ratio units, wider than the interesting sweep
+   region; "consistent with limited resolving power" is the right
+   framing).
+4. "9× change in parameter count" scoped to the family-a ×
+   LLMLingua-2 cell (was misread as a claim across all cells).
+5. "~20pp disclosure reduction" replaced with per-compressor
+   numbers: 21pp filter, 19pp lingua2, 7.5pp phi3.
+6. "Robustly preferred" for compress-first → "consistently preferred
+   in the two evaluated regimes under the BAAI/bge-large-en-v1.5
+   + FAISS-CPU stack".
+7. CAAC weak-dominance "100% of the time" → "100% (14/14)" with
+   small-n caveat made explicit.
+8. §2.5 closing gap statement scoped from "multi-agent" to
+   "multi-fragment" per ADR-009; AutoGen multi-round backend named
+   as future work.
+9. C2 contribution now names θ_q (per-family recall threshold) and
+   θ_info (per-task density estimate) explicitly, per CONTEXT.md.
+10. **New §4.8.1 "Threat model"** — formal adversary characterisation
+    for H4 inference disclosure: adversary's goal (recover protected
+    facts), capabilities (query reader with arbitrary y/n, knows
+    compressor identity, no source access), what they don't have
+    (bus access, reader training, repeated-query amplification),
+    and how the metric operationalises the upper bound. Existing
+    §4.8.1 ("Why this measurement matters") becomes §4.8.2;
+    subsequent subsections renumber.
+11. "Protected fact" now defined in §4.8.1 (was inferred-only from
+    Appendix C).
+12. Reader-bias caveat moved from a forward-pointing footnote into
+    the H4 verdict block itself, per audit-Q11 grilling requirement
+    that the caveat surface *before* the SUPPORTED claim.
+
+### Tier 4 — 4 cliff-audit residue items
+
+1. Unit-bridge gloss (insights §66 Tier 6(a)) now has
+   forward-pointers from the Corollary 1 verdict tcolorbox
+   (§4.5), the GPT-oss diagnostic (§4.6.4 — explicitly notes the
+   regime predicate fails on its *second* condition, not the
+   ceiling condition), and the PRIORS condition of H4 (§4.8.3 —
+   the priors-only rate is what operationalises the second
+   condition of the §4.4.3 calibrated-regime predicate).
+2. §4.4.4 match-rate paragraph now explicitly tags phi3 cells as
+   "outside A1's formal regime" — covered by Tier 1 #3.
+3. Future-work per-task θ_q baseline cited as 33% in-sample / 25%
+   LOO instead of just "33%", per insights §66's LOO framing.
+4. "First-order bound" slogan in summary.tex now refers back to
+   the explicit derivation form `E[X/M] = q(r)`, `P(success|r) →
+   1[q≥θ_q]`.
+
+### Tier 5 — 7 cosmetic & hygiene items
+
+1. Outline strand-count "seven strands" now lists all seven
+   (§2.1–§2.7 + §2.8 gap statement). Was listing only five.
+2. New `Appendix D.4 Figure index` distinguishing cited-inline
+   figures from reproducibility-only ones. Closes the 12-orphan-
+   figure issue: each figure either has an inline citation or is
+   listed in D.4 as "reproducibility-only, retained for auditing".
+3. IQR endpoints corrected from `[20.5%, 43.4%]` (wrong quartile
+   interpolation) to `[19.2%, 45.0%]` (canonical raw data).
+4. Abstract "approximately one hundred thousand" cells replaced
+   with "tens of thousands (approximately 52,000)" — closer to the
+   sum of canonical CSV row counts.
+5. Chernoff/Theorem 2 machinery in `cliff_prediction.py` now
+   acknowledged in §4.4.1 — `chernoff_success_curve()` exists and
+   is documented in the codebase; ADR-008 records the decision to
+   keep it out of the manuscript (the residuals are dominated by
+   A2 specification error, not sampling error, so the
+   in-expectation form is the right register).
+6. CAAC "0/7" scoping clarified — denominator 7 is "all target
+   ratios", not "cliff ratios" only; the numeric claim (0%) is
+   correct either way.
+7. Appendix D.2 curl trace relabelled "illustrative" (with
+   `// (n more fragments)` elisions) rather than "verbatim"; the
+   full trace is in `docs/curl-trace.txt`.
+
+### LaTeX build status
+
+Final compile clean: pdflatex → biber → pdflatex → pdflatex
+sequence produces a 76-page PDF (954 KB) with **zero undefined
+references and zero missing citations**. Brace balance verified
+across all edited chapters (experiments.tex 606/606,
+summary.tex 151/151, introduction.tex 60/60, abstract.tex 15/15,
+abbreviations.tex 20/20, implementation.tex 287/287,
+relatedwork.tex 165/165). Output copied to `thesis.pdf` in the
+project root.
+
+### What this pass did NOT do
+
+- Did **not** re-run any experiment. All numbers are reproductions
+  of canonical CSV/JSON artefacts that already lived on disk.
+- Did **not** regenerate any figure. The figure caption for
+  `predicted_vs_empirical.pdf` was updated to explicitly disclose
+  the 0/11 coverage; the underlying figure is the same.
+- Did **not** address the *other* review document (the manuscript
+  audit `Review - Manuscript audit for Syed Abdullah Hassan
+  (2026-05-28).md`); its Required corrections (R3 NIST attribution,
+  R4 Park → Rezazadeh bibkey, R5 "Neutral" → "Neural" typo, R6.4
+  Anthropic URLs / authors) remain on the punch list for a
+  separate session. Reason: those edits are mechanical bibkey and
+  citation fixes that don't interact with the cliff-theorem
+  honesty work in this pass.
+
+### Decisions journal
+
+- Title is "Memory Bus for Multi-Fragment LLM Workflows…" (drop
+  "Distributed") going forward.
+- H4 threat model lives at §4.8.1 (new), before the metric
+  definition; verdict block surfaces the asymmetric-reader caveat
+  inline.
+- Bootstrap method is BCa, n_boot=1000, throughout the chapter.
+- Holm correction is per-hypothesis-family; family sizes
+  declared.
+- Bootstrap-CI predicted-τ* band is acknowledged as too tight to
+  contain empirical τ* — disclosed both in §4.4.4 prose and the
+  figure caption. The actual model accuracy is what the in-sample
+  / LOO match rates report.
+
+## 68. SENIOR-REVIEWER AUDIT TRIAGE + TIER A+B FIXES (2026-05-30)
+
+A senior-reviewer / thesis-examiner read the full manuscript and
+produced a 16-point critique. Verification against the canonical
+CSV/JSON artefacts confirmed **11 of 16 issues as REAL**, three of
+them devastating (Qwen sizes, frontier sample size, τ\* reference
+mismatch). One was a partial false-flag, three were partial-real,
+one was already addressed. This pass landed Tier A (6 critical
+correctness fixes) and Tier B (6 honesty fixes); Tier C polish
+deferred per user scope.
+
+### Confirmed REAL issues (and what we did)
+
+**A1 — Qwen-2.5 sizes don't exist.** The manuscript called the
+local scaling sweep "three Qwen-2.5 planner sizes (1.5B, 3.8B,
+8B)" in abstract, C2, §3.7, §4.5, §4.6.2, §5.4.2, CLAUDE.md.
+Canonical `results/h5_final/results.csv planner_model_name`:
+`qwen2.5:1.5b-instruct-q4_K_M`, `phi3:latest` (Phi-3-Mini 3.8B),
+`llama3.1:8b` (Llama-3.1 8B) — **three different architecture
+families**, not one. Reframed Corollary 1's local arm as a
+*three-architecture invariance result* (stronger claim than
+single-family scaling, actually). The 8B-to-72B "9× within
+family" claim was wrong (the 8B was Llama-3.1, not Qwen);
+replaced with "48× within Qwen-2.5 family (1.5B → 72B)" which is
+the true within-family scale-up.
+
+**A2 — Frontier sample size 1500 → 180.** §4.6.1 claimed "30
+workloads × 10 ratios × 5 seeds = 1500 cells". Canonical CSVs:
+**10 workloads × 6 ratios × 3 seeds = 180 cells**. 8× overstatement.
+Reframed and noted the small-n caveat in both §4.6.1 setup and
+limitations. The "DeepSeek wider CI because fewer seeds"
+explanation was also wrong (both DeepSeek and Qwen-72B have 3
+seeds); the wide CI is from the small per-cell sample, not a
+DeepSeek-specific issue.
+
+**A3 — τ\* reference reconciliation.** §4.6.1 referenced
+"τ\* = 2.70 from h1_h2_final" but canonical h1_h2_v2 has lingua2/a
+`logistic_tau = 2.5`. The 0.8% "Qwen-72B off synth ref" headline
+was against 2.70 (auxiliary fit on h1_h2_final coordination
+curve), not 2.5 (canonical h1_h2_v2 logistic fit). Reframed:
+**Qwen-72B is ~7% above the canonical τ\* = 2.5 and inside its
+bootstrap CI**; the auxiliary 2.70 fit is noted parenthetically.
+The "CI contains reference" claim survives; the headline "0.8% off"
+sound-bite is dropped.
+
+**A4 — drop_rel column mislabel.** Table 4.2's "rel. drop" column
+showed values > 1.0 (e.g. 1.61), apparently contradicting H2's
+"30% relative drop" criterion. The metric is actually the
+*piecewise-extrapolated slope-drop ratio*
+`Δ = (f(r_min) − f(r_max)) / |f(r_min)|` from `run_h1_h2.py:343`,
+**not** a fraction of the observed baseline. Values > 1.0 are
+valid for this metric; the H2 criterion `drop_rel ≥ 0.30` is in
+this same metric. Renamed column to "slope drop Δ", added
+caption explaining the formula, kept the verdict criterion in the
+same metric.
+
+**A5 — τ\* grid quantization on 5 cells.** Five (compressor,
+family) cells (filter/b, lingua2/a, lingua2/b, truncation/a,
+truncation/b) had IDENTICAL logistic_tau=2.5, drop_rel=1.6101,
+cohen_d=0.0, p_holm=8.46e-12 to 5+ sig figs. The deterministic
+solver produces a binary 1.0→0.0 step between r=1 and r=2 in the
+ratio sweep on these cells; the logistic fit lands at the
+midpoint of the {1,2} gap with no further resolving power.
+Added Table 4.2 footnote (with † markers) disclosing the
+quantization honestly.
+
+**A6 — H4 missing truncation + construct validity.**
+`h4_unbiased/` has only 3 compressors (lingua2, phi3-extractive,
+filter); truncation was missing. **Reran H4 with all 4
+compressors** including truncation; output at
+`results/h4_unbiased_v2/`. (Rerun was kicked off as a background
+task during the prose edits; if numbers don't appear in §4.8
+verdict box at submission time, fall back to disclosing the
+exclusion and add the construct-validity limitation paragraph.)
+
+**B1 — H3 Table 4.3 vs prose contradiction.** Canonical CSV:
+P3 leads P1 by **42.45 pp F1 (storage), 24.72 pp F1 (accuracy)**.
+Prose said "small margin" / "the additional ~1pp F1 headroom" /
+"adds the final ~1pp F1" in multiple places (intro C3, §4.7.3,
+§5.4.1). Replaced everywhere with the actual 25-42 pp F1 gap.
+Headline now "P3 ≻ P1 ≻ P2 with P3 leading by 25-42 pp F1 at
+indistinguishable EUR cost".
+
+**B2 — Corollary 2 HotpotQA counterexample + circular θ_info.**
+HotpotQA τ\* = 2.69 (close to dense C1-a τ\* = 2.5) yet
+θ_info = 0.373 (most distributed) — contradicted the
+"distributed → late cliff" position claim. Reframed Corollary 2
+explicitly as an **empirical observation on n=3 benchmarks, not
+a derived corollary**: (i) n=3 is small, (ii) θ_info is computed
+from the same curve it characterises (circular), (iii) the claim
+is about cliff *shape*, not position. Added forward pointer to
+external density probe as future work.
+
+**B3 — H4 construct validity.** Addressed empirically by the
+A6 truncation rerun rather than a standalone limitation
+paragraph (per user choice of Option 2 over Option 3).
+
+**B4 — Reproducibility scoping.** "Single command, commodity
+hardware" claim was overclaim — repro-cache needs GPU,
+repro-frontier needs paid API + isn't byte-deterministic.
+Reframed to scope local-pipeline determinism explicitly and
+admit frontier-API non-determinism (server batching, model
+updates).
+
+**B5 — H1 sign-disagreement lead.** Reframed H1 verdict block
+to lead with the sign-disagreement finding (filter ρ=-0.59,
+lingua2/truncation ρ≈+0.38) — categorically more interesting
+than the preregistered ρ<0.6 threshold-test result.
+
+**B6 — Citation fixes (4 sub-items).**
+- B6.1 MultiHopRAG: was misattributed to `addison2024cfedrag`
+  (which is CFedRAG, a different paper). Added
+  `@inproceedings{tang2024multihoprag, ...}` and updated cites.
+- B6.2 Selective Context: was attributed to `cheng2024xrag`
+  (which is xRAG, a different method) and `li2025promptsurvey`
+  (a survey, not the original). Added
+  `@inproceedings{li2023selective, ...}` (the canonical Yucheng
+  Li et al. 2023 EMNLP paper) and updated cites.
+- B6.3 RECOMP, 2WikiMultiHopQA: cited in prose without bib
+  entries. Added `xu2024recomp` (ICLR 2024) and `ho2020wiki2hop`
+  (COLING 2020).
+- B6.4 NIST AI RMF lattice misattribution: the 5-tier
+  PUBLIC<INTERNAL<CONFIDENTIAL<RESTRICTED<SECRET lattice was
+  attributed to NIST AI RMF, but NIST AI RMF defines
+  Govern/Map/Measure/Manage functions, not a labelled
+  classification lattice. Reframed: lattice is enterprise
+  practice (ISO/IEC 27001-style); NIST AI RMF cited only for the
+  broader risk-management framing.
+
+### FALSE FLAG (only one)
+
+The reviewer's "non-canonical reference" framing of issue 1 was
+partial false flag: the underlying inconsistency is real, but the
+"7% off canonical" math conflates two different fits of the same
+curve (logistic fit on h1_h2_v2 vs auxiliary fit on h1_h2_final).
+Fix is to reconcile (we use the canonical 2.5 going forward), not
+to declare one value the unique truth.
+
+### Already-addressed items not redone
+
+- A3 circularity (already in §4.4.2 + §5.3 + §5.6 from the
+  2026-05-30 cliff-audit pass)
+- "~100k cells" overclaim (already softened to ~52k in the
+  Tier 5.4 pass)
+- "Seven strands" outline count (already correct in current text;
+  reviewer likely read a pre-fix copy)
+
+### Tier C items dropped per user scope
+
+C1 (soften abstract "predicts"), C2 (split in-regime vs
+out-of-regime match rate), C3 (θ_info/θ_q family-c numerical-
+coincidence footnote). Available as 5-minute fixes each if time
+permits.
+
+### LaTeX build
+
+77-page PDF, 988 KB. Zero undefined references, zero missing
+citations, brace-balanced across all edited chapters.
+
+### Addendum to §68 (H4 GPU rerun completed)
+
+The H4 rerun was kicked off locally on M4 Pro and then moved to
+the GPU at the user's request. Completed in **~4 minutes** on the
+RTX 5090 (vs ~1-3h projected on M4 Pro). Output:
+`results/h4_unbiased_v2/{results.csv,verdicts.json}`.
+
+**Headline findings from the 4-compressor sweep:**
+
+| compressor | baseline | compressed-4× | reduction Δ | p_holm | sig? |
+|---|---|---|---|---|---|
+| truncation (most destructive) | 0.78 | 0.54 | **0.246** | 0.0008 | YES |
+| filter | 0.78 | 0.58 | 0.204 | 0.0008 | YES |
+| LLMLingua-2 | 0.78 | 0.59 | 0.189 | 0.0008 | YES |
+| Phi-3-Mini extractive (most preserving) | 0.78 | 0.78 | 0.004 | 0.91 | **NO** |
+
+**Construct-validity finding (load-bearing): the disclosure-
+reduction ranking is monotonic in how aggressively each
+compressor destroys source tokens.** Truncation (drops the tail
+of the text entirely) tops the ranking at 24.6 pp. Phi-3-Mini
+extractive (verbatim spans of the source --- most semantically
+preserving) shows no significant reduction. The senior-reviewer's
+H4 construct-validity concern is **empirically vindicated**:
+disclosure reduction tracks information destruction, not
+privacy-specific filtering.
+
+The thesis absorbs this finding honestly:
+- Table 4.4 in both `draft3.md` and `experiments.tex` now lists
+  4 compressors with the destruction-ordering visible at a glance
+  (truncation top, phi3-extractive bottom).
+- New §4.8.4 "Construct-validity finding" in `experiments.tex`
+  documents the ordering and reframes the H4 interpretation
+  (destruction-monotonic, not privacy-specific).
+- H4 verdict block in both files now reports "SUPPORTED for 3 of
+  4 compressors" (phi3-extractive is the exception) with the
+  construct-validity caveat surfaced inline.
+- Abstract H4 framing updated to include the per-compressor pp
+  numbers and the destruction-ordering interpretation.
+- §5.1 synthesis disclosure paragraph rewritten to reflect the
+  monotonic-in-destruction reading.
+- C4 contribution paragraph reframes "ranks compressors by
+  privacy" → "ranks by disclosure rate; the ranking is
+  destruction-monotonic, calibrating the privacy interpretation
+  against the destruction baseline".
+
+**Why Phi-3 extractive's reduction collapsed from old=0.075
+(p=0.027, borderline significant) to new=0.004 (p=0.91, not
+significant):** the old `h4_unbiased` run was on M4 Pro with
+`phi3:mini` aliased to `phi3:latest`; the GPU rerun uses
+`phi3:latest` directly (a different sha256 in Ollama on the GPU).
+Numerical drift on the other compressors is small (filter
+0.214 → 0.204; lingua2 0.189 unchanged). The GPU rerun is the
+canonical record going forward (`h4_unbiased_v2`).
+
+**LaTeX rebuild:** 78-page PDF, 994 KB. Zero undefined references,
+zero missing citations. Truncation row added to Table 4.4; new
+§4.8.4 construct-validity subsection compiles cleanly.
+
+### What the thesis can defend at examination now
+
+The senior-reviewer's critique was largely correct, and we
+absorbed it honestly:
+- The Qwen-sizes labelling error is fixed: local arm is three
+  *architecture families*, frontier arm is the within-Qwen-2.5
+  parameter scale-up.
+- Frontier sample size is correctly stated as 10 × 6 × 3 = 180.
+- τ* reference is the canonical h1_h2_v2 logistic_tau = 2.5; the
+  "0.8% off" headline is replaced with "~7% off canonical and
+  inside bootstrap CI".
+- drop_rel column renamed and explained.
+- τ*=2.5 grid quantization on 5 cells disclosed with † markers.
+- H3 P3 lead of 25-42 pp F1 over P1 is now in the prose
+  (was "~1pp headroom"; the canonical CSV always said 25-42 pp).
+- Corollary 2 reframed as empirical observation (n=3) with the
+  circular-θ_info admission inline.
+- H4 construct validity addressed *empirically* by the 4-
+  compressor rerun: the destruction-monotonic ranking is the
+  finding, and the manuscript states it explicitly.
+- Reproducibility scope clarified: local pipeline byte-
+  deterministic, frontier-API arm not.
+- H1 leads with sign-disagreement (filter ρ=−0.59,
+  lingua2/truncation ρ≈+0.38).
+- Citation fixes: tang2024multihoprag, li2023selective,
+  xu2024recomp, ho2020wiki2hop added; NIST AI RMF lattice
+  reframed as enterprise practice.
+
+Outstanding for any subsequent pass (Tier C polish): soften
+abstract "predicts" verb; report in-regime vs out-of-regime
+match rate split; θ_info/θ_q family-c numerical coincidence
+footnote. All 5-minute fixes if time permits.
+
+## 69. SENIOR-REVIEWER AUDIT TIER C POLISH (2026-05-30, late)
+Punch-list cleanup landed after the Tier A+B pass (§68):
+
+- **Stale "0.8% off" / wrong model identities removed across the
+  manuscript.** Abstract (line 28), §4.5 Corollary 1 verdict
+  blockquote (lines 645-649), and three summary.tex sites
+  (§5 lines 45, 359, 467) all previously read "Qwen-72B within
+  0.8% of the predicted position" / "local Qwen-2.5 sweep at
+  {1.5, 3.8, 8}B" — both the auxiliary-fit number and the wrong
+  identities (only 1.5B is Qwen; 3.8B is Phi-3-Mini, 8B is
+  Llama-3.1). Replaced with the canonical "Qwen-2.5-72B point
+  estimate ~7% above the canonical synthetic reference τ*=2.5
+  and inside its bootstrap CI" framing and the explicit
+  cross-architecture model list. The "0.8%" is now confined to
+  one explanatory sentence in §4.6.2 (where it documents the
+  historical auxiliary-fit number for the audit trail).
+
+- **Table 4.5 (Corollary 2) τ*=2.7 reconciliation.** Table
+  sourced C1 family-a from h1_h2_final/ at τ*=2.7 while
+  Section 4.6.2 establishes the canonical τ*=2.5 from
+  h1_h2_v2/. Resolved by footnote rather than recomputation:
+  the h6_final and hotpotqa_sweep comparison registers were
+  authored against h1_h2_final, so using the auxiliary fit
+  preserves the apples-to-apples Corollary 2 gap. Footnote
+  dagger on the source-dir column points readers at §4.6.2
+  for the ~8% canonical shift, which does not change the
+  qualitative ordering.
+
+- **θ_info / θ_q family-c numerical-coincidence fix.**
+  Implementation §3.4.2 carried θ_info ≈ 0.59 for family-c
+  while experiments §4.4.4 reports θ_q^(c) = 0.590 — identical
+  to three figures for two quantities the thesis insists are
+  different. Verified against the JSON: the canonical
+  AUC-based θ_info for family-c × LLMLingua-2 is 0.617 (NOT
+  0.59), so the implementation chapter's "0.59" was either a
+  rough approximation or an outright slip. Updated to 0.62 in
+  both the §3.4.2 family description and the figure caption
+  in §4.4.4, with a parenthetical naming the recall-threshold
+  parameter θ_q^(c) = 0.590 as a distinct quantity computed
+  by a different method (pointer to sec:theta_info_def and
+  CONTEXT.md). The proximity-is-coincidental footnote on the
+  figure caption is the explicit warning that examiners would
+  otherwise catch.
+
+- **Bibliography note-field cleanup.** The 2026-05-30
+  audit-pass entries (tang2024multihoprag, li2023selective,
+  ho2020wiki2hop) shipped with `note = {...}` fields meant as
+  audit-trail markers (e.g. "This is the canonical Selective
+  Context paper; earlier attribution to cheng2024xrag was an
+  error"). biblatex was rendering these notes inline in the
+  reference list, producing awkward bibliographic entries like
+  "in Proceedings of EMNLP, This is the canonical paper..."
+  Removed all three notes; the audit-trail rationale lives in
+  this insights file instead. Re-ran lualatex+biber: no
+  undefined references, no broken citations.
+
+The four "fix these as well" items the user flagged
+(Selective-Context-vs-CAMEL [Li 2023] collision; Tang/Ho/Xu
+orphans; abstract Qwen-72B contradiction; §4.5 blockquote
+identities; Table 4.5 source-dir reconciliation; θ_info/θ_q
+coincidence) are all addressed in the rebuilt thesis.pdf.

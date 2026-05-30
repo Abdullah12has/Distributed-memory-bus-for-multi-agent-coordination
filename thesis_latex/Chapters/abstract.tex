@@ -25,9 +25,11 @@ $\tau^{*}$ across four training-free compressors (LLMLingua-2,
 Phi-3-Mini extractive, an instruction-aware filter, and a truncation
 baseline), with a compounding-error model that predicts the cliff
 position from per-round token recall and a cross-architecture
-validation on Qwen-72B (within $0.8\%$ of the predicted position) and
-DeepSeek V4~Pro (bootstrap confidence interval contains the
-prediction) inside a formally-defined calibrated regime; (C3)~a
+validation on Qwen-72B (point estimate $\sim 7\%$ above the
+canonical synthetic reference $\tau^{*}=2.5$, inside its bootstrap
+confidence interval) and DeepSeek V4~Pro (bootstrap confidence
+interval contains the prediction) inside a formally-defined
+calibrated regime; (C3)~a
 catalogue of three RAG pipelines showing that compress-first is
 robustly preferred in both storage-bounded and accuracy-bounded
 regimes, challenging the post-retrieval-compression assumption of the
@@ -37,31 +39,66 @@ policy-aware compressor abstraction, together with a summary-level
 \emph{inference-disclosure} metric that quantifies how compression
 reduces the recoverability of protected facts to a downstream reader.
 
-Six hypotheses are tested across approximately one hundred thousand
-evaluation cells. H1 (single-agent question-answering accuracy
+Six hypotheses are tested across tens of thousands of evaluation
+cells (approximately $52\,000$; see Chapter~4 for per-experiment
+counts). H1 (single-agent question-answering accuracy
 decorrelates from coordination success under compression) is
 supported: Spearman~$\rho \in [-0.59, +0.38]$ across compressors,
-with $95\%$~bootstrap confidence intervals excluding $0.6$. H2 (a
-sharp cliff exists) is supported on eleven of twelve
-(compressor,~family) cells with paired Wilcoxon $p < 0.0001$. The
-original H5 is reframed and supported as \emph{Corollary~1
-(ceiling--cliff separation)}: model capacity sets the success
-ceiling $p_0$, not the cliff position $\tau^{*}$, within the
-calibrated regime. The original H6 is reframed and supported as
-\emph{Corollary~2 (information-density scaling)}: the cliff position
-varies with task information density, with $\theta_\text{info}=0.97$
-on a dense numeric-aggregation family and $0.37$--$0.48$ on
-distributed multi-document benchmarks (HotpotQA and MultiHopRAG).
-H4 (compression reduces inference disclosure) is supported with a
-documented reader-bias caveat. The thesis also contributes
+with $95\%$~bootstrap confidence intervals excluding $0.6$. The
+interesting H1 finding is that compressors \emph{disagree on the
+sign} of the QA--coordination relationship (filter
+$\rho = -0.59$, strong anti-correlation; LLMLingua-2 and
+truncation $\rho \approx +0.38$, moderate positive). H2 (a sharp
+cliff exists) is supported on eleven of twelve (compressor,~family)
+cells with paired Wilcoxon $p < 0.0001$. The original H5 is
+reframed and supported as \emph{Corollary~1 (ceiling--cliff
+separation)}: model capacity sets the success ceiling $p_0$, not
+the cliff position $\tau^{*}$, within a formally-defined
+calibrated regime. The local cross-architecture sweep at
+\{Qwen-2.5-1.5B, Phi-3-Mini-3.8B, Llama-3.1-8B\} shows a $24\%$
+tau spread on family-c --- below the $50\%$ tolerance the
+validator originally shipped with, above the strict $20\%$
+tolerance that matches the H2 spec; the corollary's binary
+verdict therefore rests on the cross-architecture frontier
+evidence (Qwen-2.5-72B within $\sim 7\%$ of the canonical
+synthetic reference $\tau^{*}=2.5$ and inside its bootstrap CI;
+DeepSeek V4 Pro bootstrap CI contains the synthetic reference),
+not on the local sweep alone. The
+original H6 is reframed and supported as
+\emph{Corollary~2 (information-density scaling)}: the
+\emph{shape} of the cliff (sharpness and pre-cliff plateau) varies
+with task information density, with $\theta_\text{info}=0.97$ on a
+dense numeric-aggregation family and $0.37$--$0.48$ on distributed
+multi-document benchmarks (HotpotQA and MultiHopRAG). H4
+(compression reduces inference disclosure) is supported for
+three of four compressors with two documented caveats: (i) the
+Llama-3.1-8B reader is YES-biased so the metric tests asymmetric
+leakage; (ii) the disclosure-reduction ranking is monotonic in
+\emph{how aggressively each compressor destroys source tokens}
+--- truncation (most destructive) leads at $24.6$~pp, the
+token-level filter and LLMLingua-2 follow at $20.4$ and
+$18.9$~pp, and Phi-3-Mini extractive (verbatim-span preserving)
+shows no significant reduction ($0.4$~pp, $p = 0.91$). H4 thus
+measures information destruction rather than privacy-specific
+filtering; the metric remains useful as a deployment-time
+disclosure-budget mechanism but the privacy interpretation is
+calibrated against the destruction baseline. The thesis also contributes
 \emph{CAAC} --- a cliff-aware adaptive compression wrapper that
 operationalises the compounding-error bound as a runtime back-off,
 populating a complementary operating point on the
 (coordination,~ratio) frontier.
 
 The deliverable is the manuscript together with an open-source
-reference implementation reproducible from a single command on
-commodity hardware (Apple~M4 Pro 48~GB and an RTX~5090 32~GB
-workstation for the GPU-bound sweeps).
+reference implementation. The local pipeline (H1, H2, H3, H4, H5)
+is reproducible from a single command on an Apple~M4 Pro 48~GB
+laptop given a precomputed compression cache; the cache itself is
+GPU-bound and requires an RTX~5090 32~GB workstation
+($\approx 14$~h). The frontier-API arm (Qwen-2.5-72B,
+DeepSeek~V4~Pro, GPT-oss~120B) requires paid API credentials and
+is \emph{not} byte-deterministic --- frontier-server batching and
+model updates make exact CSV reproduction impossible; the
+published \texttt{results/frontier\_*/results.csv} files are the
+canonical record. All local CSVs are byte-deterministic given the
+seed.
 
 \end{thesisabstract}
