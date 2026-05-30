@@ -193,7 +193,7 @@ relation between them.}
 \label{fig:caac_pareto}
 \end{figure}
 
-\subsection{Weak-dominance result and the $\theta$/$N$ ablation}
+\subsection{Weak-dominance result and the \texorpdfstring{$\theta_q$/$N$}{theta\_q/N} ablation}
 
 Although strict-Pareto does not hold, \emph{weak} dominance --- the
 coordination-only comparison --- does. Across all seven target
@@ -257,7 +257,7 @@ communication-quality cliff. ADR-009 records the scoping decision.
 \paragraph{Single compression pass.}
 Every experiment uses $N=1$. The compounding-error model admits
 arbitrary $N$ ($q$ compounds as $q^N$), but the $N>1$ regime is
-not empirically validated. The $\theta$/$N$ ablation
+not empirically validated. The $\theta_q$/$N$ ablation
 (Section~\ref{sec:caac}) is an algorithmic sweep over CAAC's
 internal $N$ parameter, not a sweep of compression passes against
 the cliff sweep. Multi-pass coordination is a natural follow-on
@@ -309,8 +309,8 @@ thesis opens.
 
 \paragraph{Compounding-error model is a first-order bound.}
 The strict empirical match rate of the predicted-versus-empirical
-$\tau^{*}$ comparison is $33\%$ at per-family CTR, $58\%$ at the
-$\pm 25\%$ tolerance band. The model is useful as a first-order
+$\tau^{*}$ comparison is $33\%$ within $\pm 25\%$ relative error
+and $67\%$ within $\pm 50\%$. The model is useful as a first-order
 predictor and as a derivation that explains the cliff structure;
 it is not a tight prediction. The graded-importance assumption A2
 is the strongest of the four (Section~\ref{sec:cem_assumptions});

@@ -229,6 +229,55 @@ tokens. The ledger feeds the EUR-per-workflow cost model that
 parameterises the RAG pipeline catalogue
 (Section~\ref{sec:rag_pipelines}).
 
+\section{Retrieval-Augmented Generation Pipeline Catalogue}
+\label{sec:rag_pipelines}
+
+The C3 contribution evaluates three retrieval-augmented generation
+pipeline architectures that differ in where compression sits
+relative to retrieval. The three are described here as artefacts;
+the empirical comparison between them under matched cost regimes
+is the H3 result of Chapter~\charef{experiments},
+Section~\ref{sec:h3}.
+
+\begin{description}\setlength\itemsep{2pt}
+\item[P1: compress, then retrieve.] The corpus is compressed
+up-front and the FAISS index is built over the compressed
+representation. Retrieval and synthesis both operate on
+compressed text. P1 trades quality for storage efficiency: the
+index is small but information dropped at compression time is
+unrecoverable. The pre-processing baseline against which P1 is
+informally compared is Anthropic's contextual-retrieval
+work~\cite{anthropic2024contextualretrieval}, which prepends
+LLM-generated chunk-level explanatory context before embedding.
+\item[P2: retrieve, then compress.] The corpus is indexed in
+full; the compressor runs as a post-retrieval node-processor over
+the top-$k$ retrieved fragments before they are synthesised. This
+is the classical LongLLMLingua
+configuration~\cite{jiang2024longllmlingua}. P2 trades storage
+cost for retrieval recall: the index is the full corpus, but the
+synthesis context can be compressed aggressively because the
+retriever has already identified the relevant chunks.
+\item[P3: joint, conditional on relevance.] The corpus is indexed
+in full. At query time, each retrieved fragment is routed into
+one of three branches based on its retrieval relevance score
+$s$: fragments with $s \ge \theta_\text{high}$ pass through
+verbatim; fragments with $\theta_\text{low} \le s <
+\theta_\text{high}$ are compressed; fragments with
+$s < \theta_\text{low}$ are discarded. The default thresholds
+$\theta_\text{high}=0.75$ and $\theta_\text{low}=0.45$ on
+\texttt{BAAI/bge-large-en-v1.5}-cosine similarities are the
+analytical starting points. P3 follows the structural design of
+\cite{guo2025dynamic}.
+\end{description}
+
+The three pipelines share the same FAISS-CPU + HNSW
+infrastructure with \texttt{BAAI/bge-large-en-v1.5} as the
+embedder. The cost ledger introduced above feeds the
+EUR-per-workflow cost model that parameterises the
+H3 evaluation regimes (storage-bounded with FAISS index size
+$\le 100$~MB, accuracy-bounded with retrieval recall@10
+$\le 0.85$).
+
 \section{Compressor Framework}
 \label{sec:compressors}
 
