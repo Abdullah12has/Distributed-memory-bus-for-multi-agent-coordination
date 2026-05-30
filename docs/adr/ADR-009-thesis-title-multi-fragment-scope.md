@@ -135,3 +135,20 @@ signal that the author knows what was measured.
    Structure that the manuscript title is scoped per ADR-009.
 4. [ ] When the GitHub release tag is cut at submission, the release
    notes link to this ADR for the naming mismatch.
+
+
+---
+
+## Addendum (2026-05-30): "Distributed" dropped from title
+
+A subsequent audit pass on 2026-05-30 flagged that the title's leading word "Distributed" overstates the implementation: the reference memory bus is a single FastAPI process backed by SQLite (WAL mode), an in-memory scratchpad with TTL eviction, and FAISS-CPU. There is no replication, no consensus, no horizontal sharding, and no cross-node coordination. The "distributed" affordance is the multi-fragment access pattern and the slot-namespacing that make multi-tenant deployment possible — but the artefact this thesis ships is single-host.
+
+**Decision (2026-05-30).** Drop "Distributed" from the title. New title:
+
+> *Memory Bus for Multi-Fragment LLM Workflows: Context Compression, the Coordination Cliff, and Privacy*
+
+**Scope of the change.** Title-page (`main.tex`), abstract banner, manuscript markdown headers, `CLAUDE.md`, `thesis_PLAN.md` title line, citations.bib comment block, ADR-009 (this addendum). The codebase repository path `Distributed-memory-bus-for-multi-agent-coordination/` is preserved for back-compat with existing artefacts, GitHub links, and ssh aliases.
+
+**Why not keep it and justify.** The trade-off was: drop (clean), justify in §3.1 (defensive), or punt to Lauri post-submission. The drop option avoids carrying a defensive paragraph into Ch 3 that doesn't serve the chapter's argument. Future distribution work belongs in §5.6 future-work if and when it becomes load-bearing.
+
+**Revisit when.** A future deployment ships horizontal scaling (slot replication, consensus across nodes, cross-region access). At that point "Distributed" earns its way back into the title.

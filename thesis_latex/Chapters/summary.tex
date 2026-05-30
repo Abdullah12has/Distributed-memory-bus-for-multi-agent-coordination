@@ -40,9 +40,10 @@ within a useful first-order approximation.
 The cliff position is invariant to planner parameter count within
 a precisely-defined calibrated regime (Section~\ref{sec:corollary1})
 and is invariant to architecture family between Qwen and DeepSeek
-(Section~\ref{sec:frontier}). A $9\times$ change in parameter
-count from a local $8$B Qwen-2.5 to a frontier $72$B Qwen-2.5
-shifts $\tau^{*}$ by $0.8\%$. A change of vendor from Alibaba's
+(Section~\ref{sec:frontier}). A $48\times$ change in parameter
+count from a local $1.5$B Qwen-2.5 to a frontier $72$B Qwen-2.5
+keeps $\tau^{*}$ within $\sim 7\%$ of the canonical synthetic
+reference and inside its bootstrap CI. A change of vendor from Alibaba's
 Qwen line to DeepSeek's V4 Pro line keeps $\tau^{*}$ inside the
 bootstrap CI of the synthetic reference. The cliff is not
 invariant to reasoning regime: extended-reasoning planners such
@@ -64,16 +65,24 @@ substantive C3 contribution.
 
 Compression measurably reduces inference disclosure of protected
 facts to a downstream reader (Section~\ref{sec:h4_disclosure}),
-and the reduction is proportional to how aggressively the
-compressor operates on tokens. The aggressive token-level
-compressors (instruction-aware filter and LLMLingua-2) reduce
-disclosure by approximately $20$~pp at $4\times$, while the
-extractive copier (Phi-3-Mini extractive) reduces it by
-approximately $7.5$~pp, which makes the disclosure metric useful
-as a privacy-and-coordination operating-point selector when
-integrated with the memory bus's policy layer
+and the reduction is \emph{monotonically proportional to how much
+text-information the compressor destroys}. The truncation
+baseline (most destructive --- drops the tail of the text
+entirely) reduces disclosure by $24.6$~pp; the token-level
+compressors filter and LLMLingua-2 reduce it by $20.4$~pp and
+$18.9$~pp respectively; the extractive copier (Phi-3-Mini
+extractive --- which preserves verbatim spans of the source)
+shows no significant reduction ($0.4$~pp, $p = 0.91$). This
+construct-validity ordering
+(Section~\ref{sec:h4_construct}) means the H4 metric tracks
+information destruction rather than privacy-specific filtering;
+the metric is still useful for the memory bus's policy layer
 (Section~\ref{sec:architecture} of
-Chapter~\charef{implementation}).
+Chapter~\charef{implementation}) --- more aggressive compression
+yields lower disclosure rates as required --- but the
+\emph{privacy} interpretation requires a target threat model that
+values destruction-induced reduction, not just compressor-specific
+reduction.
 
 The cliff position varies with task information density across
 benchmarks (Section~\ref{sec:corollary2}): C1 family-a
@@ -213,7 +222,7 @@ returns an informative null. The coordination-success plateau of
 CAAC is invariant to the choice of $\theta_q$ in $\{0.6, 0.7,
 0.8\}$ and the choice of $N$ in $\{2, 3, 4, 5\}$: the LLMLingua-2
 plateau is $33\%$ across all seven configs, the filter plateau
-is $64\%$ across all seven configs, and only the achieved
+is $50\%$ across all seven configs, and only the achieved
 compression ratio responds, by backing off more aggressively as
 either parameter increases. The primary knob is the
 $r_\text{min}$ floor, not $\theta_q$ or $N$. A sweep over
@@ -310,12 +319,73 @@ thesis opens.
 \paragraph{Compounding-error model is a first-order bound.}
 The strict empirical match rate of the predicted-versus-empirical
 $\tau^{*}$ comparison is $33\%$ within $\pm 25\%$ relative error
-and $67\%$ within $\pm 50\%$. The model is useful as a first-order
-predictor and as a derivation that explains the cliff structure;
-it is not a tight prediction. The graded-importance assumption A2
-is the strongest of the four (Section~\ref{sec:cem_assumptions});
-H4's graded-disclosure measurements provide evidence that the
+and $67\%$ within $\pm 50\%$ (in-sample; Wilson $95\%$ CI on
+$4/12$ is approximately $[13\%, 61\%]$, reflecting the small
+denominator), or $25\%$ within $\pm 25\%$ and $75\%$ within
+$\pm 50\%$ under leave-one-family-out cross-validation; the
+relative-error distribution has median $35.3\%$ and IQR
+$[19.2\%, 45.0\%]$. The model is useful as a first-order predictor
+and as a derivation that explains the cliff structure (specifically
+the threshold-success form $\mathrm{E}[X/M] = q(r)$ with
+$P(\text{success}\mid r) \to \mathbf{1}[q(r) \ge \theta_q]$ in
+expectation; see Section~\ref{sec:cem}); it is not a tight
+prediction. The graded-importance assumption A2 is the strongest
+of the four (Section~\ref{sec:cem_assumptions}); H4's
+graded-disclosure measurements provide evidence that the
 binary-importance simplification is what the model gives up.
+
+\paragraph{Predicted-$\tau^{*}$ bootstrap band is too tight.}
+The bootstrap CI on $\theta_q$ that the
+Section~\ref{sec:cem_match} predicted-$\tau^{*}$ band is built
+from quantifies \emph{sampling} uncertainty only --- how much the
+prediction would wobble if we resampled workloads. It does not
+quantify the model's \emph{specification} error. The empirical
+$\tau^{*}$ falls \emph{outside} this bootstrap band on $11/11$
+testable cells (recorded in \texttt{insights.txt} \S57). The right
+way to read Figure~\ref{fig:predicted_vs_empirical} is ``the band
+is tight because $\theta_q$ is well-estimated; the model is biased
+because A1--A4 are first-order approximations''; the actual
+accuracy of the model is what the in-sample/LOO match rates above
+measure.
+
+\paragraph{Corollary~1's local arm misses the strict tolerance.}
+The local cross-architecture sweep at \{Qwen-2.5-1.5B,
+Phi-3-Mini-3.8B, Llama-3.1-8B\} on family-c shows a tau spread of
+approximately $24\%$, which is well below the $50\%$ tolerance the
+\texttt{validate\_model\_independence} default originally shipped
+with but \emph{above} the strict $\pm 20\%$ tolerance the audit
+recommended (aligning with the H2 falsifiable-claim spec). The
+local arm is therefore necessary but not sufficient for
+Corollary~1; the cross-architecture frontier evidence in
+Section~\ref{sec:frontier} (Qwen-2.5-72B point estimate
+$\sim 7\%$ above the canonical synthetic reference $\tau^{*}=2.5$
+and inside its bootstrap CI; DeepSeek V4 Pro bootstrap CI
+contains the reference) is what carries the corollary's binary
+verdict across the strict bar. The on-disk record is
+\texttt{results/h5\_final/model\_independence\_20pct.json}.
+
+\paragraph{A3 (threshold success) is justified circularly.}
+A3 is licensed by the sharp empirical cliff of
+Section~\ref{sec:h2}, and the cliff is in turn explained by A3
+--- the justification is circular. The cliff \emph{exists}
+whether or not A3 is the right model of why; A3 is the
+\emph{first-order} description that lets us write down a
+tractable bound. Breaking the circularity requires an independent
+A3 probe (directly varying the surviving fraction of
+task-relevant tokens rather than mediating that variation through
+a compressor), which is named as a future-work direction in
+Section~\ref{sec:future}.
+
+\paragraph{A1 within-pass independence is approximate;
+Phi-3 extractive violates it.}
+A1 (per-token retention independent across positions) holds
+approximately for token-level compressors (LLMLingua-2,
+instruction-aware filter, truncation baseline). It is violated by
+Phi-3-Mini extractive, which selects whole spans, inducing
+correlated token-survival events within a span. The
+phi3-extractive validation cells in Section~\ref{sec:cem_match}
+should be read as a robustness check of the bound \emph{outside}
+its formal A1 regime rather than as a within-regime prediction.
 
 \paragraph{Synthetic-task focus, real-task transfer at the
 structural level.}
@@ -377,7 +447,7 @@ Third, compress-first is the better RAG architecture in both the
 storage-bounded and accuracy-bounded regimes; the additional
 implementation cost of post-retrieval compression is not paid
 for in the regimes most production workflows operate in. Joint
-relevance-conditional routing (P3) adds the final $\sim 1$~pp
+relevance-conditional routing (P3) outperforms compress-first by 42~pp F1 (storage) and 25~pp F1 (accuracy) at indistinguishable EUR cost, an additional
 F1 if the deployment can absorb the additional complexity, but
 the default should be P1.
 
@@ -395,8 +465,10 @@ Three field-facing claims are substantive.
 
 First, the cliff is a property of the (compressor, task) pair
 within the calibrated regime, not of the planner. The frontier
-validation result that a $72$B Qwen-2.5 cliffs at the same
-ratio as the local $8$B Qwen-2.5 to within $0.8\%$ is the
+validation result that a $72$B Qwen-2.5 cliffs within
+$\sim 7\%$ of the canonical synthetic reference $\tau^{*}=2.5$
+(and inside its bootstrap CI), across a $48\times$ change in
+parameter count from the local $1.5$B Qwen-2.5 baseline, is the
 empirical evidence. The implication for the compression literature
 is that future compressor evaluations should either
 characterise the calibrated regime they apply in or
@@ -455,14 +527,29 @@ GPT-oss-class planners, GPT-4-Turbo with thinking, and Claude
 Sonnet 4.6 with extended thinking enabled. The theoretical work
 is replacing A3 (threshold success) with a graded-success model.
 
+\paragraph{Independent A3 probe (break the cliff--A3 circularity).}
+The cliff sharpness of Section~\ref{sec:h2} currently licenses A3,
+and A3 in turn explains the cliff --- the justification is
+circular (Section~\ref{sec:limitations}). An independent A3 probe
+would directly vary the surviving fraction of task-relevant
+tokens without mediating through compression: hand-curated
+deletion of $k$ of the $M$ critical tokens at controlled fractions
+$k/M \in \{0.1, 0.2, \dots, 0.9\}$, then measure whether
+coordination success follows the threshold--sigmoid shape A3
+predicts. A positive result replaces the circular justification
+with a direct one; a negative result points at a graded-success
+refinement and feeds into the extended-reasoning item above.
+
 \paragraph{Per-task $\theta_q$ estimation.}
 Lift the model from per-family $\theta_q$ to per-task
 $\theta_q$. The current per-family validation match rate is
-$33\%$ strict; a per-task fit should improve this to the
-$60$--$70\%$ range observed on the
-$\theta_q$-already-known calibration cells. The empirical
-setup is straightforward; the methodological cost is fitting
-$\theta_q$ per task on a held-out calibration split.
+$33\%$ strict in-sample ($25\%$ under leave-one-family-out
+cross-validation; see Section~\ref{sec:cem_match} for the gap);
+a per-task fit should improve this to the $60$--$70\%$ range
+observed on the $\theta_q$-already-known calibration cells,
+against the LOO baseline rather than the in-sample one. The
+empirical setup is straightforward; the methodological cost is
+fitting $\theta_q$ per task on a held-out calibration split.
 
 \paragraph{Multi-pass compression at $N > 1$.}
 Validate the $q^N$ formulation of the model empirically. The

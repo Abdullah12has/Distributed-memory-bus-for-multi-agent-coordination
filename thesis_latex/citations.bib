@@ -1,8 +1,9 @@
 % =============================================================================
 % citations.bib — m6-thesis
 %
-% References for the thesis "Distributed Memory Bus for Multi-Agent Campus
-% Systems: Context Compression, Coordination Quality, and Policy-Aware Sharing".
+% References for the thesis "Memory Bus for Multi-Fragment LLM Workflows:
+% Context Compression, the Coordination Cliff, and Privacy" (title scoped per
+% ADR-009 on 2026-05-29; "Distributed" dropped 2026-05-30 — see ADR-009 addendum).
 %
 % Grouped by topic (compression / multi-agent / RAG / privacy / FCG-internal).
 % Entries with the @techreport type starting with "fcg" refer to the unpublished
@@ -760,4 +761,35 @@
     booktitle    = {Advances in Neural Information Processing Systems 35 (NeurIPS 2022)},
     year         = {2022},
     url          = {https://proceedings.neurips.cc/paper_files/paper/2022/hash/c1e2faff6f588870935f114ebe04a3e5-Abstract-Conference.html},
+}
+
+% --- Citations added in the senior-reviewer audit pass (2026-05-30) ---
+
+@inproceedings{tang2024multihoprag,
+    title        = {{MultiHopRAG}: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries},
+    author       = {Tang, Yixuan and Yang, Yi},
+    booktitle    = {Findings of the Association for Computational Linguistics: EMNLP 2024},
+    year         = {2024},
+}
+
+@inproceedings{li2023selective,
+    title        = {Compressing Context to Enhance Inference Efficiency of Large Language Models},
+    author       = {Li, Yucheng and Dong, Bo and Guerin, Frank and Lin, Chenghua},
+    booktitle    = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+    year         = {2023},
+    publisher    = {Association for Computational Linguistics},
+}
+
+@inproceedings{xu2024recomp,
+    title        = {{RECOMP}: Improving Retrieval-Augmented {LMs} with Compression and Selective Augmentation},
+    author       = {Xu, Fangyuan and Shi, Weijia and Choi, Eunsol},
+    booktitle    = {Proc. International Conference on Learning Representations (ICLR)},
+    year         = {2024},
+}
+
+@inproceedings{ho2020wiki2hop,
+    title        = {Constructing A Multi-hop {QA} Dataset for Comprehensive Evaluation of Reasoning Steps},
+    author       = {Ho, Xanh and Duong Nguyen, Anh-Khoa and Sugawara, Saku and Aizawa, Akiko},
+    booktitle    = {Proc. 28th International Conference on Computational Linguistics (COLING)},
+    year         = {2020},
 }

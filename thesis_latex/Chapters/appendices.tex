@@ -224,9 +224,18 @@ the canonical CSVs. Pure-Python; runs in under a minute.
 
 The \texttt{make repro-all} target runs the eight steps above in
 dependency order. The total wallclock is approximately $30$~hours
-of GPU time and $\sim 12$~hours of laptop time end-to-end. Every
-output is deterministic given the seed: rerunning a target
-produces a byte-identical CSV.
+of GPU time and $\sim 12$~hours of laptop time end-to-end.
+\textbf{Determinism scope:} all \emph{local-pipeline} outputs
+(H1, H2, H3, H4, H5, the cache itself, all figure regeneration)
+are byte-deterministic given the seed --- rerunning produces
+byte-identical CSVs. The \emph{frontier-API} outputs
+(\texttt{repro-frontier} target) are \emph{not} byte-deterministic
+because frontier-server batching, sampling-side nondeterminism,
+and model-version updates make exact CSV reproduction impossible;
+the published \texttt{results/frontier\_*/results.csv} files are
+the canonical record for those models. Rerunning
+\texttt{repro-frontier} will produce closely-similar but not
+identical numbers.
 
 \subsection*{D.2 Memory-bus end-to-end trace}
 

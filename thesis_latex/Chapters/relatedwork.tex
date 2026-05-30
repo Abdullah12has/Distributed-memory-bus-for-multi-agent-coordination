@@ -264,11 +264,11 @@ coordination success.
 \subsection{Selective and instruction-aware compression}
 
 Li \emph{et~al.}'s \emph{Selective
-Context}~\cite{cheng2024xrag, li2025promptsurvey} prunes tokens
+Context}~\cite{li2023selective} prunes tokens
 with low self-information under the model's own conditional
 distribution; the technique requires no training but does
 require running a scoring forward-pass at compression time. Xu
-\emph{et~al.}'s \emph{RECOMP} compresses long retrieval contexts
+\emph{et~al.}'s \emph{RECOMP}~\cite{xu2024recomp} compresses long retrieval contexts
 with a small task-aware extractor trained to summarise the
 retrieved passages for the downstream question. The
 instruction-aware filter of this thesis sits in the same family
@@ -407,13 +407,18 @@ agentic-memory service.
 
 \emph{What is missing in prior work.} The multi-agent and
 agentic-memory frameworks treat compression as an implicit
-deployment optimisation; none measures the coordination-quality
-cost of compression structurally or bounds the loss
-quantitatively. The cliff measurement of
-Chapter~\charef{experiments} and the inference-disclosure
-measurement of the H4 section provide the missing quantitative
-foundation. The memory bus of Chapter~\charef{implementation} is
-designed as the reference target for that foundation.
+deployment optimisation; none measures the \emph{multi-fragment}
+coordination-quality cost of compression structurally or bounds
+the loss quantitatively. This thesis fills the multi-fragment
+measurement gap directly (the cliff sweep,
+Section~\ref{sec:h2}, and the inference-disclosure measurement,
+Section~\ref{sec:h4_disclosure}); it does \emph{not} fill the
+multi-round-agent measurement gap, which the AutoGen backend in
+\texttt{src/m6/orchestrator/} is positioned to address as future
+work (ADR-009; Section~\ref{sec:future}). The memory bus of
+Chapter~\charef{implementation} is designed as the reference
+target for both, but the empirical evidence in this thesis is
+multi-fragment, not multi-round.
 
 \section{Retrieval-Augmented Generation and Long-Context Benchmarks}
 \label{sec:rw_rag}
@@ -455,13 +460,12 @@ quality effect on a task structure the long-context benchmarks
 do not include.
 
 The multi-hop question-answering benchmarks
-HotpotQA~\cite{yang2018hotpotqa} (EMNLP 2018), 2WikiMultiHopQA
-(COLING 2020), and MultiHopRAG~\cite{addison2024cfedrag,
-yang2018hotpotqa} (EMNLP 2024 Findings; the canonical paper for
-the MultiHopRAG dataset is by Tang and Yang and is referenced in
-the project-internal documentation), are the real-data benchmarks
-on which Corollary~2 of Chapter~\charef{experiments} validates
-the information-density-scaling claim. The transfer is
+HotpotQA~\cite{yang2018hotpotqa} (EMNLP 2018),
+2WikiMultiHopQA~\cite{ho2020wiki2hop} (COLING 2020), and
+MultiHopRAG~\cite{tang2024multihoprag} (Findings of EMNLP 2024)
+are the real-data benchmarks on which Corollary~2 of
+Chapter~\charef{experiments} validates the
+information-density-scaling claim. The transfer is
 qualitative: the absolute cliff positions differ between
 synthetic and real benchmarks because the information density
 $\theta_\text{info}$ differs, but the cliff structure

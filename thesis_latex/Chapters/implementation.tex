@@ -178,8 +178,13 @@ recording its provenance and access-control state. The tag vector has
 four fields: a \texttt{uint64} access-control mask, a five-tier
 classification level (\textsc{public} $<$ \textsc{internal} $<$
 \textsc{confidential} $<$ \textsc{restricted} $<$ \textsc{secret})
-drawn from the NIST AI Risk Management
-Framework~\cite{nistairmf}, a tuple of source identifiers recording
+drawn from enterprise data-classification practice (e.g., ISO/IEC 27001
+organisational schemes); the broader risk-management framing follows
+the NIST AI Risk Management
+Framework~\cite{nistairmf}, but the five-tier lattice itself is
+enterprise convention and not prescribed by NIST AI RMF (which
+defines Govern/Map/Measure/Manage functions rather than a
+labelled classification lattice). A tuple of source identifiers recording
 provenance, and a tuple of parent-slot identifiers recording which
 previously-compressed slots this slot inherits from. When slots are
 merged, the union's access-control mask is the bitwise OR of the
@@ -345,6 +350,7 @@ gracefully rather than collapsing: chain-reference tokens like
 ``entry'' and ``FINAL'' survive aggressive compression.
 
 \subsection{Phi-3-Mini extractive span selector}
+\label{sec:phi3}
 
 The Phi-3-Mini extractive compressor is the only thesis compressor
 that uses an LLM at inference time. It runs the Phi-3-Mini-3.8B
@@ -483,7 +489,13 @@ each fragment is padded with $4$ to $8$ distractor sentences so
 that the retrieval step is non-trivial. The scorer reads the
 planner's output and matches against the leaf answer. Family-c is
 the most distributed of the three: many tokens are distractors,
-information density $\theta_\text{info}\approx 0.59$, and the cliff
+information density $\theta_\text{info}\approx 0.62$ (the
+canonical AUC-based estimator on the family-c $\times$ LLMLingua-2
+sweep; not to be confused with the recall-threshold parameter
+$\theta_q^{\,(c)} = 0.590$ reported in
+Chapter~\charef{experiments}~Section~\ref{sec:cem_match}, which is
+a different quantity computed by a different method --- see
+CONTEXT.md and Section~\ref{sec:theta_info_def}), and the cliff
 is gradual --- it is the family on which the
 instruction-aware filter's reranker, which preserves
 chain-reference keywords, can avoid a detectable cliff entirely.
@@ -503,8 +515,11 @@ The C1 generator supports three synthetic tag distributions ---
 H4 (inference disclosure) to probe the governance-stringency
 dimension. The hierarchical distribution sets higher classification
 levels to imply strict supersets of the bits at lower levels, which
-matches the real-world structure of NIST-RMF tag
-hierarchies~\cite{nistairmf} and lets the H4 analysis disentangle
+matches the real-world structure of enterprise tag
+hierarchies (e.g., ISO/IEC 27001-style schemes; the broader
+risk-management framing follows NIST AI RMF~\cite{nistairmf},
+though the five-tier lattice itself is industry convention rather
+than a NIST AI RMF artefact) and lets the H4 analysis disentangle
 classification level from access-control mask.
 
 \subsection{Coordination success and supporting metrics}
