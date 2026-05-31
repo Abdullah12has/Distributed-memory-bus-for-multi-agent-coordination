@@ -1,0 +1,8 @@
+
+Compounding-error model: "predicts position" -> "explains threshold structure + first-order
+position estimate" everywhere (abstract, C2, ch4, ch5). Added explicit family-a circularity
+(CTR ~= solver success criterion). H2 Table 4.2 gained observed-range drop column (verdict
+now read in [0,1] units; min Phi3/a=0.30). Calibrated regime predicate given an a-priori
+(non-CoT, bounded-output) definition so GPT-oss exclusion is not circular. Privacy/coordination
+conflict paragraph added (destruction-driven leakage = same lever as cliff). C4 scoped as
+reference implementation (no measured benefit). Removed stray 'M  M  M' scratch lines.

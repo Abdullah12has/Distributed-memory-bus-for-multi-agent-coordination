@@ -3645,3 +3645,45 @@ The four "fix these as well" items the user flagged
 orphans; abstract Qwen-72B contradiction; §4.5 blockquote
 identities; Table 4.5 source-dir reconciliation; θ_info/θ_q
 coincidence) are all addressed in the rebuilt thesis.pdf.
+
+## 67. DRAFT3.1 REMEDIATION — CLAIM DEFLATION + REAL H1/H3 RECOMPUTE (2026-05-31)
+
+Produced draft3.1.md from draft3.md to lift the thesis toward a 5/excellent grade by
+making every claim match the on-disk evidence. No new experiments; all numbers
+recomputed from existing CSVs.
+
+H1 (recomputed from results/h1_h2_v2/sweep_results.csv at WORKLOAD level, fixing
+pseudo-replication where pooled n=1350 counted 9 ratios/workload as independent):
+- Workload-level Spearman: filter rho=-0.818 [-0.852,-0.760]; lingua2 +0.026 [-0.135,0.180];
+  phi3-extractive +0.315 [0.177,0.442]; truncation +0.051 [-0.092,0.198] (all n=150,
+  2000-resample bootstrap CI). All CIs exclude 0.6 -> H1 still SUPPORTED.
+- KEY: pooled correlations are inflated/distorted. lingua2 & truncation drop from pooled
+  +0.38 to workload-level ~0. Per-family (n=50): 8/12 cells degenerate (coord variance ~0,
+  uniform cliff); only significant within-family cell is lingua2/c = -0.46 (p=7e-4, NEGATIVE);
+  filter overall -0.82 is a between-family artifact (filter/a only -0.13 n.s.).
+- Reframed H1 from "compressors disagree on sign" to the stronger, defensible "QA-F1 change
+  does not positively predict coordination change for any compressor at workload level;
+  pooled single numbers are pseudo-replicated + between-family artifacts."
+- NOTE: earlier draft3.1 intermediate edits contained ESTIMATED H1 numbers (-0.679/+0.466,
+  family-b +0.33..+0.45). These were WRONG and have been fully replaced with the real values.
+
+H3 (results/h3_final/results.csv): eur_per_query varies per row but the headline cost-parity
+claim is unsupportable — recomputed means: storage P1 f1=0.396/P2 0.364/P3 0.820;
+accuracy P1 0.648/P2 0.628/P3 0.895. retrieval_recall is constant 0.625 across regimes (so the
+storage/accuracy regime distinction is not reflected in per-row metrics). Removed "at
+indistinguishable EUR cost" / "P3 at matched cost" claims; reframed P3 as higher-F1 of
+undetermined relative cost; LongLLMLingua "reversal" softened to single-stack non-reproduction.
+
+Corollary 1: restated from "invariant" to "no detected shift on resolvable cells." DeepSeek
+V4 Pro real tau=2.15 (13.8% from canonical 2.5, WITHIN 20% tolerance) but bootstrap CI
+[1.76,7.14] with median 5.7 far from point estimate => weakly identified; CI-containment
+flagged as affirming-the-null, TOST named as future work. Qwen-72B 7.3% vs canonical 2.5
+(0.8% vs aux 2.6997 fit) is the one well-identified cell. Local arm 24% spread fails strict 20%.
+
+Compounding-error model: "predicts position" -> "explains threshold structure + first-order
+position estimate" everywhere (abstract, C2, ch4, ch5). Added explicit family-a circularity
+(CTR ~= solver success criterion). H2 Table 4.2 gained observed-range drop column (verdict
+now read in [0,1] units; min Phi3/a=0.30). Calibrated regime predicate given an a-priori
+(non-CoT, bounded-output) definition so GPT-oss exclusion is not circular. Privacy/coordination
+conflict paragraph added (destruction-driven leakage = same lever as cliff). C4 scoped as
+reference implementation (no measured benefit). Removed stray 'M  M  M' scratch lines.

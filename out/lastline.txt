@@ -1,0 +1,1 @@
+reference implementation (no measured benefit). Removed stray 'M  M  M' scratch lines.

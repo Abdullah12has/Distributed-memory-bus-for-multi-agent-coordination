@@ -1,0 +1,5 @@
+family row counts: {'a': 9000, 'b': 9000, 'c': 9000}
+distinct workloads: 150
+distinct workloads per family: {'a': 50, 'b': 50, 'c': 50}
+sample rows: [('lingua2', 'a', 'c1-a-000', '1.0'), ('lingua2', 'a', 'c1-a-000', '1.0'), ('lingua2', 'a', 'c1-a-000', '1.0'), ('lingua2', 'a', 'c1-a-000', '1.0')]
+workloads spanning >1 family: 0 eg []

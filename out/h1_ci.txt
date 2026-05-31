@@ -1,0 +1,4 @@
+filter: rho=-0.818 CI=[-0.852,-0.76] n=150
+lingua2: rho=0.026 CI=[-0.135,0.18] n=150
+phi3-extractive: rho=0.315 CI=[0.177,0.442] n=150
+truncation: rho=0.051 CI=[-0.092,0.198] n=150

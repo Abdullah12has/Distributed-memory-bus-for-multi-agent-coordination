@@ -1,0 +1,6 @@
+fab_78pct=1
+fab_4.45=1
+binary_verdict_strict=0
+invariant_total=3
+invariant_lines:
+818 853 935 

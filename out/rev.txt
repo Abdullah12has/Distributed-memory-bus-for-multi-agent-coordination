@@ -1,0 +1,3 @@
+reverses_lines=685,
+challenges_common=662,820,
+assumed_default=685,
