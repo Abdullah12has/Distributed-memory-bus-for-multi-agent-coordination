@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     slot_id                  TEXT NOT NULL,
     event_type               TEXT NOT NULL CHECK (event_type IN
         ('WRITE','READ','SUBSCRIBE','DENY','COMPRESS','EVICT')),
-    requester_acl            INTEGER,
+    requester_acl            TEXT,
     requester_classification INTEGER,
     result                   TEXT NOT NULL CHECK (result IN ('OK','DENIED','ERROR')),
     prev_hash                BLOB NOT NULL,
@@ -127,7 +127,10 @@ class SQLiteAuditLog:
                 (
                     slot_id,
                     event_type,
-                    requester_acl,
+                    # uint64 capability mask stored as decimal TEXT (see module
+                    # docstring): str() is lossless and avoids the signed-64-bit
+                    # INTEGER overflow that 2**64-1 would otherwise trigger.
+                    None if requester_acl is None else str(requester_acl),
                     requester_classification,
                     result,
                     prev,
@@ -239,7 +242,9 @@ def _row_to_audit(r: sqlite3.Row) -> AuditRow:
         rowid=r["rowid"],
         slot_id=r["slot_id"],
         event_type=r["event_type"],
-        requester_acl=r["requester_acl"],
+        # Stored as decimal TEXT to preserve the full uint64 range; convert back
+        # to int on read so the AuditRow contract (requester_acl: int) is kept.
+        requester_acl=None if r["requester_acl"] is None else int(r["requester_acl"]),
         requester_classification=r["requester_classification"],
         result=r["result"],
         prev_hash=bytes(r["prev_hash"]),

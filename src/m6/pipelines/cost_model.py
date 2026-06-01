@@ -44,6 +44,7 @@ PRICING: dict[str, PricePerMillion] = {
     # Free tier / pay-per-use. Estimate based on comparable providers.
     "Qwen/Qwen2.5-72B-Instruct":           PricePerMillion(input_eur=0.37,  output_eur=0.37),
     "meta-llama/Llama-3.3-70B-Instruct":    PricePerMillion(input_eur=0.37,  output_eur=0.37),
+    "deepseek-ai/DeepSeek-V4-Pro":          PricePerMillion(input_eur=0.37,  output_eur=0.37),
     "mistralai/Mistral-Small-24B-Instruct-2501": PricePerMillion(input_eur=0.14, output_eur=0.14),
 }
 

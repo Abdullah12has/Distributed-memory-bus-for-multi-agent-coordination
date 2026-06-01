@@ -6,31 +6,39 @@ measurable at three layers: the energy and water needed to power a
 prefill and a decoding pass; the latency the user pays to wait for
 that pass to complete; and the dollar amount the operator pays per
 million tokens through an API or amortises through on-premises
-hardware. Peer-reviewed measurements of inference-side energy are
-recent --- Luccioni \emph{et~al.}'s 2024 \emph{Power Hungry
-Processing} study reports per-inference Watt-hour numbers for a
-broad set of open models, and finds that the wall-power cost of a
-single text-generation inference call on a modestly-sized model is
-within an order of magnitude of the wall-power cost of an
-internet search~\cite{luccioni2024powerhungry}. When the workload
-is a multi-step agentic system that issues thousands of internal
-inference calls to answer a single user request, those costs
-compound.
+hardware. Peer-reviewed measurements of inference-side cost are
+recent but consistent. Luccioni \emph{et~al.}'s 2024 \emph{Power
+Hungry Processing} study reports per-inference Watt-hour numbers
+for a broad set of open models, and finds that the wall-power cost
+of a single text-generation inference call on a modestly-sized
+model is within an order of magnitude of the wall-power cost of an
+internet search~\cite{luccioni2024powerhungry}; Samsi
+\emph{et~al.}~\cite{samsi2023words} benchmark the energy cost of
+LLM inference directly and show it scales with the number of tokens
+processed, and Pope \emph{et~al.}~\cite{pope2023efficiently}
+quantify how serving cost grows with sequence length once the
+prefill dominates. The training-time carbon-and-cost accounting of
+Patterson \emph{et~al.}~\cite{patterson2021carbon} established the
+methodology that these inference-time studies extend. When the
+workload is a multi-step agentic system that issues thousands of
+internal inference calls to answer a single user request, those
+per-token costs compound.
 
 A growing fraction of the tokens a deployed LLM reads do not
 change the answer. They are conversational filler (``Hello'',
 ``Thanks''), repeated system prompts that scaffold every call,
 restated history that re-anchors a long conversation, boilerplate
 disclaimers, and structural framing that an attentive reader could
-elide without loss. The industry rough estimate, widely reported
-in 2025, was that OpenAI's compute bill for processing user
-politeness alone amounted to ``tens of millions of dollars''
-annually~\cite{altman2025pleasethankyou}. The number is reported
-as industry observation, not as peer-reviewed measurement, but the
-direction is consistent with the Luccioni
-result~\cite{luccioni2024powerhungry}: tokens that do not change
-the answer are converted directly into energy, latency, and
-operating expense.
+elide without loss. Because the peer-reviewed measurements above
+tie cost directly to the number of tokens
+processed~\cite{luccioni2024powerhungry, samsi2023words,
+pope2023efficiently}, every such token is converted directly into
+energy, latency, and operating expense regardless of whether it
+changes the answer. As an industry anecdote consistent with this,
+the OpenAI compute bill for processing user politeness alone was
+informally estimated at ``tens of millions of dollars'' annually in
+2025~\cite{altman2025pleasethankyou}; we cite it only as
+corroborating colour, not as evidence.
 
 Context compression is the natural lever. Per-token compute and
 per-token cost scale roughly linearly in sequence length once
@@ -60,7 +68,7 @@ institutional systems), constraint-satisfaction planning
 specifications spread across fragments), and multi-step retrieval
 (chain references through a sequence of documents until a leaf
 answer is reached) are three representative examples; the C1
-benchmark of Chapter~\charef{implementation} constructs $50$
+benchmark of \charef{implementation} constructs $50$
 instances of each. The setting is not a corner case. The FCG group
 at the University of Oulu's flagship use case ---
 \emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026}
@@ -91,8 +99,8 @@ single LLM call with all (compressed) fragments visible as the
 planner. An AutoGen v0.4 multi-round agent backend integrated
 with the memory bus is shipped in the source tree
 (\texttt{src/m6/orchestrator/}~\cite{wu2023autogen}) but is not used
-in any reported result. The scope decision is documented as
-ADR-009 in the repository. The motivation is that round-to-round
+in any reported result. The scope decision is documented in the
+project repository. The motivation is that round-to-round
 LLM variance dominates the compression signal at the C1
 compression ratios that this thesis sweeps; cleanly attributing
 coordination-quality drops to compression rather than to
@@ -101,9 +109,29 @@ the critical path, which a single-LLM-call (or a deterministic
 regex) planner does. The memory bus is \emph{designed for} a
 multi-agent integration; the experimental scope is
 multi-fragment task solvability. The chapter on the system design
-(\ref{sec:scope} of Chapter~\charef{implementation}) restates
+(\ref{sec:scope} of \charef{implementation}) restates
 this scope decision explicitly; every results chapter is
 calibrated against it.
+
+\paragraph{Operational definition of ``coordination success.''}
+Because the title and the central coinage \emph{coordination cliff}
+both invite a multi-agent reading that the experiments do not test,
+the operational meaning of ``coordination success'' is stated once
+here and used uniformly throughout the rest of the manuscript.
+\textbf{Coordination success is the binary indicator that the
+planner recovers the correct answer to a multi-fragment task whose
+answer cannot be read out of any single fragment alone.} It is
+therefore a measurement of \emph{multi-fragment solvability under
+compression} --- i.e., whether enough task-critical tokens survive
+compression for a planner to recover the answer when the planner
+must combine information distributed across two or more
+independently compressed fragments. It is \emph{not} a measurement
+of multi-round agent negotiation, message-passing efficiency, role
+allocation under disagreement, or any of the other phenomena the
+literature usually labels ``coordination.'' Where the manuscript
+subsequently uses ``coordination'' or ``coordination cliff,'' it
+always refers to the multi-fragment solvability quantity defined
+here; the scope reminder is not repeated.
 
 \section{Problem Statement}
 \label{sec:problem}
@@ -136,6 +164,21 @@ end-to-end and reproducible from the open-source repository.
 \section{Contributions}
 \label{sec:contributions}
 
+\paragraph{Headline.}
+The thesis's single most-citable result is the H1 finding (the
+methodological backbone of C2): on the multi-fragment benchmark
+shipped as C1, the change in single-agent question-answering F1
+under compression does not positively predict the change in
+multi-fragment coordination success for \emph{any} of the four
+compressors tested. The single-agent benchmarks that dominate the
+prompt-compression literature (LLMLingua-2, LongLLMLingua, LongBench,
+RULER) therefore systematically mis-rank compressors for
+multi-fragment deployment. The remaining contributions support this
+finding: C1 is the benchmark it is measured on, C2 is the structural
+characterisation it sits inside, C3 is a deployment-oriented
+catalogue, and C4 is the engineering artefact that operationalises
+the disclosure-side findings.
+
 \paragraph{C1 --- A reproducible multi-fragment coordination
 benchmark.}
 \emph{The C1 benchmark} ships $150$ instances across three
@@ -152,10 +195,11 @@ thesis lets other groups extend the characterisation to new
 compressors and new planner regimes.
 
 \paragraph{C2 --- Empirical characterisation of the coordination
-cliff and a compounding-error model that predicts it.}
-\emph{The cliff exists, is sharp, and is invariant to planner
-parameter count and architecture family within a defined
-calibrated regime.} The empirical work covers four training-free
+cliff and a compounding-error model that explains it.}
+\emph{The cliff exists and is sharp; its position shows no
+detectable shift across the heterogeneous planners we could test,
+on the cells where it is resolvable, within a defined calibrated
+regime.} The empirical work covers four training-free
 compressors --- LLMLingua-2~\cite{pan2024llmlingua2}, the Phi-3-
 Mini extractive span selector, an instruction-aware filter, and a
 truncation baseline --- at ten compression ratios across three
@@ -164,29 +208,37 @@ families and across three local planners drawn from
 (Qwen-2.5-1.5B-Instruct, Phi-3-Mini-3.8B-Instruct,
 Llama-3.1-8B-Instruct; the original ``Qwen-2.5 1.5B/3.8B/8B''
 notation conflated three architectures and is corrected here),
-with a frontier validation arm on Qwen-2.5-72B and DeepSeek~V4~Pro
-that carries the corollary's binary verdict across the strict
-tolerance: Qwen-2.5-72B cliffs $\sim 7\%$ above the canonical
-synthetic reference $\tau^{*}=2.5$ and inside its bootstrap CI;
-DeepSeek~V4~Pro's bootstrap CI contains the synthetic reference.
-(The local three-architecture sweep on family-c shows a $24\%$
-tau spread, below the $50\%$ tolerance the validator originally
-shipped with but above the strict $20\%$ tolerance --- necessary
-but not sufficient; the load-bearing evidence is the
-cross-architecture frontier arm. The local arm is itself a
-cross-architecture invariance result across Qwen, Phi-3, and
-Llama, not a within-family parameter-count sweep.) The
-compounding-error model derives the cliff position from per-round
-\textbf{critical-token-recall} and a per-family recall threshold
-$\theta_q$ and recovers the empirical position within a useful
-first-order tolerance. The same machinery supports
-\textbf{Corollary~2 (information-density scaling)}: the cliff
-\emph{shape} varies with a task's information density
-$\theta_\text{info}$ (an AUC-based per-task quantity, distinct
-from $\theta_q$), validated on HotpotQA and MultiHopRAG against
-the C1 family-a synthetic reference. An out-of-regime diagnostic
-on GPT-oss~120B identifies extended-reasoning planners as a
-structurally distinct case that the model's threshold-success
+with a frontier consistency arm on Qwen-2.5-72B and DeepSeek~V4~Pro.
+Because a fine-grid re-resolution shows the synthetic reference
+$\tau^{*}=2.5$ is an artefact of the deterministic solver
+(Section~\ref{sec:h2}), the load-bearing comparison is LLM-vs-LLM:
+local Llama-3.1-8B ($\tau^{*}\approx 2.48$) and frontier
+Qwen-2.5-72B ($\tau^{*}\approx 2.79$, $n=30$) cliff together across
+a $9\times$ scale-up and a change of architecture family, both at
+$p_0=1.0$, while DeepSeek~V4~Pro corroborates more weakly (point
+estimate $\tau^{*}=2.15$, bootstrap CI $[1.76, 7.14]$ so wide the
+position is only weakly identified). (The local three-architecture
+sweep on family-c shows a $24\%$ tau spread, within a $50\%$
+tolerance but above the strict $20\%$ tolerance matching the H2
+spec --- necessary but not sufficient; the load-bearing evidence is
+the cross-architecture comparison. The local arm is itself a
+cross-architecture invariance result across Qwen, Phi-3, and Llama,
+not a within-family parameter-count sweep.) The compounding-error model derives the \emph{threshold
+structure} of the cliff --- why a sharp transition exists at all
+--- from per-round \textbf{critical-token-recall} and a
+per-family recall threshold $\theta_q$, and recovers the empirical
+position only to first order ($33\%$ of cells within $\pm 25\%$,
+median relative error $35\%$; its bootstrap band does not contain
+the empirical $\tau^{*}$ on the testable cells --- \S{}4.4.4,
+\S{}5.3). The model's contribution is the derivation of the
+threshold mechanism, not a tight position predictor. The same
+machinery supports \textbf{Corollary~2 (information-density
+scaling)}: the cliff \emph{shape} varies with a task's information
+density $\theta_\text{info}$ (an AUC-based per-task quantity,
+distinct from $\theta_q$), validated on HotpotQA and MultiHopRAG
+against the C1 family-a synthetic reference. An out-of-regime
+diagnostic on GPT-oss~120B identifies extended-reasoning planners
+as a structurally distinct case that the model's threshold-success
 assumption does not cover --- which is itself a contribution,
 since prior compression work treats reasoning regime implicitly.
 
@@ -197,14 +249,26 @@ joint relevance-conditional routing) are implemented end-to-end on
 FAISS-CPU and HNSW and evaluated under matched storage-bounded
 and accuracy-bounded regimes. The original H3 hypothesis predicted
 a sign-flip in the optimal pipeline between regimes; the empirical
-work shows that compress-first is robustly preferred in both
-regimes (by 3.2 pp F1 storage, 2.0 pp F1 accuracy), and the
-joint relevance-conditional routing (P3) leads both
-\textbf{by a substantial margin (42 pp F1 storage, 25 pp F1
-accuracy)} at near-identical EUR-per-query cost. The compress-first preference \emph{reverses} a common
-assumption of the LongLLMLingua~\cite{jiang2024longllmlingua}
-line of work and is the substantive C3 finding, registered
-honestly as a reframing of the original predicate.
+work shows that compress-first (P1) is preferred over retrieve-first
+(P2) in both regimes (by 3.2 pp F1 storage, 2.0 pp F1 accuracy)
+\emph{on the single \texttt{bge-large-en-v1.5} + FAISS-CPU stack
+evaluated here}, and the joint relevance-conditional routing (P3)
+scores higher F1 still ($0.905$ in both regimes). The
+compress-first-over-retrieve-first finding \emph{does not
+reproduce}, on this stack, the post-retrieval-compression
+preference of the LongLLMLingua~\cite{jiang2024longllmlingua} line
+of work --- this is a single-stack result, not a general
+falsification. The P3 F1 advantage must be read with an important
+caveat: a cost-instrumented re-run
+shows that P3 (and P2) route retrieved fragments \emph{verbatim}
+(achieved compression ratio $1.00\times$) while only compress-first
+P1 actually compresses, and the EUR cost model is corpus-dominated
+and does not meter compression compute (\S{}\ref{sec:h3}), so the
+cross-pipeline F1 gap is \emph{not} a matched-compression comparison
+and \textbf{no cost-parity or Pareto claim can be supported}. The
+honest C3 contribution is the compress-first-over-retrieve-first
+ordering on the tested stack plus the catalogue itself; the P3
+result is reported as verbatim-routing-preserves-F1-at-uncharged-cost.
 
 \paragraph{C4 --- A memory-bus reference implementation and a
 summary-level inference-disclosure metric.}
@@ -224,6 +288,16 @@ mechanism; Section~\ref{sec:h4_construct} documents that the
 ranking is monotonic in how aggressively each compressor destroys
 source tokens (truncation at the top), which calibrates the
 privacy interpretation against the destruction baseline.
+\textbf{Scope of the C4 claim.} The \emph{research} content of C4 is
+the disclosure metric (H4, Section~\ref{sec:h4_disclosure}) and the
+oracle-redaction control; the bus \emph{service} is the engineering
+artefact that operationalises it. The bus is benchmarked for
+single-host throughput and latency (policy check, end-to-end
+write/read, and audit hash-chain verification;
+Section~\ref{sec:bus_bench}), but its \emph{distributed} and
+multi-tenant scaling --- contention under concurrent writers,
+policy-lattice scaling, and cross-host replication --- is not
+measured here and is named as follow-on work.
 
 The thesis also presents \textbf{CAAC} (Cliff-Aware Adaptive
 Compression), a wrapper that operationalises the compounding-
@@ -231,10 +305,49 @@ error bound as a runtime back-off: given a per-family recall
 threshold, CAAC binary-searches downward over compression ratios
 until the per-fragment critical-token-recall sits on the safe
 side of the cliff. CAAC is presented in
-Chapter~\charef{summary} as a constructive demonstration of the
+\charef{summary} as a constructive demonstration of the
 compounding-error model rather than as a fifth headline
 contribution; the demonstration is that the cliff bound is not
 only descriptive but operational.
+
+\subsection{Reading guide and contribution hierarchy}
+\label{sec:reading_guide}
+
+The four contributions are not equally weighted, and the reader
+should not treat them as a flat list. The thesis has \emph{one}
+load-bearing result and three supporting artefacts, and it is
+worth stating the priority explicitly so that the later chapters
+are read with the right emphasis.
+
+\textbf{The central result is H1} (Section~\ref{sec:h1}): under
+compression, single-agent question-answering accuracy does not
+transferably predict multi-fragment coordination success. This is
+the finding that changes what a practitioner or benchmark designer
+should do, and everything else in the thesis exists to establish,
+explain, or exploit it. \textbf{The coordination cliff and its
+compounding-error model (C2)} are the mechanism behind H1: they
+explain \emph{why} compression breaks coordination sharply rather
+than gradually, and they are the second priority. \textbf{The C1
+benchmark} is the enabling instrument --- necessary for H1 and C2
+to be measured at all, and released so others can reproduce and
+extend them --- rather than a contribution that stands alone.
+\textbf{The RAG catalogue (C3), the inference-disclosure metric and
+memory bus (C4), and the CAAC wrapper} are deliberately
+\emph{secondary}: each stress-tests or operationalises the central
+finding in a specific deployment setting (retrieval placement,
+privacy governance, runtime back-off), and each is reported with
+its own scope limits rather than as a headline claim.
+
+Concretely, the reader pressed for time should weight
+\charef{experiments} Sections~\ref{sec:h1}--\ref{sec:cem}
+(H1, the cliff, the model) and Section~\ref{sec:corollary1} (the
+cross-architecture consistency check) as the core, and read the
+RAG, disclosure, and CAAC sections as supporting evidence that the
+central finding survives contact with three distinct real
+deployment concerns. This prioritisation also orders the themes the
+thesis spans: compression-quality measurement is primary;
+retrieval, privacy, and adaptive-compression engineering are
+applied consequences of it.
 
 \section{What Is Novel}
 
@@ -280,7 +393,7 @@ governance budget rather than a per-publication number.
 
 The remaining chapters are organised as follows.
 
-Chapter~\charef{relatedwork} surveys the prior work the four
+\charef{relatedwork} surveys the prior work the four
 contributions build on, organised into five strands: the
 transformer architecture and the cost of context, the modern
 training-free context-compression literature, multi-agent LLM
@@ -288,29 +401,32 @@ systems, retrieval-augmented generation, and privacy in agentic
 memory. Each section closes by naming the gap that this thesis
 fills relative to the prior work it surveys.
 
-Chapter~\charef{implementation} presents the artefacts the
+\charef{implementation} presents the artefacts the
 empirical evaluation runs on: the three-layer memory-bus
 architecture, the compressor framework, the C1 benchmark
 generator and scoring pipeline, the critical-token-recall metric,
 the compression cache, and the multi-fragment scope of the
 evaluation.
 
-Chapter~\charef{experiments} presents the empirical work: H1
-(question-answering accuracy decorrelates from coordination
-success); H2 (a sharp coordination cliff exists, characterised
-across $12$ compressor-family cells); the compounding-error
-model that predicts the cliff position with a predicted-versus-
-empirical match-rate band; Corollary~1 (the cliff position is
-invariant to planner parameter count and architecture family
-within a defined calibrated regime, validated on two frontier
-models --- Qwen-2.5-72B and DeepSeek V4 Pro --- with GPT-oss 120B
-reported as an out-of-regime diagnostic at the regime boundary);
-H3 (the RAG pipeline catalogue with the compress-first dominance
-result); H4 (the inference-disclosure measurement on the unbiased
-benchmark); and Corollary~2 (the cliff \emph{shape} varies with
-task information density across three benchmarks).
+\charef{experiments} presents the empirical work: H1
+(question-answering accuracy is not a transferable predictor of
+coordination success); H2 (a sharp coordination cliff exists,
+characterised across $12$ compressor-family cells); the
+compounding-error model that explains the cliff's threshold
+structure and gives a first-order position estimate (with a
+predicted-versus-empirical match-rate band); Corollary~1 (no
+cliff-position shift detected across planner parameter count and
+architecture family within a defined calibrated regime, on the
+cells where the cliff is resolvable --- carried by one
+well-identified frontier cell, Qwen-2.5-72B, with DeepSeek V4 Pro
+weakly corroborating and GPT-oss~120B reported as an out-of-regime
+diagnostic at the regime boundary); H3 (the RAG pipeline catalogue
+with the compress-first dominance result); H4 (the inference-
+disclosure measurement on the unbiased benchmark); and
+Corollary~2 (the cliff \emph{shape} varies with task information
+density across three benchmarks).
 
-Chapter~\charef{summary} synthesises the findings, presents CAAC
+\charef{summary} synthesises the findings, presents CAAC
 as the constructive realisation of the compounding-error bound,
 enumerates the limitations, discusses the practitioner and
 field-level significance, compares the findings to industry
@@ -321,6 +437,6 @@ All artefacts --- the manuscript source, the code, the
 configuration files, the results CSVs, and the
 \texttt{docker-compose.yml} that brings the memory-bus reference
 service up locally --- are released under a permissive licence in
-the open-source repository. Appendix~\charef{appendix} describes
+the open-source repository. Appendix~\ref{appendix} describes
 the reproducibility package and the one-command reproduction
 recipe for every headline figure.

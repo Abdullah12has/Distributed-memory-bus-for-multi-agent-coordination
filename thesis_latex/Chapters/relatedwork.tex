@@ -95,7 +95,7 @@ compression interacts with the per-token cost reduction it
 delivers when the downstream task requires combining information
 across multiple compressed fragments rather than reading a
 single answer out of a single fragment. The cliff measurement of
-Chapter~\charef{experiments} fills that gap.
+\charef{experiments} fills that gap.
 
 \section{The Scaling Era of LLMs}
 \label{sec:rw_scaling}
@@ -133,7 +133,7 @@ compression even stronger; tokens that the model will not
 effectively use are pure cost.
 
 \emph{What this thesis adds.} The model-scale trend motivates the
-question that Corollary~1 of Chapter~\charef{experiments}
+question that Corollary~1 of \charef{experiments}
 answers: does the cliff position depend on which point on the
 model-scale curve the planner is at? The frontier validation on
 Qwen-72B and DeepSeek~V4~Pro is the cross-architecture answer ---
@@ -161,10 +161,17 @@ model size, and the per-prompt energy at frontier-scale models
 larger. The study also separates the per-token amortised cost
 from the per-request fixed cost, and shows that for short
 prompts the fixed cost dominates while for long prompts the
-per-token cost dominates. The relevant implication for
-compression is that the operational regime context-compression
-operates in is the long-prompt regime, where the per-token cost
-is what compression directly cuts.
+per-token cost dominates. Two further peer-reviewed studies
+corroborate the per-token scaling: Samsi
+\emph{et~al.}~\cite{samsi2023words} benchmark the energy of LLM
+inference across model sizes and batch configurations and confirm
+that energy grows with the number of tokens processed, and Pope
+\emph{et~al.}~\cite{pope2023efficiently} give an analytical and
+empirical account of how serving cost and latency scale with
+sequence length once the prefill dominates. The relevant
+implication for compression is that the operational regime
+context-compression operates in is the long-prompt regime, where
+the per-token cost is what compression directly cuts.
 
 \paragraph{Token economics.}
 Industry pricing as of the writing of this thesis sits at
@@ -184,20 +191,20 @@ this thesis's cost model is calibrated against confirm the
 pricing as of the writing of the manuscript.
 
 \paragraph{Politeness as waste.}
-The industry-anecdotal observation that the compute cost of
-processing user politeness at OpenAI's frontier products amounted
-to ``tens of millions of dollars'' annually was made by Sam
-Altman in 2025~\cite{altman2025pleasethankyou}. The exact figure
-is reported as industry observation rather than as a
-peer-reviewed measurement; the direction is consistent with the
-Luccioni numbers~\cite{luccioni2024powerhungry} and is plausible
-on a back-of-the-envelope. Every ``Hello'', ``Thanks'', restated
-history, and repeated system prompt is converted directly into
-kilowatt-hours and dollars. The thesis uses the framing as the
-opening rhetorical hook (Chapter~\charef{introduction}); the
-substantive question of how aggressively the wasted tokens can be
-removed without losing the answer is what the rest of the thesis
-measures.
+The peer-reviewed per-token cost results above already establish
+the substantive point: every token processed --- including
+``Hello'', ``Thanks'', restated history, and repeated system
+prompts that do not change the answer --- is converted directly
+into kilowatt-hours and dollars~\cite{luccioni2024powerhungry,
+samsi2023words}. As a widely-circulated industry anecdote in the
+same direction, Sam Altman estimated in 2025 that the compute cost
+of processing user politeness at OpenAI's frontier products
+amounted to ``tens of millions of dollars''
+annually~\cite{altman2025pleasethankyou}; this is corroborating
+colour rather than evidence. The thesis uses the framing as the
+opening rhetorical hook (\charef{introduction}); the substantive
+question of how aggressively the wasted tokens can be removed
+without losing the answer is what the rest of the thesis measures.
 
 \paragraph{Multi-agent multiplier.}
 Anthropic's report on their multi-agent research
@@ -219,14 +226,18 @@ inference cost is real, that compression cuts it, and that
 deployed multi-agent systems are dominated by token cost. What is
 missing is the structural answer to \emph{how aggressively
 compression can be applied before coordination breaks}. The cliff
-characterisation of Chapter~\charef{experiments} is that answer.
+characterisation of \charef{experiments} is that answer.
 
 \section{Context Compression --- the Breakthrough Works}
 \label{sec:rw_compression}
 
 The training-free context-compression literature has matured in
-the past three years into four recognisable families. This
-subsection surveys the four, with a comparison table at the end
+the past three years into four recognisable families, surveyed
+comprehensively by Li \emph{et~al.}~\cite{li2025promptsurvey}; the
+most aggressive recent variants push compression to the extreme of
+a single-token document representation
+(xRAG~\cite{cheng2024xrag}). This
+subsection surveys the four families, with a comparison table at the end
 that maps the families against the design dimensions that matter
 for multi-fragment evaluation. Each family closes with a
 ``what is missing in prior work'' line that the rest of the
@@ -257,7 +268,7 @@ report single-agent question-answering F1 retention at modest
 compression ratios. None measures whether the surviving content
 is sufficient for a downstream planner to combine information
 across multiple compressed fragments into a correct answer. H1
-of Chapter~\charef{experiments} measures exactly that and
+of \charef{experiments} measures exactly that and
 finds that the single-agent F1 metric does not predict
 coordination success.
 
@@ -341,7 +352,7 @@ post-hoc verifier with a $15\%$ novel-token tolerance and an
 LLMLingua-2 fallback that together salvage outputs whose
 extractive fraction is above $50\%$; the architecture is
 documented in detail in
-Section~\ref{sec:compressors} of Chapter~\charef{implementation}
+Section~\ref{sec:compressors} of \charef{implementation}
 and is one of the engineering contributions of the thesis.
 
 \subsection{Comparison table}
@@ -350,7 +361,7 @@ and is one of the engineering contributions of the thesis.
 \centering
 \caption{The compressor families this thesis surveys, along the
 design dimensions that matter for multi-fragment evaluation. The
-third column is the property H1 of Chapter~\charef{experiments}
+third column is the property H1 of \charef{experiments}
 turns on: no prior compressor was evaluated on a controlled
 multi-fragment coordination sweep before this thesis.}
 \label{tab:rw_comparison}
@@ -384,7 +395,7 @@ CAMEL~\cite{li2023camel} (NeurIPS 2023),
 Reflexion~\cite{shinn2023reflexion} (NeurIPS 2023),
 MemGPT~\cite{packer2023memgpt} (preprint, not yet
 peer-reviewed at the time of writing of this thesis), and
-Generative Agents~\cite{park2025collaborative} (UIST 2023). Each
+Collaborative Memory~\cite{park2025collaborative} (Park et al., 2025 preprint). Each
 framework has its own implicit answer to the question of how
 shared context flows between agents and what an individual agent
 needs to see. None of the frameworks formally bounds the
@@ -398,7 +409,7 @@ addresses the related question of how to store and retrieve
 agent state across long horizons. The closest published academic
 analogue to this thesis's memory bus is
 MemIndex~\cite{saleh2025memindex}, which the three-layer memory-
-bus architecture of Chapter~\charef{implementation} explicitly
+bus architecture of \charef{implementation} explicitly
 extends. The MemGPT-style ``LLM as operating system''
 framing~\cite{packer2023memgpt} is related but is concerned with
 single-agent long-horizon memory rather than multi-agent shared
@@ -415,8 +426,8 @@ Section~\ref{sec:h2}, and the inference-disclosure measurement,
 Section~\ref{sec:h4_disclosure}); it does \emph{not} fill the
 multi-round-agent measurement gap, which the AutoGen backend in
 \texttt{src/m6/orchestrator/} is positioned to address as future
-work (ADR-009; Section~\ref{sec:future}). The memory bus of
-Chapter~\charef{implementation} is designed as the reference
+work (Section~\ref{sec:future}). The memory bus of
+\charef{implementation} is designed as the reference
 target for both, but the empirical evidence in this thesis is
 multi-fragment, not multi-round.
 
@@ -437,8 +448,10 @@ on the retrieval critical path explicitly; the closest published
 analogue to the post-retrieval-compression pipeline (P2) is the
 LongLLMLingua configuration~\cite{jiang2024longllmlingua}, and
 the closest published analogue to the joint
-relevance-conditional pipeline (P3) is the dynamic-routing
-framework of Guo \emph{et~al.}~\cite{guo2025dynamic}.
+relevance-conditional pipeline (P3) is the adaptive
+context-compression framework (ACC-RAG) of Guo
+\emph{et~al.}~\cite{guo2025dynamic}, which varies the compression
+rate by input complexity.
 
 The long-context-benchmark literature
 (\cite{bai2024longbench, hsieh2024ruler, liu2024lostinmiddle,
@@ -464,7 +477,7 @@ HotpotQA~\cite{yang2018hotpotqa} (EMNLP 2018),
 2WikiMultiHopQA~\cite{ho2020wiki2hop} (COLING 2020), and
 MultiHopRAG~\cite{tang2024multihoprag} (Findings of EMNLP 2024)
 are the real-data benchmarks on which Corollary~2 of
-Chapter~\charef{experiments} validates the
+\charef{experiments} validates the
 information-density-scaling claim. The transfer is
 qualitative: the absolute cliff positions differ between
 synthetic and real benchmarks because the information density
@@ -505,7 +518,7 @@ disclosure rate is the fraction of those questions on which the
 planner's answer recovers the protected fact given that it has
 the compressed summary as evidence. The H4 measurement
 operationalises this in a controlled setup; the memory-bus
-policy layer of Chapter~\charef{implementation} operationalises
+policy layer of \charef{implementation} operationalises
 the resulting disclosure budget as a deployment-time enforcement
 mechanism.
 
@@ -526,7 +539,7 @@ combine them.
 \label{sec:rw_gap}
 
 Four sentences, each one mapping to one of the four contributions
-of Chapter~\charef{introduction}.
+of \charef{introduction}.
 
 There is no shared multi-fragment coordination benchmark
 probing the cliff in a controlled, reproducible setup. C1 is the
@@ -557,3 +570,32 @@ work, which measure orthogonal properties on the single-agent
 axis. The thesis sits at the intersection of these three
 threads, and contributes the controlled cross-compressor
 multi-fragment evaluation that the prior work does not provide.
+
+Table~\ref{tab:sota_positioning} positions this thesis against the
+nearest prior systems on the single axis that separates it from
+them: whether the work measures the effect of compression on
+\emph{multi-fragment} task success, as opposed to single-fragment
+question-answering, retrieval quality, or aggregate token economics.
+
+\begin{table}[h]
+\centering
+\caption{Positioning of this thesis against the closest prior
+systems. The discriminating column is the last one: no prior system
+measures how compression affects success on a task whose answer
+requires combining information across multiple independently
+compressed fragments.}
+\label{tab:sota_positioning}
+\small
+\begin{tabular}{p{3.0cm}p{4.6cm}p{5.0cm}}
+\hline
+Prior system & What it measures & What it does not measure \\
+\hline
+LLMLingua-2~\cite{pan2024llmlingua2} & Single-agent QA-F1 retention at a target ratio & Whether surviving content supports multi-fragment coordination \\
+LongLLMLingua~\cite{jiang2024longllmlingua} & Post-retrieval compression for long-context QA & Cliff position; multi-fragment success; cost in EUR \\
+RECOMP~\cite{xu2024recomp} & Trained extractive/abstractive compression for RAG QA & Training-free cross-compressor comparison; coordination cliff \\
+MemIndex~\cite{saleh2025memindex} & Distributed agent-memory storage and retrieval & Information loss introduced when shared context is compressed \\
+Anthropic multi-agent report~\cite{anthropic2025multiagent} & Token usage vs.\ performance variance on one production workflow & Controlled, cross-compressor, cross-architecture characterisation \\
+\textbf{This thesis} & \textbf{Compression vs.\ multi-fragment coordination success across 4 compressors, 3 families, 3+ planners} & --- \\
+\hline
+\end{tabular}
+\end{table}

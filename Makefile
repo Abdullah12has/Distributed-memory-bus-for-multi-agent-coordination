@@ -215,6 +215,56 @@ reproduce-ch7: ## Headline figure for Chapter 7 (tag preservation, H4).
 reproduce-all: reproduce-ch5 reproduce-ch6 reproduce-ch7 ## Reproduce all chapter figures.
 
 # -----------------------------------------------------------------------------
+# Reproduction recipe (Appendix D) — repro-* targets named in the manuscript.
+#
+# Each maps one-to-one onto the self-contained experiment runners in
+# m6.experiments / m6.figures. Hardware tags:
+#   [GPU]    needs the RTX-5090 host (cache build).
+#   [Ollama] needs a local Ollama with the planners/reader pulled.
+#   [API]    needs FEATHERLESS_API_KEY (network-bound frontier validation).
+#   [CPU]    laptop-runnable.
+# repro-all chains only the CPU/Ollama steps; repro-cache and repro-frontier
+# are excluded because they need GPU / an API key and must be run explicitly.
+# -----------------------------------------------------------------------------
+.PHONY: repro-bench repro-cache repro-cliff repro-scaling repro-frontier \
+        repro-rag repro-disclosure repro-transfer repro-figs repro-all
+
+repro-bench: ## [CPU] Regenerate the C1 benchmark (150 instances, 3 families).      # WALLCLOCK ~1m
+	$(PY) -m m6.benchmark.cli generate-cmd --config configs/benchmark/c1-v0.1.yaml --out data/processed/c1-v0.1
+
+repro-cache: ## [GPU] Precompute the compression cache (all 4 compressors, all ratios). # WALLCLOCK ~40m
+	$(PY) -m m6.experiments.precompute_cache --out results/compression_cache
+
+repro-cliff: ## [CPU] Chapter 5 coordination-cliff sweep (H1+H2).                    # WALLCLOCK ~25m
+	$(PY) -m m6.experiments.run_h1_h2
+
+repro-scaling: ## [Ollama] Corollary 1 model-scaling sweep (H5).                     # WALLCLOCK ~90m
+	$(PY) -m m6.experiments.run_h5
+
+repro-rag: ## [CPU] Chapter 6 RAG-placement sweep (H3).                              # WALLCLOCK ~20m
+	$(PY) -m m6.experiments.run_h3
+
+repro-disclosure: ## [Ollama] Chapter 7 protected-fact recovery sweep (H4).          # WALLCLOCK ~30m
+	$(PY) -m m6.experiments.run_h4
+
+repro-transfer: ## [Ollama] Corollary 2 transfer validation on MultiHopRAG (H6).     # WALLCLOCK ~15m
+	$(PY) -m m6.experiments.run_h6
+
+# Frontier-model validation. run_frontier is purely CLI-arg-driven (no YAML
+# config); the canonical models are passed explicitly via --model. Re-run once
+# per model. Requires FEATHERLESS_API_KEY (auto-detected from env).
+repro-frontier: ## [API] Frontier-model validation (Qwen-72B + DeepSeek).            # WALLCLOCK ~30m
+	$(PY) -m m6.experiments.run_frontier --model Qwen/Qwen2.5-72B-Instruct \
+		--out results/frontier_qwen72b --synth-results results/h1_h2_v2
+	$(PY) -m m6.experiments.run_frontier --model deepseek-ai/DeepSeek-V4-Pro \
+		--out results/frontier_deepseekv4 --synth-results results/h1_h2_v2
+
+repro-figs: ## [CPU] Regenerate every thesis figure from the result CSVs.            # WALLCLOCK ~2m
+	$(PY) -m m6.figures.generate --out figures
+
+repro-all: repro-cliff repro-scaling repro-rag repro-disclosure repro-transfer repro-figs ## [CPU/Ollama] Run the laptop-runnable steps in order (skips repro-cache [GPU] + repro-frontier [API]).
+
+# -----------------------------------------------------------------------------
 # Thesis PDF
 # -----------------------------------------------------------------------------
 .PHONY: thesis thesis-docker thesis-open thesis-clean

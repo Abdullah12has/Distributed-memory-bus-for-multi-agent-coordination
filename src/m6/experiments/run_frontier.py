@@ -62,6 +62,7 @@ class FrontierConfig:
     out_dir: str = "results/frontier"
     cache_path: str | None = None
     priors: bool = False  # E3: add a fragments-blanked PRIORS condition (ratio sentinel 999.0)
+    request_delay: float = 0.4  # inter-call pacing (s) to stay under Featherless rate limit
 
     def __post_init__(self):
         if self.ratios is None:
@@ -303,7 +304,7 @@ def run_frontier(cfg: FrontierConfig) -> pd.DataFrame:
         for i in range(40):
             r = openai_planner_solve(cfg.model, warm_w, warm_texts, seed=0,
                                      api_key=cfg.api_key, api_base=cfg.api_base)
-            time.sleep(0.4)
+            time.sleep(cfg.request_delay)
             ok_streak = ok_streak + 1 if r.get("input_tokens", 0) > 0 else 0
             if ok_streak >= 5:
                 break
@@ -324,7 +325,7 @@ def run_frontier(cfg: FrontierConfig) -> pd.DataFrame:
                 # stream at the account level (~a few req/s). A small fixed
                 # delay keeps us under the limit so 429 backoff never triggers,
                 # which is far faster end-to-end than retrying after throttling.
-                time.sleep(0.4)
+                time.sleep(cfg.request_delay)
 
                 # Estimate cost
                 from m6.pipelines.cost_model import PRICING
@@ -605,6 +606,8 @@ def main():
                         help="Comma-separated planner seeds (default 0,1,2). E2 uses 0,1,2,3,4.")
     parser.add_argument("--ratios", type=str, default=None,
                         help="Comma-separated compression ratios (default 1,2,3,4,6,8).")
+    parser.add_argument("--delay", type=float, default=None,
+                        help="Inter-call pacing in seconds (default 0.4; use 1.0-1.5 for throttled models).")
     parser.add_argument("--priors", action="store_true",
                         help="E3: also run a PRIORS condition (fragments blanked) to measure "
                              "q->0 recovery vs priors-only baseline for the calibrated-regime test.")
@@ -628,6 +631,8 @@ def main():
     if args.ratios:
         cfg.ratios = [float(r) for r in args.ratios.split(",")]
     cfg.priors = bool(args.priors)
+    if args.delay is not None:
+        cfg.request_delay = args.delay
 
     # Validate API key is available
     try:

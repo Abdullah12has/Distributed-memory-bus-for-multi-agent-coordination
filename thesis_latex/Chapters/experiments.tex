@@ -37,7 +37,7 @@ Every cell records the coordination-success binary, an F1 over
 extracted answer tokens versus ground truth (this is what H1's
 ``QA accuracy'' refers to), the achieved compression ratio, the
 generic token-recall, and the critical-token-recall described in
-Section~\ref{sec:ctr} of Chapter~\charef{implementation}. The
+Section~\ref{sec:ctr} of \charef{implementation}. The
 compression cache (Section~\ref{sec:cache}) guarantees that every cell
 sees the exact same compressed text for a given (compressor, ratio,
 workload) tuple, so within-cell variance is exclusively
@@ -60,10 +60,7 @@ test is the paired Wilcoxon signed-rank
 test~\cite{wilcoxon1945}, chosen over the Mann--Whitney $U$
 test~\cite{mannwhitney1947} because the same workloads appear in
 both conditions, which violates the independence assumption of the
-two-sample test. The original cliff machinery used Mann--Whitney
-$U$; that error was corrected during the audit pass and the
-canonical \texttt{verdicts.json} files reflect the paired-Wilcoxon
-recomputation. Multiple-comparisons correction is Holm's
+two-sample test. Multiple-comparisons correction is Holm's
 sequentially-rejective procedure~\cite{holm1979bonferroni} applied
 \emph{within each hypothesis's family}: the $12$ (compressor,
 family) cells of the cliff sweep are Holm-corrected jointly for H2;
@@ -74,6 +71,23 @@ Family sizes are deliberately kept narrow because the hypotheses
 are independent claims and joint correction across them would be
 over-conservative.
 
+The H1 verdict statistic is the \emph{workload-level} Spearman
+correlation ($n = 150$ workloads, one mean $\Delta$-pair per
+workload, for every compressor; Phi-3-Mini extractive's
+$\sim 2.5\times$ achievable-compression ceiling collapses the
+upper ratio range and therefore reduces its \emph{pooled} $n$
+from $150 \times 9 = 1350$ to $150 \times 5 = 750$, but does not
+reduce the workload-level $n$, Section~\ref{sec:phi3}). A pooled
+correlation over $n = 150 \times 9$ (workload, ratio) measurements
+would over-state significance by roughly an order of magnitude,
+because the nine per-workload ratios are repeated measures rather
+than independent draws; that pooled $n$ and its asymptotic
+$p$-value are therefore retained in Table~\ref{tab:h1_rho} only
+as a non-inferential comparison column. The two-tailed asymptotic
+$p$ for $H_0: \rho = 0$ is reported at the workload level; the
+verdict rests on the BCa bootstrap CI (over workloads) excluding
+$0.6$.
+
 Cliff position $\tau^{*}$ is extracted by fitting both a piecewise-
 linear model and a logistic
 \[
@@ -82,91 +96,166 @@ linear model and a logistic
 to each cell's coordination-success-versus-ratio curve and selecting
 the model with the lower root-mean-squared error. The piecewise fit
 is constrained to an interior $10\%$ margin from the sweep
-boundaries to prevent the optimiser from parking $\tau^{*}$ at
-$r_{\max}=16$, which was a real failure mode of an earlier audit
-build and is documented in the project-internal bug list.
-$95\%$~bootstrap CIs on $\tau^{*}$ are computed by resampling the
-underlying workload means before the curve fit.
+boundaries. This prevents the optimiser from parking $\tau^{*}$ at
+$r_{\max}=16$, a degenerate fit the unconstrained optimiser would
+otherwise select. $95\%$~bootstrap CIs on $\tau^{*}$ are computed by
+resampling the underlying workload means before the curve fit.
 
-\section{H1: Question-Answering Accuracy Decorrelates from Coordination Success}
+\section{H1: Question-Answering Accuracy Does Not Transferably Predict Coordination Success}
 \label{sec:h1}
 
 \begin{tcolorbox}[colback=black!4, colframe=black!50, sharp corners,
                   boxrule=0.4pt, boxsep=2pt, left=4pt, right=4pt,
                   top=2pt, bottom=2pt]
 \textbf{H1.} Single-agent question-answering accuracy under
-compression is a poor predictor of multi-fragment coordination
-success: Spearman~$\rho(\Delta_\text{qa}, \Delta_\text{coord}) <
-0.6$ on the cells of the cliff sweep, with $95\%$ bootstrap CIs
-excluding $0.6$ from above. \textbf{Verdict: SUPPORTED.} The
-headline empirical finding is \textbf{sign-disagreement across
-compressors}: the instruction-aware filter has
-$\rho = -0.59$ (strong \emph{anti}-correlation --- the re-ranker
-preserves task-keyword tokens that the F1 metric does not
-reward), while LLMLingua-2 and truncation have
-$\rho \approx +0.38$ (moderate positive --- token-overlap F1 does
-track coordination success for compressors that drop tokens by
-token-level statistics). That two compressors disagree on the
-\emph{sign} of the QA $\leftrightarrow$ coordination
-relationship is the strictly stronger and more interesting
-finding than the preregistered $\rho < 0.6$ threshold test, and
-it falsifies the use of token-overlap-F1 as a single-dimensional
-predictor of coordination quality across compressor families.
+compression is not a transferable predictor of multi-fragment
+coordination success: workload-level
+Spearman~$\rho(\Delta_\text{qa}, \Delta_\text{coord}) < 0.6$ for
+every compressor, with $95\%$ bootstrap CIs excluding $0.6$ from
+above. \textbf{Verdict: SUPPORTED.} The finding is most honestly
+stated as \emph{QA-F1 change does not positively predict
+coordination change for any compressor at the workload level},
+plus a methodological warning that pooled single-number correlations
+are distorted. At the workload level (the inference-valid unit),
+the instruction-aware filter is strongly negative
+($\rho = -0.82$), Phi-3-Mini extractive moderately positive
+($\rho = +0.32$), and LLMLingua-2 and truncation collapse to
+near-zero ($\rho = +0.03$ and $+0.05$, CIs spanning zero) --- even
+though all four look moderately correlated
+($\rho \approx \pm 0.4$--$0.6$) when ratios are pooled. We
+deliberately avoid the word ``decorrelate'' for the filter
+($|\rho| = 0.82$ is a strong correlation), but for LLMLingua-2 and
+truncation near-zero is exactly what the workload-level data show.
+A per-family decomposition (Table~\ref{tab:h1_perfamily}) explains
+both effects: within most (compressor, family) cells coordination
+collapses uniformly across workloads, leaving no rank variance
+(``degenerate''); the filter's strong overall negative value is a
+\emph{between-family} artifact (within family-a it is only $-0.13$,
+n.s.); and the single significant within-family relationship is
+\emph{negative} (LLMLingua-2/family-c, $-0.46$). The pooled
+positive correlations for LLMLingua-2 and truncation are thus
+inflated by pseudo-replication and between-family pooling and must
+not be read as evidence that QA-F1 tracks coordination.
 \end{tcolorbox}
 
 \subsection{Result}
 
-Table~\ref{tab:h1_rho} reports the workload-level Spearman
-correlation between the change in token-overlap F1 (the
-``QA accuracy'' metric the LongLLMLingua line of work
+Table~\ref{tab:h1_rho} reports the Spearman correlation between the
+change in token-overlap F1 (the ``QA accuracy'' metric the
+LongLLMLingua line of work
 reports~\cite{jiang2024longllmlingua,pan2024llmlingua2}) and the
-change in coordination success under compression, for each
-compressor pooled across the three task families. The signature
-finding is the dispersion of the correlations: they span from
-$-0.59$ to $+0.38$, and none reaches $0.6$. The two compressors
-whose token-overlap F1 is most strongly tied to coordination
-success disagree on sign --- the instruction-aware filter has a
-strongly negative correlation, while LLMLingua-2 has a moderately
-positive correlation. The negative-correlation result for the
-filter is the easiest to misread, and is the reason this section
-opens with the verdict rather than the interpretation: the filter's
-re-ranker preserves task-keyword tokens that the token-overlap
-metric does not reward, so as the F1 metric goes down the
-coordination metric goes \emph{up}. That is the H1 finding in its
-purest form.
+change in coordination success under compression, at both the
+workload level (the inference-valid unit) and pooled-over-ratios
+(for comparison only). The signature finding is twofold. First,
+the workload-level correlations span from $-0.82$ (filter) to
+$+0.32$ (Phi-3-Mini extractive) and none reaches $0.6$, with
+LLMLingua-2 and truncation sitting essentially at zero ($+0.03$,
+$+0.05$). Second, the workload-level and pooled columns disagree
+sharply: pooling the nine ratios per workload inflates LLMLingua-2
+and truncation to $\approx +0.38$ --- a pseudo-replication
+artifact, since the nine ratios on one workload are not
+independent. The filter's strongly negative workload-level value
+is the easiest to misread and is why this section opens with the
+verdict: the filter's re-ranker preserves task-keyword tokens that
+the token-overlap metric does not reward, so as the F1 metric goes
+down the coordination metric can go \emph{up}. But the per-family
+decomposition (Table~\ref{tab:h1_perfamily}) shows even this is a
+between-family effect --- within any single family the filter's
+relationship is weak or undefined. The robust H1 statement is the
+negative one: token-overlap F1 change does not positively,
+consistently predict coordination change for any compressor at the
+workload level.
 
 \begin{table}[h]
 \centering
-\caption{H1 verdict table. Workload-level Spearman correlation
-between $\Delta$~token-overlap F1 and $\Delta$~coordination success
-under compression. CIs are BCa-bootstrap with $1000$ resamples;
-$p$-values are from the two-tailed asymptotic Spearman test.
-$n$ is the number of (workload, compression-ratio) measurements
-that enter the rank correlation after per-seed averaging ---
-$150 \times 9$ for the three compressors that sweep the full
-ratio range, $150 \times 5$ for Phi-3-Mini extractive whose
-$\sim 2.5\times$ achievable-compression ceiling collapses the
-upper half of the ratio sweep (see Section~\ref{sec:phi3} and
-Appendix~B for per-cell counts). All four CIs exclude $0.6$ from
-above; the four compressors disagree on both magnitude and sign.
-The headline numbers below are from \texttt{results/h1\_h2\_v2/};
-the three-compressor \texttt{h1\_h2\_final} run produces a
-sub-table identical in verdict.}
+\caption{H1 verdict table. Spearman correlation between
+$\Delta$~token-overlap F1 and $\Delta$~coordination success under
+compression. The workload-level $\rho$ (one mean $\Delta$-pair per
+workload, $n=150$) is the verdict statistic. The pooled column
+($n=1350 = 150~\text{workloads} \times 9~\text{ratios}$) is shown
+for comparison only and is \textbf{not} used for inference: the
+nine per-workload ratio measurements are repeated measures, not
+independent draws, so the pooled $n$ and its asymptotic $p$
+over-state significance by roughly an order of magnitude. The
+verdict (all CIs exclude $0.6$) holds in both columns. CI is
+BCa-bootstrap over workloads, $2000$ resamples. Phi-3-Mini
+extractive saturates at $\sim 2.5\times$ achieved compression so
+its pooled $n$ is $750$ ($150 \times 5$); see
+Section~\ref{sec:phi3} and Appendix~B.}
 \label{tab:h1_rho}
 \small
-\begin{tabular}{p{3.8cm}rrrr}
+\begin{tabular}{p{3.4cm}rlr}
 \hline
-Compressor & $\rho$ & $95\%$ CI (BCa) & $p$ (Spearman) & $n$ \\
+Compressor & $\rho$ (workload, $n$) & $95\%$ CI (workload) & $\rho$ (pooled, $n$) \\
 \hline
-Instruction-aware filter & $-0.593$ & $[-0.641, -0.542]$ & $7.3\!\times\!10^{-129}$ & $1350$ \\
-LLMLingua-2 & $+0.381$ & $[+0.344, +0.418]$ & $7.0\!\times\!10^{-48}$ & $1350$ \\
-Phi-3-Mini extractive & $+0.193$ & $[+0.131, +0.252]$ & $1.0\!\times\!10^{-7}$ & $750$ \\
-Truncation (baseline) & $+0.384$ & $[+0.349, +0.418]$ & $1.4\!\times\!10^{-48}$ & $1350$ \\
+Instruction-aware filter & $-0.818$ ($150$) & $[-0.852, -0.760]$ & $-0.593$ ($1350$) \\
+LLMLingua-2              & $+0.026$ ($150$) & $[-0.135, +0.180]$ & $+0.381$ ($1350$) \\
+Phi-3-Mini extractive    & $+0.315$ ($150$) & $[+0.177, +0.442]$ & $+0.193$ ($750$) \\
+Truncation (baseline)    & $+0.051$ ($150$) & $[-0.092, +0.198]$ & $+0.384$ ($1350$) \\
 \hline
-\textbf{All four} & --- & all CIs exclude $0.6$ & --- & \textbf{SUPPORTED} \\
+\multicolumn{4}{l}{\textbf{All four}: all workload-level CIs exclude $0.6$ from above ~~~\textbf{SUPPORTED}} \\
 \hline
 \end{tabular}
 \end{table}
+
+The contrast between the two $\rho$ columns is itself a finding:
+pooling the nine ratios per workload as if independent inflates
+LLMLingua-2 and truncation from a workload-level $\approx 0$ to a
+pooled $\approx +0.38$, and shifts the filter from $-0.82$ to
+$-0.59$. The workload-level column is the inference-valid one; the
+verdict (all CIs below $0.6$) holds in both, but only the
+workload-level magnitudes should be interpreted.
+
+\begin{table}[h]
+\centering
+\caption{H1 per-family decomposition (workload-level Spearman,
+$n=50$ per family; computed from
+\texttt{results/h1\_h2\_v2/sweep\_results.csv}). This is the
+load-bearing diagnostic against a Simpson's-paradox reading of the
+pooled sign. ``Degenerate'' marks cells where the per-workload
+coordination change has effectively zero variance (every workload
+cliffs identically), so no rank correlation is defined. The only
+statistically significant within-family correlation is
+\emph{negative} (LLMLingua-2 on family-c).}
+\label{tab:h1_perfamily}
+\small
+\begin{tabular}{lccc}
+\hline
+Compressor & Family-a & Family-b & Family-c \\
+\hline
+Instruction-aware filter & $-0.13$ (n.s., $p=0.35$) & degenerate & degenerate \\
+LLMLingua-2              & degenerate              & degenerate & $-0.46$ ($p=7\!\times\!10^{-4}$) \\
+Truncation               & degenerate              & degenerate & $-0.05$ (n.s., $p=0.72$) \\
+Phi-3-Mini extractive    & $+0.16$ (n.s., $p=0.27$) & $+0.24$ (n.s., $p=0.09$) & degenerate \\
+\hline
+\end{tabular}
+\end{table}
+
+The decomposition is the decisive evidence that the pooled
+compressor-level correlations are not a uniform mechanism. Within
+a single family at the workload level, coordination success
+usually collapses \emph{uniformly} across workloads (every workload
+cliffs at the same ratio), leaving no rank variance --- eight of
+the twelve cells are degenerate for this reason. Of the four cells
+that retain variance, three are non-significant and the
+\textbf{only} statistically significant within-family relationship
+is \emph{negative} (LLMLingua-2 on family-c, $-0.46$).
+\textbf{Stated plainly: across the twelve (compressor, family)
+cells there are zero statistically-significant \emph{positive}
+within-family correlations.} The pooled-column ``positives'' for
+LLMLingua-2 and truncation ($\rho\approx+0.38$) therefore do not
+correspond to any within-family signal a practitioner could exploit;
+they are pseudo-replication artefacts of treating the nine ratios
+per workload as independent draws.
+Crucially, the strong overall filter correlation ($-0.82$,
+Table~\ref{tab:h1_rho}) does \textbf{not} reproduce within any
+single family (family-a is only $-0.13$ and n.s.; b and c are
+degenerate): it is a between-family pooling effect, not a
+within-task law. The practical reading is the conservative one ---
+QA-F1 change does not positively and consistently predict
+coordination change anywhere we can measure it within a task
+family, which is exactly why a single-agent F1 ranking cannot be
+trusted to transfer to a multi-fragment deployment.
 
 \subsection{Interpretation}
 
@@ -230,12 +319,52 @@ below $r=16$.
 \subsection{Result}
 
 Figure~\ref{fig:cliff_hero} is the chapter's most-quoted figure:
-the coordination-success curves for LLMLingua-2 on family-a, with
-the cliff visible at $\tau^{*}\approx 2.5\times$ and the curve
-falling from coordination~$\approx 1.0$ at $r=1$ to coordination
-$\approx 0.0$ by $r=6$. The drop is concentrated in a span of two
-compression ratios, which is the signature shape that the
+the coordination-success curve for LLMLingua-2 on family-a, on the
+coarse sweep grid, falling from coordination~$\approx 1.0$ at $r=1$
+to coordination $\approx 0.0$ by $r=6$. On this grid the logistic
+fit places the cliff at the quantised midpoint
+$\tau^{*}\approx 2.5\times$; the fine-grid re-resolution below shows
+the true deterministic-solver cliff sits lower, near
+$\tau^{*}\approx 1.1$ (and the LLM-planner cliff on the same cell
+near $2.7$, Section~\ref{sec:corollary1}). What the figure
+establishes is the \emph{shape}: the drop is concentrated in a
+narrow span of compression ratios, which is the signature the
 compounding-error model is built around.
+
+\paragraph{$\tau^{*}$-register table.}
+Four numerical values for the family-a $\times$ LLMLingua-2 cliff
+appear in the manuscript; they correspond to different
+measurement contexts and are not in conflict.
+Table~\ref{tab:tau_register} consolidates them so the chapter's
+later sections can reference one number per context without
+re-explaining the register.
+
+\begin{table}[h]
+\centering
+\caption{$\tau^{*}$ register for the family-a $\times$ LLMLingua-2
+cell. The deterministic coarse-grid value $2.5$ is a
+grid-quantised artefact; the fine-grid re-resolution
+$\approx 1.1$ is the true deterministic-solver cliff; the
+LLM-planner value $\approx 2.48$--$2.79$ is the deployment-relevant
+quantity (Section~\ref{sec:corollary1}); and $\tau^{*}=2.6997$ is a
+superseded auxiliary fit retained only in the audit-trail JSON.}
+\label{tab:tau_register}
+\small
+\begin{tabular}{lcl}
+\hline
+Context & $\tau^{*}$ & Source / use \\
+\hline
+Deterministic, coarse-grid sweep        & $2.5$              & Table~\ref{tab:h2_tau} (sweep midpoint, quantised) \\
+Deterministic, fine-grid re-resolution  & $\approx 1.1$      & \texttt{results/h1\_h2\_finegrid/} \\
+LLM planner, local 8B + frontier 72B    & $\approx 2.48$--$2.79$ & Section~\ref{sec:corollary1}, deployment-relevant \\
+Auxiliary fit on \texttt{h1\_h2\_final} & $2.6997$           & superseded; retained in audit trail only \\
+\hline
+\end{tabular}
+\end{table}
+
+The deployment-relevant value is the LLM-planner range; the
+deterministic-solver values are conservative lower bounds, not
+deployment numbers.
 
 \begin{figure}[h]
 \centering
@@ -268,17 +397,20 @@ compounding-error model predicts.
 \begin{table}[h]
 \centering
 \caption{H2 verdict table: empirical cliff position $\tau^{*}$,
-piecewise-slope drop $\Delta$, and Holm-corrected paired-Wilcoxon
-$p$ for each (compressor, family) cell from
-\texttt{results/h1\_h2\_v2/}. The ``slope drop'' column is the
-piecewise-linear-extrapolated drop ratio
-$\Delta = (f(r_{\min}) - f(r_{\max}))/|f(r_{\min})|$ from the
-fit's slope-extrapolated boundary values, \emph{not} a fraction
-of the observed coordination baseline; values $> 1$ occur because
-the left-side extrapolation can exceed the observed
-baseline-coordination by a small amount and the right-side
-extrapolation can go slightly below 0. The H2 verdict criterion
-(drop $\ge 0.30$) is in this same slope-extrapolated metric.
+observed-range drop, slope-extrapolated drop $\Delta$, and
+Holm-corrected paired-Wilcoxon $p$ for each (compressor, family)
+cell from \texttt{results/h1\_h2\_v2/}. The
+\textbf{observed drop} column is the intuitive verdict metric:
+$(\text{baseline coordination} - \text{post-cliff
+coordination})/\text{baseline}$, bounded in $[0, 1]$, and the H2
+criterion (drop $\ge 0.30$) is read in these units. The
+\textbf{slope drop} column is the piecewise-linear-extrapolated
+ratio from the fit's slope-extrapolated boundary values (it can
+exceed $1$ because the left extrapolation can sit slightly above
+the observed baseline of $1.0$ and the right slightly below $0$);
+it is retained as a secondary fit diagnostic only. Every
+significant cell clears the $0.30$ criterion in observed units ---
+the smallest is Phi-3-Mini ext.\ $\times$ a at exactly $0.30$.
 Cells marked $^{\dagger}$ have $\tau^{*}$ grid-quantised at the
 midpoint of the sweep gap $\{1, 2\}$: on these eight
 (compressor, family) pairs the deterministic solver scores
@@ -292,27 +424,55 @@ the re-ranker preserves chain-reference tokens; this is
 documented behaviour rather than a falsification.}
 \label{tab:h2_tau}
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \hline
-Cell & $\tau^{*}$ & slope drop $\Delta$ & Holm $p$ \\
+Cell & $\tau^{*}$ & observed drop & slope drop $\Delta$ & Holm $p$ \\
 \hline
-LLMLingua-2 $\times$ a   & $2.5^{\dagger}$ & 1.61 & $8.5\!\times\!10^{-12}$ \\
-LLMLingua-2 $\times$ b   & $2.5^{\dagger}$ & 1.61 & $8.5\!\times\!10^{-12}$ \\
-LLMLingua-2 $\times$ c   & 6.7 & 1.23 & $9.6\!\times\!10^{-10}$ \\
-Filter $\times$ a        & $2.5^{\dagger}$ & 1.60 & $8.5\!\times\!10^{-12}$ \\
-Filter $\times$ b        & $2.5^{\dagger}$ & 1.61 & $8.5\!\times\!10^{-12}$ \\
-Filter $\times$ c        & --- & 0.00 & n.s. \\
-Phi-3-Mini ext.\ $\times$ a & $2.5^{\dagger}$ & 0.42 & $2.2\!\times\!10^{-6}$ \\
-Phi-3-Mini ext.\ $\times$ b & $2.5^{\dagger}$ & 0.97 & $2.5\!\times\!10^{-9}$ \\
-Phi-3-Mini ext.\ $\times$ c & $2.5^{\dagger}$ & 1.37 & $8.5\!\times\!10^{-12}$ \\
-Truncation $\times$ a    & $2.5^{\dagger}$ & 1.61 & $8.5\!\times\!10^{-12}$ \\
-Truncation $\times$ b    & $2.5^{\dagger}$ & 1.61 & $8.5\!\times\!10^{-12}$ \\
-Truncation $\times$ c    & 4.95 & 1.36 & $9.6\!\times\!10^{-10}$ \\
+LLMLingua-2 $\times$ a   & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+LLMLingua-2 $\times$ b   & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+LLMLingua-2 $\times$ c   & 6.7 & 0.66 & 1.23 & $9.6\!\times\!10^{-10}$ \\
+Filter $\times$ a        & $2.5^{\dagger}$ & 1.00 & 1.60 & $8.5\!\times\!10^{-12}$ \\
+Filter $\times$ b        & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+Filter $\times$ c        & --- & 0.00 & 0.00 & n.s. \\
+Phi-3-Mini ext.\ $\times$ a & $2.5^{\dagger}$ & 0.30 & 0.42 & $2.2\!\times\!10^{-6}$ \\
+Phi-3-Mini ext.\ $\times$ b & $2.5^{\dagger}$ & 0.72 & 0.97 & $2.5\!\times\!10^{-9}$ \\
+Phi-3-Mini ext.\ $\times$ c & $2.5^{\dagger}$ & 0.94 & 1.37 & $8.5\!\times\!10^{-12}$ \\
+Truncation $\times$ a    & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+Truncation $\times$ b    & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12}$ \\
+Truncation $\times$ c    & 4.95 & 0.71 & 1.36 & $9.6\!\times\!10^{-10}$ \\
 \hline
-\multicolumn{3}{l}{\textbf{Verdict}: $11/12$ cells significant; only filter $\times$ c lacks a cliff.} & \textbf{SUPP.} \\
+\multicolumn{4}{l}{\textbf{Verdict}: $11/12$ cells significant with observed drop $\ge 0.30$ ($3$ of those $11$ are Phi-3 cells whose $\tau^{*}$ positions are not numerically comparable across compressors --- see Section~\ref{sec:phi3}).} & \textbf{SUPP.} \\
 \hline
 \end{tabular}
 \end{table}
+
+\paragraph{Fine-grid re-resolution (\texttt{results/h1\_h2\_finegrid}).}
+To test whether the $\tau^{*}=2.5$ value was a measurement or an
+artefact, the dense-family cells were re-swept on a refined ratio
+grid adding $\{1.25, 1.5, 1.75, 2.5\}$ below $r=2$. The quantised
+$2.5$ is an artefact: the true deterministic-solver cliffs sit well
+below it. LLMLingua-2 $\times$ a collapses $1.0\to0.0$ between $r=1$
+and $r=1.25$ ($\tau^{*}\approx 1.1$); Filter $\times$ a runs
+$1.0, 0.92, 0.46, 0.02$ at $r=1.5,1.75,2.0$ ($\tau^{*}\approx 1.7$);
+Truncation $\times$ a runs $1.0, 0.92, 0.76, 0.0$
+($\tau^{*}\approx 1.85$). The distributed family-c cliffs are
+unchanged (LLMLingua-2 $\times$ c $\approx 6.7$, Truncation
+$\times$ c $\approx 5.0$), confirming they were never quantised.
+Two honest consequences follow. First, the canonical synthetic
+reference $\tau^{*}=2.5$ used for the frontier comparison
+(\S\ref{sec:frontier}) is itself a coarse-grid artefact; the genuine
+\emph{deterministic} family-a cliff is near $1.1$. Second --- and
+more substantively --- the deterministic regex solver cliffs at
+$\approx 1.1$ while the LLM planners (local 8B and frontier
+Qwen-2.5-72B) cliff at $\approx 2.7$ on the same compressor and
+family: the brittle parser fails the instant a critical token is
+dropped, whereas a language model tolerates substantially more
+compression by reconstructing partial information. This
+solver-versus-LLM divergence is why Corollary~1 is anchored to the
+\emph{LLM-planner} cliff rather than the deterministic-solver value
+(\S\ref{sec:corollary1}--\S\ref{sec:frontier}); the deterministic
+cliff is a conservative \emph{lower} bound on the operating point an
+LLM planner can sustain.
 
 The twelve-cell grid in Figure~\ref{fig:cliff_families} reads the
 result at one glance: cliffs are sharp on the dense
@@ -343,7 +503,22 @@ compressor that drops critical tokens earliest cliffs at the
 lowest ratio. This is the H2 finding pointing forward: a cliff
 exists, its position is determined by the compressor's mechanism
 of action on task-critical tokens, and the mechanism is captured
-by a single statistic --- $q(r)$. The next section turns that
+by a single statistic --- $q(r)$.
+
+One comparability caveat applies to the Phi-3-Mini extractive
+cells. Phi-3-Mini extractive saturates at $\sim 2.5\times$
+\emph{achieved} compression regardless of the requested
+\emph{target} ratio (Section~\ref{sec:phi3}), so above target
+$2.5\times$ its x-axis (target ratio) decouples from what the
+compressor actually delivers. Its tabulated $\tau^{*}$ values are
+therefore on a different effective x-axis from the token-level
+compressors, and the phi3 cliffs are better read against
+\emph{achieved} ratio (Figure~\ref{fig:cliff_families} is plotted
+against achieved ratio for this reason). The phi3 cells are
+retained in the $11/12$ count because the coordination collapse
+is real and significant, but their cliff \emph{positions} should
+not be compared numerically against the other compressors'
+target-ratio positions. The next section turns the $q(r)$
 observation into a quantitative bound.
 
 \section{The Compounding-Error Model}
@@ -352,10 +527,15 @@ observation into a quantitative bound.
 The cliff curves of Section~\ref{sec:h2} share a structural
 property: each has a sharp transition between a high-coordination
 plateau and a low-coordination floor. The compounding-error model
-is a derivation that captures this structure and produces a
-position-prediction for the transition $\tau^{*}$ from the
-compressor-side measurement $q(r)$ and a per-family
-recall-threshold parameter $\theta_q$.
+is a short derivation whose \emph{primary} contribution is
+explaining \textbf{why} that transition is sharp --- a threshold
+on critical-token survival produces a step in success --- and
+whose \emph{secondary} output is a \textbf{first-order} estimate
+of the transition position $\tau^{*}$ from the compressor-side
+measurement $q(r)$ and a per-family recall-threshold parameter
+$\theta_q$. It is not, and is not claimed to be, a tight position
+predictor; Section~\ref{sec:cem_match} quantifies the residual
+error directly.
 
 \subsection{Setup and derivation}
 
@@ -363,7 +543,7 @@ Let $T^\text{crit}_i$ be the set of task-critical tokens in the
 $i$-th workload's source fragments (multi-digit numerics for
 family-a, all numerics for family-b, chain-reference tokens for
 family-c; see Section~\ref{sec:ctr} of
-Chapter~\charef{implementation}). Let $X_i$ be the number of these
+\charef{implementation}). Let $X_i$ be the number of these
 tokens that survive compression, $M_i = |T^\text{crit}_i|$ the
 total, and $q(r) = E[X_i / M_i]$ the per-round token-retention
 function of the compressor at ratio $r$, measured by the
@@ -401,16 +581,16 @@ finite-$M$ Chernoff-bound refinement that sharpens the
 in-expectation step above into an explicit
 $\exp(-2M(q-\theta_q)^2)$ concentration bound exists in
 \texttt{src/m6/theory/cliff\_prediction.py} as
-\texttt{chernoff\_success\_curve()}; ADR-008 records the
+\texttt{chernoff\_success\_curve()}; the
 decision to keep the finite-$M$ refinement out of the
-manuscript, since the empirical match-rate residuals are
+manuscript is deliberate, since the empirical match-rate residuals are
 dominated by A2 specification error rather than sampling error
 and the in-expectation form is the right register for the
 model's actual accuracy. The codebase identifier
 \texttt{theorem\_validation.json} is preserved for backwards
 compatibility with on-disk artefacts; the manuscript term is
 \emph{the compounding-error model} (the mapping is documented in
-CONTEXT.md and in ADR-008).
+the project glossary).
 
 \subsection{Assumptions A1--A4}
 \label{sec:cem_assumptions}
@@ -451,6 +631,21 @@ circularity requires an independent A3 probe (directly varying
 the surviving fraction of task-relevant tokens rather than
 mediating that variation through compression), which is named as
 a future-work direction in Section~\ref{sec:future}.
+\textbf{A stronger, family-a-specific form of this circularity
+must be stated explicitly.} On family-a the planner is the regex
+solver, whose success criterion is ``did enough task-critical
+numeric tokens survive for the parser to recover the sum,'' and
+CTR (the model's $q(r)$) is \emph{the surviving fraction of those
+same tokens}. The cliff equation $q(\tau^{*}) = \theta_q$ on
+family-a therefore relates two near-identical measurements, so
+family-a validation primarily confirms internal consistency rather
+than testing a prediction. The non-tautological tests of the
+position estimate are the families where solver-success and CTR
+are mechanically decoupled (family-c, and the LLM-planner arms of
+Sections~\ref{sec:corollary1}--\ref{sec:frontier}); the description
+of family-a as the family on which the model is most directly
+testable should be read in this light --- most directly
+\emph{computable}, not most independently \emph{validating}.
 \item[A4 --- Per-round retention measured by critical-token-recall.]
 The $q(r)$ that enters the bound is the family-specific CTR rather
 than the generic token-recall. This is the substantive
@@ -462,7 +657,7 @@ pipeline.
 \subsection{The calibrated regime}
 \label{sec:calibrated}
 
-A planner is \emph{in the calibrated regime} (ADR-006) if both of
+A planner is \emph{in the calibrated regime} if both of
 the following hold:
 
 \begin{enumerate}\setlength\itemsep{1pt}
@@ -518,8 +713,7 @@ curve. Resampling $\theta_q$ through this inverse map gives a
 specification error. The two should not be confused: the band
 reports ``how much would the prediction wobble if we resampled
 workloads'', not ``what is the model's actual accuracy''. The
-honest statement, recorded in \texttt{insights.txt} \S57, is that
-the empirical $\tau^{*}$ falls \emph{outside} this bootstrap band
+empirical $\tau^{*}$ falls \emph{outside} this bootstrap band
 on $11/11$ testable cells --- the band is too tight relative to
 the model's specification error. The match-rate paragraph below
 reports the actual accuracy, which is what the chapter's verdict
@@ -558,7 +752,7 @@ the empirical cliff. The band reflects \emph{sampling}
 uncertainty in $\theta_q$ only --- the empirical $\tau^{*}$ falls
 outside the band here and on all other testable cells, which is
 the model's specification error rather than a sampling artefact
-(see prose above and \texttt{insights.txt} \S57). The model is
+(see prose above). The model is
 conservative on family-c ($\Delta\tau^{*}\approx +0.64$), which
 Corollary~2 explains via the family-c information-density
 estimate $\theta_\text{info}\approx 0.62$ being lower than
@@ -580,7 +774,7 @@ confidence interval on the $4/12$ strict match rate is
 approximately $[13\%, 61\%]$ --- the small denominator gives a
 wide interval that the prose below should not be read past.
 Reporting the full distribution of relative errors alongside the
-binary match rate (the audit recommendation): the median is
+binary match rate: the median is
 $35.3\%$, the interquartile range is $[19.2\%, 45.0\%]$ ($10$
 cells with finite relative error), and the maximum is $57.4\%$.
 Two cells produce infinite predicted $\tau^{*}$ because $q(r)$
@@ -615,11 +809,11 @@ $\theta_q$-sampling uncertainty only and is too tight to contain
 the empirical $\tau^{*}$ on any cell.) A leave-one-family-out
 (LOO) cross-validation that derives $\theta_q$ on $n{-}1$ families
 and predicts $\tau^{*}$ on the held-out family --- breaking the
-in-sample circularity the audit flagged --- returns
+in-sample circularity --- returns
 $\mathbf{25\%}$ ($3/12$) at $\pm 25\%$ and $\mathbf{75\%}$
 ($9/12$) at $\pm 50\%$, with per-family LOO $\theta_q$ at $a=0.71$,
 $b=0.61$, $c=0.73$. The LOO match rate is lower at the strict
-tolerance, exactly as the audit predicted for an in-sample-trained
+tolerance, as expected for an in-sample-trained
 $\theta_q$; the gap ($33\%$ in-sample vs $25\%$ LOO at $\pm 25\%$)
 is the size of the in-sample optimism in the headline number. The
 primary uncertainty measure the chapter reports is the bootstrap
@@ -629,6 +823,62 @@ Figure~\ref{fig:predicted_vs_empirical}. The on-disk artefacts are
 \texttt{results/h1\_h2\_v2/theorem1\_validation\_per\_family.json}
 (in-sample) and \texttt{results/h1\_h2\_v2/theorem1\_validation\_loo.json}
 (LOO).
+
+\subsection{Direct A3 probe: a non-circular test of the threshold mechanism}
+\label{sec:a3_probe}
+
+The match-rate evaluation of Section~\ref{sec:cem_match} is
+limited by the family-a circularity flagged in A3
+(Section~\ref{sec:cem_assumptions}): on family-a, both
+``success'' and ``surviving critical-token fraction'' are
+near-identical measurements of the same underlying quantity, so
+$q(\tau^{*}) = \theta_q$ on family-a is a tautological identity
+rather than a prediction. The \emph{direct} A3 probe
+(\texttt{results/a3\_probe/}) is the one test the chapter contains
+that breaks this circularity. The probe replaces the compressor
+with a hand-curated deletion procedure that removes a controlled
+fraction of the per-task critical tokens directly, then runs the
+LLM planner on the remainder and measures success as a function of
+the surviving-token fraction $k/M$. By construction the surviving
+fraction is the experimental knob, and success is read out
+\emph{after} the knob is set --- the two are not the same
+measurement.
+
+The probe is run on two families: family-a (dense numeric
+aggregation) and family-c (multi-step retrieval). The fitted
+logistic on family-a returns $k \approx 15$ (sharp threshold) and
+$r_0 \approx 0.842$ with a transition band ($0.2$--$0.8$) of width
+$\approx 0.15$; family-c returns $k \approx 5.9$ (graded transition)
+and $r_0 \approx 0.538$ with band width $\approx 0.54$. The
+qualitative reading is the load-bearing one: \textbf{the dense
+family exhibits the step shape A3 posits, the distributed family
+does not}. A3 holds on dense aggregation tasks and degrades to a
+graded-success model on distributed retrieval tasks --- which is
+also where the cliff itself is visibly less sharp (Phi-3 ×~c,
+LLMLingua-2 × c in Table~\ref{tab:h2_tau}).
+
+There is a quantitative discrepancy worth surfacing: the probe's
+family-a threshold ($r_0 \approx 0.842$) sits well \emph{above} the
+CTR-derived $\theta_q \approx 0.632$ that the compounding-error
+model uses (see Section~\ref{sec:cem_match} per-family $\theta_q$).
+The interpretation: compressors preferentially retain
+answer-adjacent tokens, so the surviving-token fraction
+they deliver at the cliff is biased upward relative to a uniform
+deletion. The model's use of $\theta_q \approx 0.63$ on family-a
+therefore reflects a compressor-side selection effect, while the
+$r_0 \approx 0.84$ is the underlying planner-side threshold. The
+two numbers are not in conflict; they measure different stages of
+the pipeline. The model's first-order accuracy
+(Section~\ref{sec:cem_match}) is consistent with this gap being
+absorbed into the empirical $\theta_q$ fit.
+
+The A3 probe is the strongest direct evidence the chapter
+provides for the threshold-success assumption. It is reported here
+in the results chapter rather than the future-work section because
+the qualitative finding (step on dense, graded on distributed) is
+the empirical justification for both the compounding-error model's
+domain of applicability and its first-order character outside that
+domain.
 
 \section{Corollary~1: Ceiling--Cliff Separation}
 \label{sec:corollary1}
@@ -642,20 +892,30 @@ coordination success $p_0(m)$, while the cliff position
 $\tau^{*}$ is determined by the compressor's $q(r)$ and the task's
 $\theta_q$, not by the planner. When $p_0(m) < \theta_q$ a floor
 effect prevents detection of the cliff; when $p_0(m) \ge \theta_q$
-the cliff position is invariant to $m$ within the calibrated
-regime. (The ``$p_0(m) \ge \theta_q$'' comparison is between a
-success probability and a fraction of task-critical tokens; the
-operational reading and unit-bridge gloss is in
-Section~\ref{sec:calibrated}.) \textbf{Verdict: SUPPORTED} by the frontier validation
-arm of Section~\ref{sec:frontier} (Qwen-2.5-72B point estimate
-$\sim 7\%$ above the canonical synthetic reference
-$\tau^{*}=2.5$ and inside its bootstrap CI; DeepSeek V4 Pro
-bootstrap CI contains the reference); the local
+we detect \textbf{no shift} in the cliff position with $m$ within
+the calibrated regime (we report ``no detected shift'' rather than
+proven invariance). (The ``$p_0(m) \ge \theta_q$'' comparison is
+between a success probability and a fraction of task-critical
+tokens; the operational reading and unit-bridge gloss is in
+Section~\ref{sec:calibrated}.) \textbf{Verdict: SUPPORTED as a within-class, cross-scale,
+cross-architecture invariance of the LLM-planner cliff; consistent
+on the local arm; not established at the strict tolerance for the
+deterministic-solver cliff} (the fine-grid re-resolution of
+Section~\ref{sec:h2} shows the synthetic $\tau^{*}=2.5$ is a
+deterministic-solver artefact, so the load-bearing comparison is
+LLM-vs-LLM: Llama-3.1-8B and Qwen-2.5-72B both cliff at
+$\approx 2.5$--$2.8$ on family-a $\times$ LLMLingua-2 across a
+$9\times$ scale-up and a change of architecture --- see the
+re-anchoring paragraph below; the original $n=10$ Qwen run is
+$7.3\%$ from the coarse-grid $2.5$, now read as an approximate
+coincidence rather than a validation against that number; DeepSeek
+V4 Pro's point estimate $\tau^{*}=2.15$ is only weakly identified,
+bootstrap CI $[1.76, 7.14]$, median $5.7$); the local
 cross-architecture sweep at \{Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
 Llama-3.1-8B\} shows a tau spread of $24\%$ on
-family-c, which sits \emph{below} the original $50\%$ tolerance
-the validator shipped with but \emph{above} the strict $20\%$
-tolerance the audit asked us to match against the H2 spec --- the
+family-c, which sits \emph{below} the validator's default $50\%$
+tolerance but \emph{above} the strict $20\%$
+tolerance matching the H2 spec --- the
 local sweep is \emph{necessary but not sufficient} and the
 corollary's binary verdict rests on the cross-architecture
 frontier evidence. The family-a small-model cells correctly
@@ -678,12 +938,9 @@ approximately $\mathbf{24\%}$ ($23.91\%$ exactly) within the
 bootstrap CI of each cell, which is what an invariance result
 looks like rather than a monotonicity result. (The local arm is
 therefore a \emph{three-architecture} invariance test, not a
-within-family parameter-count sweep; the earlier
-``Qwen-2.5 1.5B/3.8B/8B'' notation was an error --- only the
-1.5B planner is Qwen, with Phi-3-Mini at 3.8B and Llama-3.1 at 8B
-drawn from different architecture families. The frontier arm ---
-Qwen-2.5-72B against the local Qwen-2.5-1.5B baseline --- is the
-actual within-Qwen-family parameter-scaling arm.) The original H5
+within-family parameter-count sweep: only the
+1.5B planner is Qwen; Phi-3-Mini (3.8B) and Llama-3.1 (8B) are
+different architecture families.) The original H5
 predicate (gap $\ge 1.5$ ratio units) is not satisfied because
 the spread is well below $1.5$; the reframed Corollary~1
 predicate (invariance within the calibrated regime) is supported
@@ -691,17 +948,51 @@ by the local sweep at a $\pm 50\%$ tolerance but \emph{fails the
 strict} $\pm 20\%$ \emph{tolerance} that matches the H2
 falsifiable-claim spec. The local-model sweep is therefore
 \emph{necessary but not sufficient} for Corollary~1; the
-cross-architecture frontier validation in
-Section~\ref{sec:frontier} --- Qwen-72B $\sim 7\%$ above the
-canonical synthetic reference $\tau^{*}=2.5$ and inside its
-bootstrap CI, and DeepSeek V4 Pro with a bootstrap CI that
-contains the synthetic point estimate --- is what carries the
-corollary across the strict bar. The canonical results
-directories are \texttt{results/h5\_final/} (local sweep) and
-\texttt{results/frontier\_qwen72b/},
-\texttt{results/frontier\_deepseekv4/} (frontier validation);
-\texttt{results/h5\_final/model\_independence\_20pct.json}
-documents the binary result at both tolerances explicitly.
+load-bearing evidence is the LLM-cliff invariance re-anchored
+below (the re-anchoring paragraph; Section~\ref{sec:frontier})
+rather than the local arm. The canonical results directories are
+\texttt{results/h5\_final/} (local sweep) and
+\texttt{results/frontier\_qwen72b\_e2/} (the $n=30$ Qwen re-run),
+with \texttt{results/frontier\_deepseekv4/} retained as weak
+corroboration. A reader opening
+\texttt{results/h5\_final/model\_independence\_20pct.json} will see
+\texttt{corollary1\_supported: false}; that flag is \emph{exactly}
+the strict-$20\%$-tolerance local-arm result
+(\texttt{n\_testable\_families: 1, n\_invariant\_families: 0}, the
+other two floored), which this section already reports as failing
+the strict bar --- it is honest about the local arm, not a
+refutation of the reframed claim, whose support comes from the
+cross-architecture LLM-cliff comparison the validator does not
+evaluate.
+
+\paragraph{Re-anchoring to the LLM-planner cliff (the cleanest form of the result).}
+The fine-grid re-resolution of Section~\ref{sec:h2} forces a
+correction that, followed through, \emph{strengthens} this corollary.
+The canonical synthetic reference $\tau^{*}=2.5$ is a coarse-grid
+artefact of the \textbf{deterministic regex solver}, whose true
+family-a $\times$ LLMLingua-2 cliff is near $1.1$; comparing a
+frontier LLM against that number compares two different kinds of
+planner. The honest comparison holds the \emph{planner type} fixed
+and varies its scale and architecture. Measured as the $0.5$-crossing
+of the coordination curve on the family-a $\times$ LLMLingua-2 cell,
+the \textbf{LLM-planner cliff is essentially invariant}: Llama-3.1-8B
+(local) cliffs at $\tau^{*}\approx 2.48$ and Qwen-2.5-72B (frontier,
+re-run at the larger $n=30$ workloads $\times$ 5 seeds,
+\texttt{results/frontier\_qwen72b\_e2}) cliffs at
+$\tau^{*}\approx 2.79$ --- a $\sim 12\%$ spread across a $9\times$
+parameter scale-up \emph{and} a change of architecture family, both
+at $p_0=1.0$ (in-regime). The deterministic solver on the same cell
+cliffs at $\approx 1.1$. So planner \emph{type} moves the cliff
+(brittle parser $1.1$ vs LLM $\approx 2.5$--$2.8$), but scale and
+architecture \emph{within the LLM class} do not. Read this way,
+Corollary~1 rests on a within-class, cross-scale, cross-architecture
+comparison rather than on a single frontier cell against an
+artefactual reference; the previously-cited match to ``$2.5$''
+survives as an approximate coincidence between the LLM cliff and the
+coarse-grid deterministic value, now stated as such. (The DeepSeek
+V4 Pro $n=30$ re-run was abandoned to API rate-limiting after its
+clean $p_0=1.0$ baseline; the existing $n=10$ DeepSeek result,
+$\tau^{*}=2.15$ with a wide CI, is retained as weak corroboration.)
 
 Figure~\ref{fig:scaling_auc} reports the
 area-under-the-coordination-curve as a function of planner scale
@@ -740,8 +1031,8 @@ The honest statement of the reframing is in the title of this
 section. The original H5 predicate did not hold; the reframed
 Corollary~1 predicate, which is the structurally interesting
 claim, did. The reframing was made on the basis of the cliff
-machinery's prediction and was registered as the reframing
-ADR before the frontier validation that promotes it from a
+machinery's prediction and was registered as a design decision
+before the frontier validation that promotes it from a
 small-model result to a cross-architecture one.
 
 \section{Frontier Validation Within the Calibrated Regime}
@@ -758,34 +1049,54 @@ first two are standard non-reasoning frontier models; the third is
 an extended-reasoning model and is the calibrated-regime
 boundary case.
 
+\textbf{Sample-size caveat (binding).} The original frontier sweep
+runs only $10$ family-a workloads $\times$ $3$ seeds per cell
+(an extended Qwen-72B re-run later doubles this to $30 \times 3$).
+At this scale the bootstrap CI on $\tau^{*}$ is wide for every
+frontier model, and ``CI contains the synthetic reference'' is
+weaker evidence than a same-scale local-arm comparison would be.
+Every per-model number reported below should be read against this
+sample-size constraint; Section~\ref{sec:limitations} names it as
+the binding limitation of the frontier arm and
+Section~\ref{sec:future} names a re-run with more seeds (and a
+TOST equivalence test against the $\pm 20\%$ tolerance) as the
+direct upgrade.
+
 \subsection{Setup and statistical protocol}
 
-The sweep uses \textbf{10 family-a workloads at 6 sweep ratios
-with 3 seeds per cell, for a total of 180 cells per frontier
-model} (the original setup claim of ``$30$ workloads × $10$
-ratios × $5$ seeds $= 1{,}500$'' was an error; the canonical
-CSVs under \texttt{results/frontier\_*/results.csv} each contain
-$180$ rows). Planner inference is via the OpenAI-compatible
+The original frontier sweep uses \textbf{10 family-a workloads at
+6 sweep ratios with 3 seeds per cell, for a total of 180 cells per
+frontier model} (each canonical frontier CSV contains $180$ rows;
+the larger $n=30$ Qwen re-run of Section~\ref{sec:corollary1} is in
+\texttt{results/frontier\_qwen72b\_e2/}). Planner inference is via the OpenAI-compatible
 Featherless endpoint for Qwen-2.5-72B and DeepSeek~V4~Pro and
 via the OpenAI Responses API for GPT-oss~120B. $\tau^{*}$ is fit
 by the same paired-fit-and-select procedure as the local sweep,
 and the bootstrap CI is constructed by resampling workloads
-($n_\text{boot} = 500$). The synthetic reference is the family-a
-$\times$ LLMLingua-2 value $\tau^{*}_\text{canonical} = 2.5$ from
-\texttt{results/h1\_h2\_v2/verdicts.json} (the canonical logistic
-fit selected by the paired-fit-and-select procedure). A separate
-auxiliary fit on the original \texttt{h1\_h2\_final} family-a
-coordination curve gives $\tau^{*}_\text{aux} = 2.6997$; both
-numbers appear in the project's audit-trail JSON because the
-frontier runner was written against \texttt{h1\_h2\_final}
-before \texttt{h1\_h2\_v2} superseded it. The thesis stands by
-the canonical $2.5$ fit; the comparison against the auxiliary
-$2.6997$ is reported parenthetically where it appears in the
-verdicts JSON. The canonical results directories are
-\texttt{results/frontier\_qwen72b/} for Qwen,
+($n_\text{boot} = 500$). \textbf{The canonical reference for this
+section is the LLM-planner cliff $\tau^{*}_\text{LLM} \approx 2.7$}
+on the family-a $\times$ LLMLingua-2 cell --- the $0.5$-crossing of
+the coordination curve for an in-regime language-model planner
+(local Llama-3.1-8B at $\approx 2.48$; see
+Section~\ref{sec:corollary1}). The two earlier reference values
+are retained only for traceability and are \textbf{superseded}:
+the coarse-grid deterministic-solver logistic fit $\tau^{*}=2.5$
+(\texttt{results/h1\_h2\_v2/verdicts.json}) is, per the fine-grid
+re-resolution of Section~\ref{sec:h2}, an artefact of the brittle
+regex solver (whose true cliff is near $1.1$), and the auxiliary
+fit $\tau^{*}_\text{aux}=2.6997$ on the older \texttt{h1\_h2\_final}
+curve appears in the verdicts JSON only because the frontier
+runner predates \texttt{h1\_h2\_v2}. Comparing a frontier
+\emph{language model} against the deterministic-solver $2.5$
+compares two different kinds of planner; the load-bearing
+comparison here is therefore LLM-vs-LLM, against
+$\tau^{*}_\text{LLM}\approx 2.7$. The canonical results
+directories are \texttt{results/frontier\_qwen72b\_e2/} (the
+$n=30$ Qwen re-run) and \texttt{results/frontier\_qwen72b/} (the
+original $n=10$ run) for Qwen,
 \texttt{results/frontier\_deepseekv4/} for DeepSeek, and
-\texttt{results/frontier\_gptoss120b/} (with
-\texttt{STATUS\_NONCANONICAL.txt}) for GPT-oss.
+\texttt{results/frontier\_gptoss120b/} (retained as a non-canonical
+diagnostic) for GPT-oss.
 
 The small frontier sample ($10$ workloads $\times$ $3$ seeds) is
 the binding statistical constraint on this section: bootstrap CIs
@@ -796,51 +1107,83 @@ names this as a sample-size limitation.
 
 \subsection{Qwen-2.5-72B-Instruct: in-regime, within bootstrap CI}
 
-The Qwen-2.5-72B sweep returns $\tau^{*} = 2.68$ (bootstrap CI
-$[1.92, 7.23]$). The canonical family-a $\times$ LLMLingua-2
-synthetic reference from \texttt{results/h1\_h2\_v2/verdicts.json}
-is $\tau^{*}_\text{canonical} = 2.5$ (the selected logistic fit;
-see Section~\ref{sec:h2} Table~\ref{tab:h2_tau}); the Qwen-72B
-point estimate is $\sim 7\%$ above this reference and the
-bootstrap CI comfortably contains it. (A separate auxiliary fit
-on the original \texttt{h1\_h2\_final} curve produces
-$\tau^{*}_\text{aux} = 2.6997$, against which Qwen-72B is
-$0.8\%$ off; this is the number quoted in the project's earlier
-audit-trail JSON but is not the canonical fit. The
-``$\sim 7\%$ off canonical, CI contains canonical'' framing is
-the one this thesis stands by.) This is the most direct evidence
-for Corollary~1's \emph{within-family parameter scaling} claim:
-same model family (Qwen-2.5), same compressor (LLMLingua-2), a
-$\mathbf{48\times}$ change in parameter count from local
-Qwen-2.5-1.5B to frontier Qwen-2.5-72B, and the cliff position
-falls in the same $2$--$3\times$ ratio band with the bootstrap CI
-containing the canonical reference. The baseline coordination
-$p_0(\text{Qwen-72B}) = 1.00$ is at the ceiling, which places the
-model squarely inside the calibrated regime: there is no floor
-effect to argue around.
+The canonical $n=30$ Qwen-2.5-72B re-run
+(\texttt{results/frontier\_qwen72b\_e2}) places the cliff at the
+$0.5$-crossing $\tau^{*}\approx 2.79$; the original $n=10$ sweep
+returned $\tau^{*}=2.68$ (bootstrap CI $[1.92, 7.23]$). Against the
+canonical LLM-planner reference $\tau^{*}_\text{LLM}\approx 2.7$
+(Llama-3.1-8B at $\approx 2.48$, Section~\ref{sec:corollary1}), the
+Qwen-72B cliff is within $\sim 12\%$ --- a same-band agreement
+across a $9\times$ parameter scale-up \emph{and} a change of
+architecture family, with both planners at $p_0=1.0$ (squarely
+in-regime). This is the load-bearing evidence for Corollary~1: across a
+$9\times$ scale-up and a change of architecture family, \emph{no
+cliff-position shift is detected within the LLM-planner class}
+(the point estimates cliff together; the formal $\pm 20\%$
+equivalence test these cells do not pass is reported in
+Section~\ref{sec:frontier_deepseek}, and marks the limit of what
+the present sample establishes). We do \textbf{not} lean on the within-Qwen-family
+``$48\times$ from local 1.5B to frontier 72B'' comparison, because
+the local 1.5B Qwen has a family-a floor effect that prevents
+measuring its cliff on that cell at all; the cross-architecture
+Llama-8B-vs-Qwen-72B comparison is the clean one. The baseline
+coordination $p_0(\text{Qwen-72B}) = 1.00$ is at the ceiling, which
+places the model squarely inside the calibrated regime: there is no
+floor effect to argue around. (For traceability: against the
+superseded coarse-grid deterministic value $2.5$ the $n=10$ point
+estimate is $\sim 7\%$ off, and against the auxiliary fit $2.6997$
+it is $0.8\%$ off; Section~\ref{sec:h2} explains why both of those
+reference numbers are artefacts of the regex solver rather than
+cliff positions a language model would exhibit.)
 
-\subsection{DeepSeek~V4~Pro: in-regime, CI contains the prediction}
+\subsection{DeepSeek~V4~Pro: within tolerance but weakly identified}
+\label{sec:frontier_deepseek_repro}
+\label{sec:frontier_deepseek}
 
 The DeepSeek~V4~Pro sweep returns a $\tau^{*}$ point estimate of
-$2.15$ with a bootstrap CI of $[1.76, 7.14]$ --- width $5.4$
-ratio units, wider than the interesting region of the cliff
-sweep. The CI is wide because the sweep was run with the same
-small per-cell sample as Qwen-72B (10 workloads $\times$ 3 seeds
-per ratio) and DeepSeek's coordination curve happens to have more
-bootstrap-resample variance at the cliff position than Qwen-72B's
-does; the point estimate is below the canonical synthetic
-reference $\tau^{*}_\text{canonical} = 2.5$ but the CI contains
-it. The conservative reading is that DeepSeek~V4~Pro is
-consistent with Corollary~1 within the variance the sweep can
-resolve. The aggressive reading is that DeepSeek~V4~Pro cliffs
-slightly earlier than Qwen-72B because its critical-token-recall
-profile under LLMLingua-2 differs from Qwen's; future work could
-distinguish these by sweeping DeepSeek with more seeds. The
-thesis takes the conservative reading and reports DeepSeek as a
-\emph{within-tolerance} validation of Corollary~1 rather than a
-point-estimate match.
+$2.15$ --- about $20\%$ below the canonical LLM-planner reference
+$\tau^{*}_\text{LLM}\approx 2.7$ (and $13.8\%$ below the superseded
+coarse-grid $2.5$) --- but with a bootstrap CI of
+$[1.76, 7.14]$ (width $5.4$ ratio units) and, tellingly, a
+bootstrap \emph{median} of $5.7$ that sits far from the $2.15$
+point estimate. That gap between point estimate and bootstrap
+median is the diagnostic: the cliff-fit is unstable under
+resampling (the curve admits both an early-cliff and a late-cliff
+fit on different resamples), so the position is only weakly
+identified. The honest framing is therefore: DeepSeek's point
+estimate agrees with the reference within tolerance, but the
+agreement is not robust --- CI-containment of the reference is
+weak evidence when the CI spans most of the swept range, and is
+not an equivalence test.
 
-\subsection{GPT-oss~120B: out-of-regime diagnostic (ADR-006)}
+To replace that affirming-the-null reasoning with a proper test,
+the cliff position was re-bootstrapped from the retained per-row
+\texttt{coord\_success} data ($500$ workload resamples, the same
+interior-clamped piecewise fitter the canonical pipeline uses;
+\texttt{results/tost\_corollary1.json},
+\texttt{results/tost\_deepseek.json}) and a percentile-bootstrap
+two-one-sided-tests (TOST) procedure was run against the
+$\pm 20\%$ equivalence band $[2.16, 3.24]$ around the reference
+$\tau^{*}_\text{LLM}\approx 2.70$. \textbf{Neither frontier cell
+demonstrates equivalence at $\pm 20\%$.} For Qwen-2.5-72B the
+$90\%$ bootstrap interval on $\tau^{*}$ is $[1.96, 7.23]$ (only
+$22\%$ of resamples land inside the band); for DeepSeek~V4~Pro it
+is $[1.77, 7.13]$ (only $6\%$ inside). The point estimates match
+the reference well ($0.8\%$ and $20\%$ relative error), but the
+fits are too weakly identified for the data to \emph{rule out} a
+difference larger than $20\%$. The correct conclusion is therefore
+\emph{no cliff-position shift is detected} across scale and
+architecture --- not that invariance is positively demonstrated.
+Establishing equivalence formally would require more seeds per
+frontier cell to tighten the bootstrap interval; this is named in
+Section~\ref{sec:limitations}. The thesis accordingly takes the
+conservative reading that the frontier evidence \emph{is
+consistent with} Corollary~1 --- the point estimates cliff
+together --- while the equivalence test it does not pass marks
+the limit of what the current sample can establish.
+
+\subsection{GPT-oss~120B: out-of-regime diagnostic}
+\label{sec:gptoss_repro}
 
 The GPT-oss~120B sweep returns $\tau^{*} = 6.62$ --- $145\%$
 above the synthetic reference, and far outside any reasonable
@@ -862,7 +1205,7 @@ recall it can recover the task-critical information by
 chain-of-thought reasoning, violating assumption~A3. The standard
 non-reasoning planners cannot. The $145\%$ deviation is not
 hidden: \texttt{results/frontier\_gptoss120b/} is preserved on
-disk with a \texttt{STATUS\_NONCANONICAL.txt} marker that records
+disk as a non-canonical diagnostic that records
 the scoping, and the result is reported here as a \emph{positive
 contribution} --- a structural diagnostic of where the
 compounding-error model breaks. Section~\ref{sec:limitations}
@@ -902,29 +1245,45 @@ $\pm 25\%$ tolerance band against the synthetic reference.}
 
 \subsection{Significance}
 
-Putting the three results together: the cliff position is
-invariant across \textbf{three local architecture families}
-(Qwen-2.5-1.5B, Phi-3-Mini-3.8B, Llama-3.1-8B), invariant within
-the Qwen-2.5 family across a \textbf{48$\times$ parameter
-scale-up} (1.5B local $\to$ 72B frontier --- same family, very
-different sizes), and invariant across \textbf{two frontier
-architecture families} (Qwen-72B $\to$ DeepSeek~V4~Pro) --- all
-within the calibrated regime --- and it is not invariant to
-reasoning regime (standard $\to$ extended). This is what an
-empirically-substantiated structural claim looks like: an
-invariance that holds in a precisely-defined regime and visibly
-breaks at the regime boundary.
+Putting the three results together: we detect \textbf{no shift}
+in the LLM-planner cliff position across \textbf{three local architecture
+families} (Qwen-2.5-1.5B, Phi-3-Mini-3.8B, Llama-3.1-8B; $24\%$
+spread on family-c, within the $50\%$ but not the strict $20\%$ tolerance),
+across a \textbf{9$\times$ cross-architecture scale-up} to the
+frontier (local Llama-3.1-8B at $\tau^{*}\approx 2.48 \to$ frontier
+Qwen-2.5-72B at $\approx 2.79$ on family-a $\times$ LLMLingua-2, the
+one well-identified frontier cell), and
+--- more weakly --- across \textbf{two frontier vendors}
+(Qwen-72B $\to$ DeepSeek~V4~Pro, the latter only weakly
+identified) --- all within the calibrated regime --- while the
+position \emph{does} shift for the extended-reasoning regime
+(GPT-oss~120B). The defensible structural claim is therefore
+``no shift detected on the resolvable cells, carried by one
+well-identified frontier cell, and a visible break at the regime
+boundary,'' not a proven invariance across all scales. This is
+still a substantive result --- the cliff is a property of the
+(compressor, task) pair, not the planner, on everything we could
+resolve --- but it is stated as a tested-and-not-refuted
+consistency rather than a theorem.
 
 For practitioners: $\tau^{*}$ can be measured once on a small
 local model and deployed at the same ratio on a frontier model
 without re-measuring, \emph{provided} the frontier model is in the
-calibrated regime. For researchers: the cliff is a property of
-the (compressor, task) pair; single-agent benchmarks that vary
-the model and hold the compressor fixed cannot reveal this
-structure. The cross-architecture-invariance finding is the
-substantive contribution of this thesis to the compression
-literature and is what Corollary~1 promotes from a
-local-model-only result to a cross-architecture one.
+calibrated regime --- a working hypothesis supported on the cells
+we could resolve, not a guarantee. For researchers: the evidence
+here is that the cliff behaves as a property of the (compressor,
+task) pair rather than of the planner, and that single-agent
+benchmarks that vary the model and hold the compressor fixed
+cannot reveal this structure. We state the cross-architecture
+consistency as the most promising contribution of this thesis to
+the compression literature \emph{while being explicit about its
+evidential weight}: it rests on one well-identified frontier cell
+(Qwen-2.5-72B), is consistent on the local three-architecture arm,
+weakly corroborated by DeepSeek V4 Pro, and not yet established at
+the strict tolerance. Corollary~1 promotes the original
+local-model-only observation to a cross-architecture consistency
+result; confirming it as invariance requires the larger frontier
+sample named in Section~\ref{sec:future}.
 
 \section{H3: RAG Pipeline Placement --- Compress-First Dominance}
 \label{sec:h3}
@@ -939,15 +1298,17 @@ NOT SUPPORTED} for the predicted sign-flip. \textbf{Reframed
 finding:} P1 (compress-first) is robustly preferred over P2
 (retrieve-first) in both regimes; P3 (joint
 relevance-conditional routing) leads both. The reframed result is
-itself a substantive finding because it challenges a common
-assumption of the post-retrieval-compression literature
-(LongLLMLingua~\cite{jiang2024longllmlingua} and follow-on work).
+itself a substantive finding because it does not reproduce, on the
+single retriever/embedder stack tested here, the
+post-retrieval-compression preference of the
+LongLLMLingua~\cite{jiang2024longllmlingua} line of work (a
+single-stack non-reproduction, not a general falsification).
 \end{tcolorbox}
 
 \subsection{Setup}
 
 The three pipelines (P1, P2, P3) are the catalogue described in
-Section~\ref{sec:rag_pipelines} of Chapter~\charef{implementation}.
+Section~\ref{sec:rag_pipelines} of \charef{implementation}.
 Each is run under a storage-bounded regime (FAISS index
 $\le 100$~MB) and an accuracy-bounded regime (retrieval recall@10
 $\le 0.85$), measured on the C1 family-a generator with both
@@ -972,25 +1333,30 @@ margin.
 
 \begin{table}[h]
 \centering
-\caption{H3 verdict table. Mean F1 and per-query EUR cost by
-regime and pipeline from \texttt{results/h3\_final/} (n = 150
-workloads per cell). The H3 sign-flip predicate is not satisfied
-because P1 is above P2 in both regimes; P3 leads both. The
-reframed finding is the robust compress-first preference (P1
-$>$ P2).}
+\caption{H3 verdict table. Mean F1, per-query EUR cost, and
+\emph{achieved} compression ratio ($\times$) by regime and
+pipeline from \texttt{results/h3\_final/} and the cost-instrumented
+re-run \texttt{results/h3\_eprice/} (n = 150 workloads per cell).
+The H3 sign-flip predicate is not satisfied because P1 is above P2
+in both regimes; P3 leads both. The reframed finding is the robust
+compress-first preference (P1 $>$ P2). The achieved-ratio column is
+the key to reading P3: only P1 actually compresses (7.49$\times$ /
+2.11$\times$), while P2 and P3 route fragments verbatim
+($1.00\times$), so the cross-pipeline F1 gap is not a
+matched-compression comparison.}
 \label{tab:h3}
 \small
-\begin{tabular}{lrr|rr}
+\begin{tabular}{lrrr|rrr}
 \hline
-& \multicolumn{2}{c|}{Storage-bounded}
-& \multicolumn{2}{c}{Accuracy-bounded} \\
-Pipeline & F1 & EUR/query & F1 & EUR/query \\
+& \multicolumn{3}{c|}{Storage-bounded}
+& \multicolumn{3}{c}{Accuracy-bounded} \\
+Pipeline & F1 & EUR/q & $\times$ & F1 & EUR/q & $\times$ \\
 \hline
-P1 (compress, then retrieve) & $0.396$ & $2.7\!\times\!10^{-5}$ & $0.648$ & $3.3\!\times\!10^{-5}$ \\
-P2 (retrieve, then compress) & $0.364$ & $2.8\!\times\!10^{-5}$ & $0.628$ & $3.0\!\times\!10^{-5}$ \\
-P3 (joint, conditional)      & $\mathbf{0.820}$ & $3.1\!\times\!10^{-5}$ & $\mathbf{0.895}$ & $3.1\!\times\!10^{-5}$ \\
+P1 (compress$\to$retrieve) & $0.396$ & $2.72\mathrm{e}^{\text{-}5}$ & $7.49$ & $0.648$ & $3.29\mathrm{e}^{\text{-}5}$ & $2.11$ \\
+P2 (retrieve$\to$compress) & $0.364$ & $2.82\mathrm{e}^{\text{-}5}$ & $1.00$ & $0.628$ & $3.00\mathrm{e}^{\text{-}5}$ & $1.00$ \\
+P3 (joint, conditional)    & $\mathbf{0.820}$ & $3.07\mathrm{e}^{\text{-}5}$ & $1.00$ & $\mathbf{0.895}$ & $3.10\mathrm{e}^{\text{-}5}$ & $1.00$ \\
 \hline
-$p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{2}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{2}{c}{$2\!\times\!10^{-4}$} \\
+$p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{3}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{3}{c}{$2\!\times\!10^{-4}$} \\
 \hline
 \end{tabular}
 \end{table}
@@ -1012,23 +1378,29 @@ remains is the symmetric effect: pre-indexing compression amortises
 the compressor cost across queries while post-retrieval compression
 pays it per query.
 
-The compress-first preference over retrieve-first is itself a
-substantive finding because it reverses the assumed default of
-the post-retrieval-compression literature, and the
-P3-leading-both result is a stronger finding still. For
-practitioners, the recommendation is:
-\textbf{use joint relevance-conditional routing (P3) when the
-additional implementation cost is acceptable} --- P3's F1 leads
-compress-first by $42$~pp in the storage regime and $25$~pp in
-the accuracy regime, at indistinguishable EUR-per-query cost
-($\sim 3 \times 10^{-5}$ across all three pipelines);
-compress-first (P1) is the right default when implementation
-simplicity matters and the $25$--$42$~pp F1 gap is not worth the
-integration cost; post-retrieval compression (P2) is only the
-right choice when the corpus is small enough that storage cost
-is irrelevant and retrieval recall is the binding constraint.
+The compress-first preference over retrieve-first is a
+substantive finding because it does not reproduce the assumed
+post-retrieval-compression default on the stack we tested, and
+the P3-higher-F1 result points to a promising routing variant.
+For practitioners, the recommendation is deliberately hedged on
+cost: \textbf{compress-first (P1) is the safe default over
+retrieve-first (P2) on a comparable stack};
+\textbf{P3 (joint relevance-conditional routing) is worth
+evaluating where the F1 gain matters} --- its F1 leads
+compress-first by $42$~pp (storage) and $25$~pp (accuracy) --- but
+note that P3 attains this F1 by routing fragments \emph{verbatim}
+(achieved ratio $1.00\times$, Table~\ref{tab:h3}) rather than by
+better compression, and the cost model is corpus-dominated and does
+not meter compression compute (Section~\ref{sec:h3_cost_caveat}), so
+the F1 gain cannot yet be claimed as cost-free and must be
+re-measured with a faithful per-pipeline cost model before
+deployment; post-retrieval
+compression (P2) is only preferable when the corpus is small
+enough that storage cost is irrelevant and retrieval recall is
+the binding constraint.
 
 \subsection{Limitations and the cost model caveat}
+\label{sec:h3_cost_caveat}
 
 The cost model uses the requested compression ratio rather than
 the achieved compression ratio because the achieved ratio depends
@@ -1036,10 +1408,42 @@ on the compressor and the request flows through the pipeline as
 target. For Phi-3-Mini extractive the ceiling effect makes
 this an asymmetric error in favour of P2 (which pays the
 compressor per query and is therefore most sensitive to the
-ceiling), so the P1 result is the conservative one. The
-single-retriever, single-embedder design is named in
-Section~\ref{sec:limitations} as the most natural follow-on
-study.
+ceiling), so the P1 result is the conservative one.
+
+A second, stronger caveat is sharpened by a cost-instrumented
+re-run that records the \emph{achieved} compression ratio per
+pipeline (\texttt{results/h3\_eprice}). The \texttt{eur\_per\_query} column is
+\emph{not} constant --- it is computed per pipeline from a
+per-pipeline token count (P1: full corpus plus compressed corpus;
+P2: corpus plus retrieved tokens; P3: corpus plus $0.7\times$
+retrieved) --- but the pipelines differ by only $4.1$--$4.9\%$ in EUR
+within a regime, because a shared corpus-indexing term dominates
+\texttt{input\_tokens} and is added identically to every pipeline.
+This small, corpus-dominated spread is easily mistaken for a single
+constant; the substantive defect, however, is not that the
+EUR values are near-identical but that the cost model is \emph{corpus
+dominated} and, more importantly, \textbf{does not meter compression
+compute at all} --- only the resulting token counts --- so a pipeline
+that runs an expensive compressor pass is not charged for it. The
+achieved-ratio column makes the consequence concrete: only
+compress-first (P1) actually compresses ($7.49\times$ storage,
+$2.11\times$ accuracy), while both retrieve-first (P2) and the joint
+router (P3) record an achieved ratio of \textbf{$1.000$} --- they send
+the retrieved fragments to synthesis essentially verbatim. Together
+these explain the headline cleanly: \textbf{P3's large F1 advantage
+comes substantially from not compressing}, at a compression and
+compute cost the current corpus-dominated model does not faithfully
+charge for. As a consequence the thesis makes \textbf{no cost-parity
+and no Pareto claim} for the P3-vs-P1 comparison; the cross-pipeline
+F1 comparison is \emph{not} a matched-compression comparison, and P3
+should be read as ``verbatim routing preserves F1 at a compression and
+cost the current model does not faithfully charge for'' rather than as
+a free-lunch improvement. The remedy is a faithful per-pipeline cost
+model that meters the compressor pass and amortises a persistent
+index across queries, rather than re-charging the corpus on every
+query. Section~\ref{sec:future} names this as the most natural
+follow-on study, alongside the single-retriever, single-embedder
+limitation (Section~\ref{sec:limitations}).
 
 \section{H4: Summary-Level Inference Disclosure}
 \label{sec:h4_disclosure}
@@ -1072,9 +1476,18 @@ destructive) tops the ranking at $24.6$~pp, then filter
 extractive (most semantically preserving) at $0.4$~pp
 not-significant. This pattern is consistent with the metric
 measuring general information destruction rather than
-privacy-specific filtering; the H4 \emph{finding} is robust but
-the \emph{privacy interpretation} needs to be calibrated against
-the destruction baseline. Full discussion in
+privacy-specific filtering; an \textbf{oracle field-redaction
+control} (\texttt{results/h4\_oracle}) that removes
+\emph{only} the answer-bearing numeric values --- destroying
+$\approx 0\%$ of the text --- matches truncation's reduction
+($23.4$~pp vs $24.6$~pp), confirming that the metric
+\emph{does} detect targeted removal when it occurs and that
+blanket compression is the wrong privacy lever when a targeted
+one is available. The H4 \emph{finding} is robust but the
+\emph{privacy interpretation} is deflationary: aggressive
+compression and trivial field redaction reduce disclosure by
+indistinguishable amounts, and field redaction does it at near-zero
+coordination cost. Full discussion in
 Section~\ref{sec:h4_construct}.
 \end{tcolorbox}
 
@@ -1182,17 +1595,22 @@ measure something real); the H4 \emph{reduction} is whether
 \textsc{compressed-4$\times$} sits below \textsc{baseline}
 (compression must reduce disclosure). Both are tested by paired
 bootstrap, Holm-corrected across compressors. The canonical
-results directory is \texttt{results/h4\_unbiased/}.
+results directory is \texttt{results/h4\_unbiased\_v2/} (the
+4-compressor run including truncation).
 
 \subsection{Result}
 
 Table~\ref{tab:h4} reports the per-compressor signal and
 reduction. The signal is positive and $p$-significant for every
 compressor (the uncompressed baseline beats priors-only by
-$29$~pp on average), and the reduction is positive and
-$p$-significant for the two aggressive token-level compressors
-(filter $-21$~pp, LLMLingua-2 $-19$~pp) and borderline for the
-extractive copier (Phi-3 $-7.5$~pp, $p=0.027$).
+$28.6$~pp on average), and the reduction is positive and
+$p$-significant for the three token-destructive compressors
+(truncation $-24.6$~pp, instruction-aware filter $-20.4$~pp,
+LLMLingua-2 $-18.9$~pp) and \emph{not significant} for the
+extractive copier (Phi-3 $-0.4$~pp, $p_\text{Holm}=0.91$). The
+ordering is monotonic in how aggressively each compressor
+destroys source tokens --- the construct-validity reading is
+developed in Section~\ref{sec:h4_construct}.
 
 \begin{table}[h]
 \centering
@@ -1262,15 +1680,34 @@ smarter compressors (filter, LLMLingua-2) are doing
 privacy-preserving filtering in any sense beyond destroying
 tokens that happen to include protected facts.
 
-A discriminating control --- measuring privacy gain relative to
-coordination-utility loss --- is named as future work in
-Section~\ref{sec:future}. The empirical implication for the
-memory bus's policy layer (Section~\ref{sec:h4_membus}) is that
-the disclosure-budget enforcement mechanism works as designed
-(more aggressive compression yields lower disclosure rates), but
-the \emph{privacy} interpretation requires a target threat model
-that values destruction-induced reduction, not just
-compressor-specific reduction.
+A discriminating control was run to test this interpretation from
+the opposite end (\texttt{results/h4\_oracle},
+\texttt{scripts/h4\_oracle\_redaction.py}): an \textbf{oracle
+redaction} that removes \emph{only} the answer-bearing numeric
+values (recorded hours and approved budget) the protected-fact
+questions probe, leaving every other token intact. If disclosure
+could only be reduced through bulk destruction, this near-zero
+edit would barely move the metric. Instead it reduces recovery from
+a balanced baseline of $0.79$ to $0.56$ --- a $23.4$~pp reduction,
+essentially at the priors floor $0.51$ --- while destroying
+$\approx 0\%$ of the text (the redacted fragments are in fact
+$\sim 7\%$ \emph{longer}, since the \texttt{[REDACTED]} marker is
+longer than the digits it replaces). That $23.4$~pp matches
+truncation's $24.6$~pp, which required destroying the entire tail
+of the fragment. Two things follow. First, the H4 metric \emph{does}
+detect privacy-specific removal when it occurs --- the construct is
+not blind to targeted redaction; the blanket compressors simply do
+not do it, reducing disclosure only as a side effect of destruction.
+Second, the memory bus gains a concrete, non-lossy privacy
+mechanism: field-redacting protected values achieves
+blanket-compression-level disclosure reduction at near-zero
+coordination cost. The empirical implication for the memory bus's
+policy layer (Section~\ref{sec:h4_membus}) is therefore stronger
+than before: disclosure-budget enforcement works as designed,
+\emph{and} targeted redaction is an available lever with a far
+better privacy-per-utility profile than aggressive compression. The
+remaining open control --- a full privacy-gain-versus-coordination-loss
+frontier across compressors --- is named in Section~\ref{sec:future}.
 
 \begin{figure}[h]
 \centering
@@ -1334,7 +1771,7 @@ prior on YES.
 \label{sec:h4_membus}
 
 The policy layer of the memory bus
-(Chapter~\charef{implementation},~Section~\ref{sec:architecture})
+(\charef{implementation},~Section~\ref{sec:architecture})
 consumes the H4 measurement at deployment time. For each
 \textsc{confidential} classification and each governance budget
 (maximum disclosure rate the operator is willing to accept), the
@@ -1349,6 +1786,71 @@ the metric is the contribution; the policy machinery the metric
 enables is a deployment concern --- but the policy layer is
 implemented in the reference service and is exercised by the
 end-to-end integration tests.
+
+\subsection{Memory-bus operation benchmark}
+\label{sec:bus_bench}
+
+The memory bus (C4) is a reference implementation rather than a
+production system, but its core operations are cheap enough to
+characterise with a single-threaded microbenchmark
+(\texttt{scripts/bench\_memory\_bus.py}, results in
+\texttt{results/bus\_bench/bench.json} and
+\texttt{results/bus\_bench/bench\_gpu.json}). The harness times the
+policy-lattice check, end-to-end write and read, and the audit
+hash-chain verification, run on two hosts --- Host~A, an Apple
+M4~Pro (arm64, macOS, Python~3.11); and Host~B, a Linux x86\_64
+workstation (WSL2 Ubuntu~22.04, Python~3.12) --- single-threaded,
+with the identity compressor so the measurement isolates the bus
+machinery from any compressor cost. These operations are CPU- and
+disk-I/O-bound and do not exercise the GPU, so the server is
+reported as a second hardware point rather than an accelerated
+result. The audit log is the in-process SQLite backend; $n=5000$
+operations per phase follow $500$ warmup operations.
+Table~\ref{tab:bus_bench} reports the result.
+
+\begin{table}[h]
+\centering
+\caption{Memory-bus operation microbenchmark on two hosts,
+single-threaded, identity compressor, in-process SQLite audit log
+($n=5000$ ops/phase, $500$ warmup). Host~A: Apple M4~Pro (arm64,
+macOS, Python~3.11; \texttt{results/bus\_bench/bench.json}).
+Host~B: Linux x86\_64 workstation (WSL2 Ubuntu~22.04, Python~3.12;
+\texttt{results/bus\_bench/bench\_gpu.json}). \textbf{Caveats:} the
+numbers are single-threaded and use the identity compressor, so
+they isolate the bus machinery and are \emph{not} an
+end-to-end-with-compression figure; the audit log is the
+in-process SQLite backend, not the concurrent HTTP path; and the
+audit-verify row is one chain length ($5{,}500$ rows), not a
+scaling curve.}
+\label{tab:bus_bench}
+\small
+\begin{tabular}{lrrrrrr}
+\hline
+& \multicolumn{3}{c}{Host~A (M4~Pro)} & \multicolumn{3}{c}{Host~B (Linux x86\_64)} \\
+\cline{2-4}\cline{5-7}
+Operation & med (ms) & p95 (ms) & thr (ops/s) & med (ms) & p95 (ms) & thr (ops/s) \\
+\hline
+\texttt{policy.enforce()}     & $0.0002$ & $0.0002$ & $\sim 5.2\mathrm{M}$ & $0.0001$ & $0.0003$ & $\sim 6.7\mathrm{M}$ \\
+write (end-to-end)            & $0.0469$ & $0.0661$ & $\sim 18{,}200$ & $0.1447$ & $0.1772$ & $\sim 5{,}750$ \\
+read (end-to-end)             & $0.0424$ & $0.0605$ & $\sim 19{,}900$ & $0.1302$ & $0.1541$ & $\sim 6{,}400$ \\
+\hline
+\multicolumn{7}{l}{audit hash-chain verify: $1.68$~\textmu s/row (Host~A), $2.19$~\textmu s/row (Host~B), over $5{,}500$ rows; chain intact.} \\
+\hline
+\end{tabular}
+\end{table}
+
+The policy check is effectively free (sub-microsecond,
+$\sim 5$--$7$~million checks per second across the two hosts), so
+policy enforcement is not a throughput bottleneck. End-to-end write
+and read run at $\sim 18{,}200$ and $\sim 19{,}900$ operations per
+second on Host~A ($\sim 5{,}750$ and $\sim 6{,}400$ on Host~B) with
+sub-millisecond tail latency, and the audit hash-chain verifies at
+$1.68$~\textmu s per row (Host~A) and $2.19$~\textmu s per row
+(Host~B) with the chain intact over the $5{,}500$-row log. These
+figures characterise the reference implementation's single-threaded
+core; a concurrent-HTTP-path throughput sweep and an audit-verify
+scaling curve remain future work (Section~\ref{sec:future} of
+\charef{summary}).
 
 \section{Corollary~2: Information-Density Scaling on Real Benchmarks}
 \label{sec:corollary2}
@@ -1411,10 +1913,8 @@ the per-task information-density estimate
 \]
 estimated by \texttt{estimate\_task\_theta()}, which captures how
 \emph{concentrated} the task's information is in compression-
-sensitive tokens. Confusing the two was a real failure mode of
-the audit reconciliation (project-internal, recorded in
-\texttt{docs/adr/ADR-006} through \texttt{ADR-009});
-the CONTEXT.md glossary distinguishes them explicitly.
+sensitive tokens. The two are easily conflated; the project
+glossary distinguishes them explicitly.
 
 \subsection{Result on three benchmarks}
 
@@ -1433,28 +1933,26 @@ that the information-density scaling claim does.
 empirical $\tau^{*}$ across the three benchmarks. The cliff shifts
 late as the information density drops, with the gap between dense
 and distributed tasks far exceeding the $0.1$ threshold of the
-corollary predicate. The C1 family-a row uses the auxiliary
-\texttt{h1\_h2\_final} fit $\tau^{*}=2.6997$ rather than the
-canonical \texttt{h1\_h2\_v2} fit $\tau^{*}=2.5$
-(Section~\ref{sec:frontier}) because the \texttt{h6\_final} and
-\texttt{hotpotqa\_sweep} comparison registers were authored
-against \texttt{h1\_h2\_final}; the apples-to-apples Corollary~2
-gap is preserved by using the same auxiliary register here. The
-$\sim 8\%$ shift to the canonical $2.5$ does not change the
-qualitative ordering or the corollary verdict.}
+corollary predicate. The C1 family-a row uses the canonical
+\texttt{h1\_h2\_v2} fit $\tau^{*}=2.5$ (Section~\ref{sec:frontier});
+the earlier register $\tau^{*}_\text{aux}=2.6997$ on
+\texttt{h1\_h2\_final} is superseded and is retained only as a
+parenthetical in the footnote. The $\sim 8\%$ shift between the
+two registers does not change the qualitative ordering or the
+corollary verdict.}
 \label{tab:corollary2}
 \small
 \begin{tabular}{p{4.5cm}rrl}
 \hline
-Task & $\theta_\text{info}$ & $\tau^{*}$ & Source dir \\
+Task & $\theta_\text{info}$ & $\tau^{*}$ & $\theta_\text{info}$ source CSV \\
 \hline
-C1 family-a (dense, numeric)  & $0.97$ & $2.7$  & \texttt{h1\_h2\_final/}$^{\dagger}$ \\
-MultiHopRAG (distributed QA)   & $0.48$ & $11.3$ & \texttt{h6\_final/} \\
+C1 family-a (dense, numeric)  & $0.97$ & $2.5$  & \texttt{h1\_h2\_v2/} (a, lingua2) \\
+MultiHopRAG (distributed QA)   & $0.48$ & $11.3$ & \texttt{h6\_final/results.csv} \\
 HotpotQA (very distributed)    & $0.37$ & $2.7$  & \texttt{hotpotqa\_sweep/} \\
 \hline
 \multicolumn{3}{l}{\textbf{Gap} (dense vs MultiHopRAG) $= 0.48$; (dense vs HotpotQA) $= 0.59$.} & \\
 \hline
-\multicolumn{4}{l}{\footnotesize $^{\dagger}$Auxiliary fit; canonical fit on \texttt{h1\_h2\_v2/} is $\tau^{*}=2.5$ (Section~\ref{sec:frontier}).} \\
+\multicolumn{4}{p{12cm}}{\footnotesize All three $\theta_\text{info}$ values are computed by \texttt{estimate\_task\_theta()} (AUC-based) from the per-task CSVs above and consolidated in \texttt{results/corollary2\_theta\_info.json}. The $\tau^{*}$ for C1 family-a is the canonical \texttt{h1\_h2\_v2} fit $2.5$ (the earlier $2.7$ was the superseded \texttt{h1\_h2\_final} auxiliary fit; the fine-grid deterministic-solver cliff is lower still, $\approx 1.1$, Section~\ref{sec:h2}).} \\
 \end{tabular}
 \end{table}
 
@@ -1500,11 +1998,111 @@ The dropped H6 original predicate (synthetic-versus-real
 $\tau^{*}$ within $\pm 15\%$) is honestly NOT SUPPORTED at the
 table-level numbers; the reframed Corollary~2 predicate (gap in
 $\theta_\text{info}$ $\ge 0.1$ between dense and distributed
-benchmarks) is comfortably SUPPORTED. The reframing is recorded
-as part of the project's audit reconciliation; the synthetic
+benchmarks) is comfortably SUPPORTED. The synthetic
 benchmark is still the right place to characterise the cliff
 mechanism cleanly, and the real benchmarks are the right place to
 validate the structure transfers.
+
+\section{Reproducibility}
+\label{sec:repro}
+
+The results of this chapter span three regimes of reproducibility,
+and conflating them would over- or under-state what a reader can
+re-derive. This section states the guarantee for each regime once;
+the one-command recipe, the per-arm wallclock budget, and the
+release manifest live in Appendix~D. The
+structure follows the NeurIPS reproducibility-checklist
+convention~\cite{pineau2021checklist} of separating
+\emph{code-and-data availability} from \emph{computational
+reproducibility}, but reports the latter as a narrative keyed to
+Table~\ref{tab:repro_tiers} rather than as a filled-in checklist.
+
+\begin{table}[t]
+\caption{The three reproducibility tiers of this thesis. ``Byte-deterministic''
+means a rerun produces a CSV that diffs zero against the published one given
+the same seed; ``in distribution'' means verdict-level aggregates
+(per-cell means, $\tau^{*}$ fits) reproduce within the published bootstrap CI
+but individual rows may differ; ``not reproducible'' means a rerun produces
+closely-similar but not identical numbers, and the published CSV is itself the
+canonical record.}
+\label{tab:repro_tiers}
+\small
+\begin{tabular}{p{3.5cm}p{2.4cm}p{6.0cm}}
+\hline
+Arm & Byte-deterministic? & Canonical artefact \\
+\hline
+H1/H2/H3 cliff sweep, scoring, bootstrap CIs, figure regeneration
+  & \textbf{Yes}, given seed + cache
+  & \texttt{results/h1\_h2\_v2/}, \texttt{results/h3\_final/} \\
+H4 reader, H5 planner, Phi-3 extractive compressor
+  & In distribution only
+  & \texttt{results/h4\_unbiased\_v2/}, \texttt{results/h5\_final/} \\
+Frontier API arm (Qwen-2.5-72B, DeepSeek~V4~Pro, GPT-oss~120B)
+  & No
+  & \texttt{results/frontier\_\{qwen72b,deepseekv4\}/} \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Tier~1 --- byte-deterministic local.}
+The cliff sweep (H1, H2), the RAG-pipeline evaluation (H3), the
+bootstrap confidence intervals, and the figure regeneration are
+pure Python over a fixed compression cache: a regex information-extraction
+solver, \texttt{numpy} resampling, and deterministic compressors
+(truncation, the LLMLingua-2 token classifier at \texttt{argmax}, the
+TF--IDF-plus-cross-encoder filter). All randomness flows from a single
+master seed through \texttt{Seeds.derive} in \texttt{src/m6/utils/seed.py},
+which seeds \texttt{numpy}, Python's \texttt{random}, \texttt{PYTHONHASHSEED},
+and \texttt{torch}. Rerunning \texttt{make repro-cliff} (or
+\texttt{repro-rag}, \texttt{repro-figs}) from the cache produces CSVs and
+PDFs that diff zero against the published artefacts; the bootstrap CIs are
+exact to the last decimal because the resampler is seeded and
+$n_\text{boot}$ is fixed.
+
+\paragraph{Tier~2 --- distributionally deterministic local LLM.}
+The H4 protected-fact reader, the H5 model-scaling planner, and the
+Phi-3-Mini extractive compressor invoke local language models through
+Ollama. Greedy decoding ($\text{temperature}=0$ for the H4 reader,
+$0.1$ for the H5 planner) with a fixed per-call seed is deterministic
+per call up to the reduction order of the CUDA/Metal kernels, which is
+not guaranteed identical across hardware or backend builds. A rerun on
+the same host therefore reproduces individual generations to within a
+few tokens, and the verdict-level aggregates --- per-cell coordination
+success means and the $\tau^{*}$ fits --- reproduce to the published
+values within the bootstrap CI. The published CSVs were produced on the
+RTX~5090 host with the model digests recorded in
+\texttt{docs/MODEL\_CARDS.md} (verifiable with the ID column of
+\texttt{ollama list}); pinning those digests is what makes the tier
+reproducible \emph{in distribution} rather than byte-for-byte.
+
+\paragraph{Tier~3 --- frontier API, not reproducible.}
+The frontier arm (Section~\ref{sec:frontier}) calls vendor-hosted
+models over an API. Three mechanisms break byte-reproducibility:
+server-side request batching changes per-token logits, the
+\texttt{seed} parameter is best-effort rather than contractual, and
+the vendor may silently update the served weights. Rerunning
+\texttt{make repro-frontier} therefore produces closely-similar but not
+identical numbers; the published
+\texttt{results/frontier\_*/results.csv} files \emph{are} the canonical
+record, and every analysis downstream of them ($\tau^{*}$ fit, bootstrap
+CI, the TOST of Section~\ref{sec:frontier_deepseek_repro}) is itself Tier~1
+--- deterministic given those CSVs. A rerun whose $\tau^{*}$ CI no longer
+overlaps the published CI is the documented trigger for suspecting a
+vendor-side model update; the GPT-oss~120B diagnostic additionally
+carries a \texttt{STATUS\_NONCANONICAL.txt} marker because it is scoped
+out of the calibrated regime (Section~\ref{sec:gptoss_repro}).
+
+\paragraph{Traceability.}
+Every quantitative claim in this thesis is traceable to one named
+directory under \texttt{results/} through the
+\texttt{CANONICAL\_NUMBERS.md} registry in the repository root, which
+maps each reported figure to its source artefact and the key or column
+that yields it. The open-source release bundles the manuscript source,
+the code and configuration, the canonical CSVs and JSONs, the model and
+data cards (\texttt{docs/MODEL\_CARDS.md}, \texttt{docs/DATA\_CARDS.md}),
+the pinned \texttt{requirements.lock.txt}, and the
+\texttt{docker-compose.yml} that brings the memory-bus reference service
+up locally.
 
 \section{Summary of Verdicts}
 
@@ -1524,17 +2122,17 @@ reframing was made before the chapter was written.}
 \hline
 ID & Claim & Verdict & Canonical dir \\
 \hline
-H1 & QA-F1 decorrelates from coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
+H1 & QA-F1 does not transferably predict coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
 H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$) & \texttt{h1\_h2\_v2/} \\
 H3 & RAG sign-flip across regimes & NOT SUPPORTED (reframed as compress-first dominance) & \texttt{h3\_final/} \\
-H4 & Compression reduces inference disclosure & SUPPORTED on unbiased & \texttt{h4\_unbiased/} \\
-H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime & SUPPORTED (frontier) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b/}, \texttt{frontier\_deepseekv4/} \\
-H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff & SUPPORTED & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
+H4 & Compression reduces inference disclosure & SUPPORTED on unbiased & \texttt{h4\_unbiased\_v2/} \\
+H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime & SUPPORTED as \emph{no shift detected} (frontier point estimates match; $\pm 20\%$ TOST not passed) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b\_e2/}, \texttt{frontier\_deepseekv4/} \\
+H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff & SUPPORTED (empirical observation, $n=3$ benchmarks) & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
 \hline
 \end{tabular}
 \end{table}
 
-Chapter~\charef{summary} draws the threads together: how the
+\charef{summary} draws the threads together: how the
 findings interact, what CAAC contributes as a constructive
 realisation of the compounding-error bound, what the limitations
 of the work are, what its significance to practice and to the

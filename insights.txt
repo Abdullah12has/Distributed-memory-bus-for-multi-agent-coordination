@@ -3687,3 +3687,556 @@ now read in [0,1] units; min Phi3/a=0.30). Calibrated regime predicate given an 
 (non-CoT, bounded-output) definition so GPT-oss exclusion is not circular. Privacy/coordination
 conflict paragraph added (destruction-driven leakage = same lever as cliff). C4 scoped as
 reference implementation (no measured benefit). Removed stray 'M  M  M' scratch lines.
+
+## 70. TRACK C — NEW EXPERIMENTS RUN ON GPU (2026-05-31)
+
+Unlike §67 (draft3.1, recompute-only/no-new-data), this pass RAN new experiments on
+the RTX 5090 to supply the missing evidence behind the deflated claims. Six of seven
+complete; E2/E3 frontier rerun in flight. New runner code: scripts/a3_probe.py,
+scripts/h4_oracle_redaction.py, run_frontier.py (added --n-workloads/--seeds/--ratios/
+--priors, 429 backoff, lazy-compressor cache use, 0.4s self-rate-limit, warm-up loop,
+verdict now drops failed API calls + separates priors). Canonical new dirs:
+results/h1_h2_finegrid, results/a3_probe, results/h4_oracle, results/h3_eprice,
+results/frontier_qwen72b_e2 (the only kept frontier re-run; DeepSeek/GPT-oss n=30 partials
+were throttle-aborted and deleted — see E2/E3 below).
+
+E1 — REFINED SUB-2x CLIFF GRID (results/h1_h2_finegrid; ratios add 1.25/1.5/1.75/2.5;
+3 fast compressors lingua2/filter/truncation; phi3 excluded — its cliff is ceiling-bound
+at 2.5 and irrelevant to the re-resolution). **KEY FINDING: the canonical tau*=2.5 for
+dense family-a was a COARSE-GRID QUANTIZATION ARTIFACT.** Real deterministic-solver curves:
+  lingua2/a:    1.0->1.0, 1.25->0.0                      => tau* ~ 1.1
+  filter/a:     1.0->1.0,1.5->0.92,1.75->0.46,2.0->0.02  => tau* ~ 1.7
+  truncation/a: 1.0->1.0,1.5->0.92,1.75->0.76,2.0->0.0   => tau* ~ 1.85
+  lingua2/c:    4->0.92,5->0.76,6->0.64,8->0.30          => tau* ~ 6.7 (unchanged; never quantized)
+  truncation/c: 4->0.78,5->0.52,6->0.12                  => tau* ~ 5.0 (unchanged)
+  filter/c:     flat 1.0                                  => no cliff (unchanged)
+H1 on finegrid (workload-level rho): filter -0.100, lingua2 +0.311, truncation +0.551 (all
+CIs exclude 0.6; H1 still SUPPORTED; truncation now near 0.6). H2: 8/9 cells significant.
+IMPLICATION: (a) the synthetic reference the frontier validates against (2.5) is an artifact;
+the true deterministic family-a cliff is ~1.1. (b) The deterministic regex solver cliffs at
+~1.1 while the LLM frontier (Qwen-72B) cliffs at ~2.7 — the LLM tolerates far more compression
+than the brittle parser. This is the near-tautology the senior review flagged, now MEASURED.
+Re-anchor Corollary 1 to the LLM-planner cliff (local-8B vs frontier-72B), not the solver.
+
+E5 — H4 READER-BIAS ROBUSTNESS (analysis of results/h4_unbiased_v2). Reader is YES-biased
+(gt=yes priors=0.028; gt=no priors=1.000), but class-balanced disclosure reduction ~= pooled:
+truncation 0.247 (pooled 0.246), filter 0.197 (0.204), lingua2 0.188 (0.189), phi3 0.005 n.s.
+=> the H4 verdict is NOT a reader-prior artifact. Retires the §4.8.5 reader-bias caveat.
+
+E6 — H3 RE-PRICE ON ACHIEVED RATIO (results/h3_eprice, 900 rows, achieved_ratio column added).
+P1 achieves real compression (storage 7.49x, accuracy 2.11x); **P2 & P3 achieve ratio 1.000
+(NO compression).** EUR spread across pipelines only 4.1-4.9% (cost dominated by shared
+corpus-indexing term). => "P3 wins at indistinguishable cost" is an artifact: P3 wins F1 by
+not compressing; cross-pipeline F1 is NOT a matched-compression comparison. Retract the claim.
+
+E7 — INDEPENDENT A3 PROBE (results/a3_probe; delete fraction k/M of critical tokens WITHOUT a
+compressor, LLM planner llama3.1:8b, measure success vs retained recall — breaks the
+cliff<->A3 circularity §5.3 admits). family-a: THRESHOLD-LIKE (logistic k=15, threshold
+recall r0=0.842, 0.2-0.8 transition band 0.15) => A3 supported DIRECTLY, non-circularly.
+family-c: GRADED (k=5.9, band 0.54) => A3 is first-order only for distributed tasks. Note the
+direct threshold (0.84) > CTR-derived theta_q (0.63): compressors preferentially preserve
+answer-bearing tokens, so the effective theta_q under compression is lower than under random
+deletion. Connects A3 to Corollary 2 (dense=threshold, distributed=graded). Upgrades §5.3.
+
+E4 — ORACLE-REDACTION CONTROL (results/h4_oracle; remove ONLY the answer-bearing hours/budget
+values, keep all else; reader llama3.1:8b). Balanced priors 0.510 / baseline 0.790 / oracle
+0.555 => reduction 23.4 pp at destruction_frac = -0.073 (i.e. ~0 / slightly NEGATIVE because
+"[REDACTED]" is longer than the numbers). Targeted redaction reaches the priors floor and
+MATCHES truncation's 24.6 pp reduction — which needed whole-tail destruction. => constructively
+proves (i) H4 detects privacy-specific removal, (ii) blanket compressors reduce disclosure only
+as a side effect of destruction, and (iii) the memory bus gets a real field-redaction privacy
+mechanism (rescues C4 from "no measured benefit").
+
+E2 — POWERED FRONTIER, FINAL STATE. Only the COMPLETE run is kept: results/frontier_qwen72b_e2
+(Qwen-2.5-72B, n=30 workloads x 5 seeds x 7 ratios, 1050 rows, 0 failures @1.0 after warm-up).
+Curve: 1.0->1.0, 2.0->0.80, 2.5->0.68, 3.0->0.37, 4.0->0.13, 6.0->0.0; p0=1.0 (in-regime);
+0.5-crossing tau* = 2.79. (The automated piecewise fit returns 7.2 — a known bad fit that
+lands in the flat zero-tail; the 0.5-crossing 2.79 is the robust value.) Local Llama-3.1-8B on
+the same cell (h5_final) cliffs at ~2.48 -> LLM-cliff invariance across 9x scale + architecture.
+E3 — DeepSeek n=30 and GPT-oss-priors re-runs were THROTTLED OUT by Featherless (account-level
+rate-limiting on the large/reasoning models): DeepSeek stalled after a clean p0=1.0 baseline,
+GPT-oss stalled mid-sweep before the priors condition. Both throttle-aborted partials
+(frontier_deepseekv4_e2, frontier_gptoss120b_e3, frontier_smoke_e2) were DELETED rather than
+kept, so no claim rests on incomplete data. DeepSeek reverts to existing canonical n=10
+(frontier_deepseekv4, tau=2.15). GPT-oss out-of-regime robustness is grounded on the existing
+canonical run frontier_gptoss120b_v2 (coord 1.0/1.0/0.6/0.2/0/0 at r=1/2/3/4/6/8 -> retains
+0.6 at r=3 where Qwen-72B is 0.37 and the deterministic solver is 0). --priors machinery is
+implemented and ready for a non-throttled endpoint; priors-floor-by-measurement is throttle-
+limited future work.
+INFRA NOTES (real, kept): Featherless throttles a sustained single stream at the account level
+-> empty responses silently scored coord=0 (cold-start hit only the first-processed ratio,
+79% fail @1.0). Fixed via warm-up + 0.4s pacing + verdict-level drop of input_tokens==0 rows.
+GPU VRAM lesson: phi3 (17GB,32k ctx) + llama3.1 (11GB) + LLMLingua exceeded 32GB and spilled
+phi3 to CPU; serialized GPU-heavy jobs and made the frontier consume the cache (zero GPU)
+instead of pre-compressing.
+
+INTEGRATION: draft3.1.md + thesis_latex/Chapters/*.tex updated (E1/E4/E5/E6/E7 + Corollary 1
+re-anchored to LLM cliff, Option i). LaTeX rebuilt: 85 pp, clean build, no undefined refs.
+
+
+## 71. LATEX MIRROR OF DRAFT3.1 RETRACTIONS (2026-05-31)
+
+Synced thesis_latex/Chapters/{abstract,introduction,experiments,summary}.tex with the
+draft3.1 retractions so the compiled PDF matches the markdown manuscript. No new numbers,
+no new experiments — purely text/table edits mirroring already-recomputed evidence.
+
+Files touched:
+- abstract.tex: rewrote para 2 (C2 = "explains threshold structure + first-order estimate";
+  C3 = single-stack non-reproduction with cost-model caveat) and para 3 (H1 workload-level
+  framing with pooled-vs-workload numbers; Corollary 1 "no detected shift" with Qwen-72B
+  7.3% / DeepSeek 13.8% + bootstrap-median 5.7 framing).
+- introduction.tex: rewrote C2 paragraph (first-order, threshold-mechanism contribution),
+  C3 paragraph (single-stack non-reproduction + cost-ledger byte-identical caveat),
+  and the §1.x chapter-mapping sentence for Ch4.
+- experiments.tex:
+  * §4.1 stats: added H1 verdict-statistic paragraph explaining pooled n=1350 over-counts.
+  * §4.2 H1: rewrote tcolorbox verdict (workload-level), rewrote Result paragraph,
+    replaced Table 4.1 with workload+pooled side-by-side, added Table 4.1b per-family
+    decomposition showing 8/12 cells degenerate and the only significant within-family
+    correlation is negative (LLMLingua-2/family-c, ρ=-0.46).
+  * §4.3 Table 4.2: added observed-drop column ([0,1]-bounded) alongside slope-extrapolated
+    Δ; verdict line now reads observed-drop ≥ 0.30 in intuitive units.
+  * §4.3.2: added Phi-3 cliff-comparability caveat (target ratio decouples from achieved
+    above ~2.5×).
+  * §4.4 intro: reframed compounding model as "primary contribution = threshold mechanism,
+    secondary = first-order position estimate, not a tight predictor".
+  * §4.4 A3 assumption: added family-a tautology paragraph (regex solver success = surviving
+    CTR by construction; non-tautological tests are family-c and LLM-planner arms).
+  * §4.5 Corollary 1 tcolorbox: changed verdict from "SUPPORTED by frontier arm" to
+    "SUPPORTED on one reasonably-identified frontier cell, consistent on local arm, not
+    established at strict tolerance"; Qwen-72B framing updated from "0.8%" (auxiliary fit)
+    to "7.3% off canonical" with the 0.8% retained as the auxiliary-fit comparison.
+  * §4.6.3 DeepSeek: rewrote section as "within tolerance but weakly identified" — point
+    estimate 2.15 inside ±20% but bootstrap median 5.7 diagnoses unstable fit; CI-containment
+    flagged as weak evidence (affirming-the-null), not equivalence.
+  * §4.6.6 Significance: rewrote from "invariant across X, Y, Z" to "no shift detected on
+    resolvable cells, carried by one well-identified frontier cell, visible break at regime
+    boundary; tested-and-not-refuted consistency rather than theorem".
+  * §4.7 H3 tcolorbox: "reframed result reverses LongLLMLingua" → "single-stack
+    non-reproduction, not general falsification".
+  * §4.7.3 Interpretation: removed "P3 ≻ P1 ≻ P2 at indistinguishable EUR cost" — replaced
+    with deliberately hedged "P3 worth evaluating where F1 gain matters; cost must be
+    measured before deployment".
+  * §4.7.4 (new label sec:h3_cost_caveat): added paragraph documenting eur_per_query is
+    a single constant 2.7e-5 across all 900 rows; explicitly retracts cost-parity claim.
+- summary.tex:
+  * §5.1 synthesis: H1 paragraph updated to workload-level framing; Corollary 1 paragraph
+    rewritten to "no detected shift" with the family-a vs family-c caveat on the 48× scaling
+    span and the DeepSeek weak-identification qualifier; H3 paragraph hedged to single-stack;
+    closing summary line softened from "predictable in shape, invariant inside a regime, and
+    a privacy lever" to "first-order predictable in position, stable across planners we
+    could test inside a regime, and a (blunt) privacy lever".
+  * §5.3 limitations: H3 single-stack paragraph retitled; added "H3 cost model does not
+    distinguish pipelines" and "Frontier bootstrap samples not retained" paragraphs.
+  * §5.4.1 fourth significance point: rewrote privacy-lever paragraph with the conflict
+    framing (destruction-driven privacy gain = same lever as cliff pointed opposite;
+    bus provides no arbitration rule; practitioners should treat as usable only for
+    non-coordination-critical fragments).
+  * §5.6 future work: added "Faithful per-pipeline RAG cost model" and "Frontier
+    equivalence testing and bootstrap retention" paragraphs.
+
+Build: latexmk -pdf clean — 84 pages, 1.03 MB. No LaTeX errors. Five Overfull \hbox
+warnings carried over from prior build (tiny ≤12pt overruns + one verbatim string in H4
+examples), none blocking. PDF copied to thesis.pdf in project root.
+
+CROSS-REFERENCES: §5.6's new "Faithful per-pipeline RAG cost model" item references
+\ref{sec:h3_cost_caveat} (new label in §4.7.4). §5.4.1 privacy-conflict paragraph
+references \ref{sec:future}. §4.4 A3 family-a paragraph references \ref{sec:corollary1}
+and \ref{sec:frontier} (both pre-existing). All resolve cleanly in the rebuild.
+
+NO NEW EXPERIMENTS, NO NEW NUMBERS. Every number in the LaTeX now appears verbatim in
+draft3.1.md and is sourced from the on-disk verdicts JSON / CSVs documented in §70's
+table.
+
+## 72. SENIOR-REVIEWER MOCK GRADING OF draft3.1.md AGAINST OULU RUBRIC (2026-05-31)
+
+External-reviewer-style pass over draft3.1.md mapped to Evaluation_Instructions.md
+(10 ITEE criteria). Provisional holistic grade: GOOD (3), trending VERY GOOD (4)
+after the fixes below. Per-item provisional: scope 3/3, challenge 3/3, structure 3/5,
+SOTA 4/5 (pending citation fixes), achievement 3/5, self-evaluation 4-5/5 (standout),
+significance 3/5, initiative 3/3, language 3/5, layout 2-3/3.
+
+CONCRETE CITATION-INTEGRITY BUGS FOUND (verifiable, must fix for items 4 & 10):
+1. [Li 2023] is OVERLOADED. §2.4.2 cites it for *Selective Context* (Yucheng Li et al.,
+   EMNLP 2023) but the bibliography entry [Li 2023] is CAMEL (Guohao Li et al., NeurIPS
+   2023), which §2.5 also cites. Selective Context currently resolves to the wrong paper.
+   FIX: split into [Li 2023a]=Selective Context and [Li 2023b]=CAMEL (or rekey).
+2. [Xu 2024] (RECOMP, §2.4.2) is a DANGLING in-text citation — no [Xu 2024] entry exists
+   in References (only [Xu 2025]=A-Mem). FIX: add the RECOMP reference.
+3. [Cheng 2024] (xRAG) is in References but NEVER cited in text. Either cite or cut.
+4. [Li 2025] (prompt-compression survey) is in References but NEVER cited in text.
+   Either cite (natural fit in §2.4 intro) or cut.
+
+TOP SUBSTANTIVE REVIEWER CONCERNS (not blocking the degree, but cap the grade):
+- Achievement (item 5): 5 of 6 original hypotheses were NOT supported as pre-registered
+  and were reframed post hoc (H3 not supported; H5/H6 reframed as corollaries; the model
+  is a weak position predictor — 33% @±25%, empirical tau* outside the bootstrap band on
+  11/11 cells; H4 privacy interpretation undercut by the destruction-monotonic ordering;
+  H3 cost model emits byte-identical EUR across P1/P2/P3 and P2/P3 achieve ratio 1.000).
+  Net positive wins to foreground: H1 (QA-F1 does not predict coordination) + the C1
+  benchmark + reproducibility infra. Recommend reframing the narrative around those.
+- The H1/H2 cliff centrepiece uses a deterministic regex solver whose family-a cliff is a
+  parser artefact (~1.1 on fine grid) vs LLM ~2.5-2.8; the canonical synthetic reference
+  tau*=2.5 used for ALL frontier comparisons is itself coarse-grid; headline Qwen-72B
+  agreement wanders (0.8% vs aux 2.6997 / 7-7.3% vs canonical 2.5 / 12% vs re-anchored
+  LLM 2.79 from frontier_qwen72b_e2). Pick ONE canonical family-a tau* and one frontier run.
+- Register/presentation: manuscript is saturated with development-process meta-commentary
+  (ADR-006..009, insights.txt §57, "the audit", "during this review", "unflatteringly",
+  project-internal bug list) and an over-hedged 3-paragraph abstract that reads like a
+  rebuttal letter. Strip process language; move audit history to a repo appendix.
+- Figures are referenced by filename (figures/*.pdf) and not embedded/numbered in the
+  Markdown draft — confirm the LaTeX build embeds them as numbered Figures with captions.
+- "byte-deterministic" determinism claim covers H4 + local H5, which run live Ollama LLM
+  calls — justify (greedy/temp-0 + fixed build) or narrow the claim.
+
+NO FILE CHANGES MADE beyond this log entry; review delivered to author in-session.
+
+## 71. CONSISTENCY-FIX PASS ON DRAFT3.1 + LATEX (2026-05-31)
+
+Author-supplied review found 8 residual issues + a clarifying note + the C4 gap.
+All fixed in BOTH draft3.1.md AND thesis_latex/Chapters/*.tex; LaTeX rebuilt clean
+(86 pp, no undefined refs/citations). thesis.pdf updated.
+1. Frontier/Corollary-1 number contradiction (prior edits introduced new framing the
+   abstract/§4.6/§5.1/§5.4/verdict-box had not caught up to): reconciled every location
+   to the LLM-cliff re-anchor (Llama-8B 2.48 vs Qwen-72B n=30 2.79, 9x). Original n=10
+   (tau=2.68, "7.3% off 2.5") kept as superseded/coincidence.
+2. corollary1_supported:false reconciled (§4.5 + §5.3, both files): the JSON flag is the
+   strict-20%-tolerance LOCAL-ARM result (1 testable family, 0 invariant), NOT the
+   corollary verdict — validator does not see the cross-architecture LLM-cliff comparison.
+3. Corollary-2 table: family-a tau 2.7->2.5, source h1_h2_final->h1_h2_v2.
+4. theta_info provenance: recomputed all three via estimate_task_theta() and wrote
+   results/corollary2_theta_info.json (family-a 0.967 from h1_h2_v2; MultiHopRAG 0.484
+   from h6_final/results.csv; HotpotQA 0.373 from hotpotqa_sweep). MHR 0.48 was previously
+   unverifiable (h6_final json has no theta field, but real_curve is there -> recomputable).
+5. H4 dir contradiction unified to results/h4_unbiased_v2/ (prose+table+summary, both files).
+6. Compressor count taxonomy fixed once: 6 total (incl identity), 5 active (all
+   training-free), 4 swept in H1/H2 (CAAC wrapper evaluated separately).
+7. "~52,000 cells" unkept-promise replaced with honest breakdown pointer.
+8. Audit confessions trimmed from body (Mann-Whitney "corrected during audit", "1500 was
+   an error", "Qwen notation was an error") -> neutral statements.
+9. Li 2023 citation collision: draft used [Li 2023] for both Selective Context AND CAMEL;
+   added [Li-SC 2023] (Li, Dong, Guerin, Lin, EMNLP 2023) + cite. (LaTeX bib already had
+   li2023selective + li2023camel correctly.)
+10. C4 framed down: explicit "reference implementation, NO performance benchmark
+    (latency/throughput/audit-overhead/policy-lattice scaling unmeasured)" scope caveat
+    in C4 contribution paragraph, both files.
+New verifiable artifact: results/corollary2_theta_info.json.
+
+## 73. REMEDIATION PLAN + DECISIONS LOCKED (2026-05-31)
+
+Author approved an EDITING-ONLY remediation sprint (Phases 0-8,10; ~20-22h) on top of the
+§72 review, targeting Oulu grade 4. NOTE: the §71 "CONSISTENCY-FIX PASS" above already
+landed several of these (audit-confession trim, Li 2023 collision split via [Li-SC 2023],
+C4 framed down) — reconcile before re-doing, to avoid duplicate edits.
+
+Four design decisions locked:
+- D1: canonical family-a tau* = the LLM-PLANNER cliff (~2.7), NOT coarse-grid 2.5 nor
+  deterministic 1.1. Deterministic 1.1 = conservative lower bound; 2.5/2.6997 footnoted.
+  All downstream %-agreement figures (Qwen/DeepSeek vs reference) recompute against ~2.7.
+- D2: canonical Qwen-72B run = frontier_qwen72b_e2 (n=30, tau*~2.79); n=10 run = one
+  "earlier run" mention only.
+- D3: editing-only, no new compute. Phase 9 (more frontier seeds+TOST, external theta_info
+  probe, faithful per-pipeline cost model) stays as documented future work (§5.6).
+- D4: tighten Foreword AI-assistance disclosure to lead with author authorship of all
+  scientific claims/designs/interpretations.
+
+Remaining phases after reconciling with §71: 1 tau*-canonicalization (D1/D2), 2 finish
+citation fixes ([Xu 2024]/RECOMP dangling, cite-or-cut [Cheng 2024]+[Li 2025]), 3 abstract
+rewrite (~280w), 4 finish process-meta strip (ADR-00x, insights.txt refs still inline),
+5 reframe negatives + soften Cor1 positioning + H4 "privacy"->"disclosure", 6 determinism
+claim + CAAC N-knob rename, 7 figure/caption verify, 8 language pass, 10 build+QA. Every
+edit mirrored draft3.1.md + thesis_latex/Chapters/*.tex (+ citations.bib). Execution not
+yet started; awaiting author go-ahead.
+
+## 74. REMEDIATION SPRINT EXECUTED — draft3.1.md + LaTeX (2026-05-31)
+
+Executed the §73 editing-only sprint across BOTH surfaces. Final LaTeX build clean:
+latexmk exit 0, biber resolves all citations, 0 undefined refs/citations, 85 pages,
+main.pdf -> thesis.pdf refreshed.
+
+DONE:
+- Citations: [Xu 2024]/RECOMP reference entry added to draft list (LaTeX already had
+  xu2024recomp cited); xRAG (cheng2024xrag) and prompt-compression survey
+  (li2025promptsurvey) now CITED in §2.4 opening of both surfaces (were orphan bib
+  entries). [Li 2023] split already done by §71. Biber confirms all resolve.
+- Determinism (E): narrowed the byte-determinism claim in abstract-region + Appendix D.1
+  + appendices.tex. Verified code: H4 reader temp=0 (greedy); H5 local temp=0.1 seeded;
+  frontier temp=0.1 -> claim now "cache + regex-solver pipeline (H1,H2) + H3 retrieval/cost
+  + figures byte-deterministic; LLM-planner arms reproducible in distribution, not
+  byte-for-byte."
+- CAAC N-conflation (Phase 6): renamed swept knob to N_q (recall-exponent in
+  q_min=theta_q^{1/N_q}), explicitly NOT compression passes (fixed at 1). Both surfaces,
+  incl. subsection titles + §5.3 limitation + figure-index.
+- Cor1 over-positioning (C): "the substantive contribution to the compression literature"
+  -> "the most promising contribution ... while being explicit about its evidential weight
+  (one well-identified frontier cell, consistent local arm, weak DeepSeek, not at strict
+  tolerance)." Both surfaces (§4.6.6 / experiments.tex + draft).
+- tau* canonicalization (D1/D2): canonical reference is now the LLM-planner cliff
+  tau*_LLM~=2.7 (Llama-8B 2.48 / Qwen-72B 2.79, n=30 e2 run). 2.5=superseded coarse-grid
+  deterministic artefact, 2.6997=auxiliary; both demoted to footnote/traceability.
+  Rewrote §4.6.1 setup (was "thesis stands by canonical 2.5"), §4.6.2 Qwen (dropped the
+  48x within-Qwen overclaim; merged superseding note), §4.6.3 DeepSeek reference relabel,
+  §4.6.6 significance (48x->9x cross-arch), §1.4 C2, abstract. §4.5 + §5.1 were already
+  reframed by §71.
+- Abstract (Phase 3): rewritten ~1180 -> ~330 words (4 short paras: problem/scope,
+  contributions C1-C4, headline verdicts led by H1, one honesty caveat + deliverable).
+  Both surfaces.
+- De-process (Phase 4): removed unflatteringly / "surfaced during this review" /
+  "audit reconciliation" / "validator originally shipped" / insights.txt §57 self-cites /
+  "earlier draft" / "the audit flagged|predicted|recommended|asked" / "audit-trail JSON"
+  -> neutral present-state wording. Both surfaces (counts now 0 for all those phrases).
+  AI-disclosure paragraph (D4) tightened to lead with author authorship in foreword.tex +
+  draft.
+
+NOT DONE (by choice / lower priority):
+- ADR-00x inline citations (12 each surface) RETAINED as legitimate design-record
+  citations (no longer confessional in tone); can strip on request.
+- STATUS_NONCANONICAL filename mention (2 in draft) left as transparency reference.
+- Deeper Phase-8 long-sentence pass beyond the abstract; fuller Phase-5 verdict-block
+  reframing of negatives — partial.
+- Phase 9 new compute (frontier seeds/TOST, external theta_info probe, faithful per-pipeline
+  cost model) remains documented future work per D3.
+
+NO NUMBERS INVENTED OR CHANGED — only which already-computed value is labelled canonical
+(D1/D2) and prose framing. thesis.pdf in project root is current.
+
+## 75. H3 COST-MODEL CORRECTION — false "single constant" claim fixed (2026-05-31)
+
+Date: 2026-05-31. Triggered by path-to-5 Tier A.1 (fix H3 per-pipeline cost model).
+
+FINDING: The manuscript (abstract C3, experiments §h3_cost_caveat, summary
+limitations + practitioners) stated that results/h3_final/results.csv had
+eur_per_query as "a single constant (2.7e-5) on all 900 rows, byte-identical
+across P1/P2/P3." This is FALSE against the cited file and INTERNALLY
+CONTRADICTORY with the very next paragraph (which cites a 4.1-4.9% EUR spread
+from h3_eprice).
+
+VERIFIED against canonical CSVs:
+- results/h3_final: eur_per_query has 160 distinct values. Mean EUR/query by
+  pipeline x regime: P1 storage 2.72e-5 / accuracy 3.29e-5; P2 2.82e-5 / 3.00e-5;
+  P3 3.07e-5 / 3.10e-5. Paired within-workload: P3 costs +3.47e-6 (+12.8%) vs P1
+  in storage (99% of pairs), and -1.93e-6 (-5.9%, cheaper) in accuracy.
+- run_h3.py:170-200 computes input_tokens per pipeline (P1: corpus+compressed
+  corpus; P2: corpus+retrieved; P3: corpus+0.7*retrieved), priced via
+  eur_for_call("gpt-4o-mini",...). So EUR differs by pipeline BY CONSTRUCTION;
+  the small spread is because a shared corpus term dominates input_tokens.
+- results/h3_eprice (cost-instrumented re-run, has achieved_ratio): confirms P1
+  achieves 7.49x (storage)/2.11x (accuracy); P2 and P3 achieve 1.000x (verbatim).
+  EUR spread 4.1% (storage) / 4.9% (accuracy).
+
+CORRECTION MADE (no numbers invented; all from the cited CSVs):
+The real defect is NOT "identical EUR" but (a) the cost model is corpus-dominated
+and (b) it does NOT meter compression compute at all (only resulting token counts).
+The substantive, already-correct conclusion is retained: P3's F1 lead comes from
+NOT compressing (verbatim routing, achieved ratio 1.0), at a cost the model does
+not faithfully charge -> no cost-parity / no Pareto claim. Table 4.x (tab:h3) now
+includes the achieved-ratio column so the verbatim-routing fact is visible in the
+table itself. Edits in: introduction.tex (C3), experiments.tex (tab:h3 + interp +
+sec:h3_cost_caveat), summary.tex (limitation heading + practitioners bullet).
+
+VERDICT UNCHANGED: H3 NOT SUPPORTED (reframed as compress-first dominance);
+C3 cost claim remains withheld. This fix removes a self-contradiction and a
+factually wrong sentence an examiner would catch (rubric items 3, 6).
+
+## 76. TOST EQUIVALENCE TEST COMPUTED for Corollary 1 (2026-05-31)
+
+Date: 2026-05-31. Path-to-5 Tier A.2. The manuscript previously said the frontier
+bootstrap samples "were not retained" so a TOST could not be computed, and reasoned
+from CI-containment (affirming-the-null). FIXED: the per-row coord_success data IS
+retained in results/frontier_*/results.csv, so tau* was re-bootstrapped (500 workload
+resamples, seed=0) using an EXACT replica of run_h5.fit_piecewise (interior tau margin
+0.1*range -> bounds [1.7,7.3] for the [1,8] grid; maxiter=3000). Sanity: the replica
+reproduces the canonical point estimates and CIs EXACTLY (Qwen 2.677, ci95 [1.917,7.231];
+DeepSeek 2.155, ci95 [1.764,7.140]) -> method-consistent, no numbers invented.
+
+PERCENTILE-BOOTSTRAP TOST vs synth reference 2.70, +/-20% band [2.16, 3.24]:
+- Qwen-2.5-72B: 90% CI [1.96, 7.23]; equivalent_pm20 = FALSE; 22% of resamples in band.
+- DeepSeek V4 Pro: 90% CI [1.77, 7.13]; equivalent_pm20 = FALSE; 6% in band.
+Point estimates match (0.8% / 20% rel error) but the fits are too weakly identified
+(n=10 workloads -> bimodal bootstrap, median ~6) to RULE OUT a >20% difference.
+
+CONCLUSION (honest, replaces affirming-the-null): Corollary 1's frontier evidence is
+"NO cliff-position shift DETECTED across scale+architecture", NOT "invariance
+demonstrated." Equivalence is not established at this sample size; needs more seeds.
+This is the rigorous deflation the path-to-5 recommended (rubric items 5, 6).
+
+Artifacts: results/tost_corollary1.json (Qwen), results/tost_deepseek.json. Script:
+outputs/tost_corollary1.py. Edits: experiments.tex (Qwen subsec softened to "no shift
+detected" + new TOST paragraph in DeepSeek subsec with label sec:frontier_deepseek);
+summary.tex (limitation retitled "Frontier equivalence not established (underpowered)").
+Verdict UNCHANGED at the reframed level (no-shift-detected = SUPPORTED); the binary
+table cell to be annotated in the Tier B polish pass.
+
+## 77. TIER B TEXT POLISH (2026-05-31)
+
+Date: 2026-05-31. Path-to-5 Tier B (rubric items 3,4,9,10).
+- Verdict table (experiments.tex tab:verdict_summary): H1 row "QA-F1 decorrelates"
+  -> "QA-F1 does not transferably predict coordination success" (the chapter
+  deliberately avoids "decorrelate"; this was the last leftover). Cor.1 row annotated
+  "SUPPORTED as no shift detected (frontier point estimates match; +/-20% TOST not passed)".
+- Cell-count: confirmed NO "52,000" claim remains anywhere; only the traceable ~30,000
+  (4 compressors x 10 ratios x 150 workloads x 5 seeds). Item already consistent.
+- Reference firming: guo2025dynamic was a mis-titled placeholder ("Dynamic Context
+  Compression", {Guo et al.}, no ID). Verified via web search -> real paper is
+  Shuyu Guo, Shuo Zhang, Zhaochun Ren, "Enhancing RAG Efficiency with Adaptive Context
+  Compression" (ACC-RAG), arXiv:2507.22931. Bib updated with full authors + arXiv ID +
+  DOI. Prose softened: P3 "follows the structural design of [guo]" -> "is in the spirit
+  of adaptive context-compression schemes such as ACC-RAG; the three-way routing is this
+  thesis's own design" (P3 is implemented here, shouldn't be attributed as derivative).
+  saleh2025messagebrokers is already a solid ACM Comput. Surv. cite w/ DOI (the old
+  review's "MemIndex extends" concern does not apply to current bib). bassit2025securerag
+  left as contrastive arXiv cite (not load-bearing; no ID fabricated).
+- H3 table widened to 7 cols (added achieved-ratio); labels shortened (P1 compress->retrieve)
+  and EUR formatted compactly to avoid overfull hbox.
+- Finnish \otsikko{} is populated (plausible translation); flagged for native review only.
+
+COMPILE NOTE: sandbox TeX Live lacks newtx fonts (no root/tlmgr usermode) so the PDF
+could NOT be recompiled here. All edited chapters pass brace/begin-end balance and table
+column-count checks. main.bbl is prebuilt and only one existing bib entry's TEXT changed
+(no new \cite keys), so the body compiles against the existing bibliography; the user must
+rerun (pdflatex + biber + pdflatex x2) on their machine to refresh the Guo entry in the
+reference list and regenerate thesis.pdf. NO numbers invented; TOST/H3 values from cited CSVs.
+
+## 78. TIER C — C4 systems benchmark harness + publication bookmark (2026-05-31)
+
+Date: 2026-05-31. Path-to-5 Tier C (rubric item 7).
+- C4 benefit measurement: the actual memory-bus service CANNOT be run in the
+  sandbox (m6 uses datetime.UTC -> needs Python 3.11+; sandbox has only 3.10, no
+  root to install). DECISION: do NOT fabricate or approximate performance numbers.
+  Instead delivered a faithful, ready-to-run microbenchmark harness
+  scripts/bench_memory_bus.py (syntax-validated) that wires up MemoryBusService
+  with an identity compressor + InMemoryScratchpad + SQLiteAuditLog and measures:
+  end-to-end write/read latency (median/p95/p99/throughput), policy.enforce()
+  latency, and audit hash-chain verify cost per row vs chain length. Records
+  hardware in the JSON. User runs `.venv/bin/python3 scripts/bench_memory_bus.py`
+  on the 3.12 venv to produce numbers; NO numbers added to the manuscript.
+  Added Future-Work paragraph "Memory-bus systems benchmark" pointing to the harness.
+- Publication bookmark: added Future-Work paragraph "Standalone dissemination of the
+  H1 result" — H1 (QA mis-ranks compressors for multi-fragment use) is the most
+  citable standalone contribution; workshop paper is the lowest-friction external
+  validation route (the only path to rubric item 5/7 level-5, which is publication-gated).
+- Also refreshed two now-stale Future-Work paragraphs to match the Tier A fixes:
+  "Faithful per-pipeline RAG cost model" (no longer says "identical EUR"; now
+  "corpus-dominated, compression compute unmetered, P2/P3 verbatim") and
+  "Frontier equivalence" (TOST now COMPUTED, not passed; remaining work = more seeds).
+
+All six edited chapters pass brace + begin/end balance checks. Recompile pending on
+user machine (sandbox lacks newtx fonts + biber).
+
+## 79. acl_mask uint64 audit-log fix completed + two-host bus benchmark (2026-06-01)
+
+**Bug (now FIXED, not future work).** `Principal.super_user()` sets
+`acl_mask = 2**64-1`. The audit-log `requester_acl` column was declared
+`INTEGER`. An earlier partial fix stored `str(mask)`/read `int(...)` in
+Python, but the column's INTEGER *affinity* defeated it: SQLite coerced the
+decimal string `"18446744073709551615"` back to a REAL float, rounding it to
+`2**64` (1.8446744073709552e+19). Roundtrip was lossy (off by one).
+Verified the affinity behaviour: INTEGER->real (lossy), TEXT->text (lossless),
+BLOB->text (lossless).
+
+**Fix.** Changed the schema column `requester_acl INTEGER` -> `requester_acl TEXT`
+in `src/m6/memory_bus/storage/sqlite_audit.py` (Python str()/int() conversion
+was already correct). Verification now passes:
+lossless roundtrip True (18446744073709551615 == 2**64-1), None roundtrip True,
+chain verify True. No tests/ dir present to run.
+
+**Two-host bus benchmark refreshed** (`scripts/bench_memory_bus.py`, n=5000,
+warmup=500, identity compressor, in-process SQLite, single-threaded). These ops
+are CPU + disk-I/O bound; the GPU server is a second (Linux) hardware point, NOT
+an accelerated result.
+- Host A — Apple M4 Pro, arm64, macOS, Python 3.11.15
+  (`results/bus_bench/bench.json`): policy 0.0002/0.0002 ms ~5.2M ops/s;
+  write 0.0469/0.0661 ms ~18,200 ops/s; read 0.0424/0.0605 ms ~19,900 ops/s;
+  audit verify 1.68 us/row over 5,500 rows, chain intact.
+- Host B — Linux x86_64 (WSL2 Ubuntu 22.04), Python 3.12.13
+  (`results/bus_bench/bench_gpu.json`): policy 0.0001/0.0003 ms ~6.7M ops/s;
+  write 0.1447/0.1772 ms ~5,750 ops/s; read 0.1302/0.1541 ms ~6,400 ops/s;
+  audit verify 2.19 us/row over 5,500 rows, chain intact.
+
+**Manuscript edits.** Removed the now-false "acl_mask/super_user overflow named
+as future work" sentence from draft3.1.md §1.4 (C4), summary.tex limitations,
+and appendices.tex (the appendices sentence was a duplicate of summary's). Added
+the Host B (Linux) column to the C4 bus-benchmark tables in both
+experiments.tex (tab:bus_bench) and draft3.1.md §1.4, with the two-host
+CPU/disk-I/O framing and both JSON citations. All four `super_user` mentions are
+gone from the manuscript; remaining `acl_mask` strings are legitimate JSON
+workload-tag examples. All edited .tex files have balanced begin/end.
+
+**Gotcha caught:** my first table edit used invented/early numbers; corrected to
+the actual JSON values. Also re-verified the local `bench_gpu.json` against the
+server copy (an early scp-back had left a stale file with Host A's policy row).
+
+## 75. LATEX-DIRECT FIX PASS — INCONSISTENCIES + RESIDUAL PROCESS LEAKAGE (2026-05-31)
+
+User declared the LaTeX project (thesis_latex/) canonical ("forget draft3.1"). Fixed
+directly in LaTeX; clean build (latexmk exit 0, 0 undefined refs/citations, 0 errors,
+89 pages), main.pdf -> thesis.pdf refreshed.
+
+Six review-flagged inconsistencies — final LaTeX state:
+- cliff_hero "cliff visible at tau*~=2.5x" -> reworded: coarse-grid curve, quantised
+  midpoint 2.5, fine-grid true deterministic cliff ~1.1 / LLM ~2.7; figure establishes
+  SHAPE. (was contradicting the fine-grid finding)
+- §4.2 section title "...Decorrelates..." -> already "Does Not Transferably Predict" (ok).
+- Table 4.6 H1 row -> "does not transferably predict" (ok).
+- Table 4.6 H5->Cor1 row -> wording already softened ("no shift detected; +/-20% TOST not
+  passed") AND dir corrected frontier_qwen72b/ -> frontier_qwen72b_e2/ (n=30 canonical).
+- Table 4.6 H6->Cor2 row -> added "(empirical observation, n=3 benchmarks)" hedge.
+- h4 dir -> uniformly h4_unbiased_v2/ (no inconsistency).
+
+Residual process/confessional leakage in LaTeX (was MORE than in draft — earlier sweep
+was draft-biased) now removed:
+- "surfaced during the audit pass" x2 (intro C3, experiments §4.7.4) -> neutral.
+- summary.tex "the audit recommended" tolerance -> "matching the H2 spec".
+- STATUS_NONCANONICAL.txt filename mentions x2 -> "non-canonical diagnostic".
+- ALL 12 inline ADR-006/007/008/009 references -> neutral ("project repository",
+  "project glossary", "a design decision", deleted where redundant). Removed now-orphan
+  ADR entry from abbreviations.tex.
+Remaining "audit" hits are all legitimate (audit-log feature; C4 perf-benchmark caveat).
+
+NOTE: draft3.1.md and thesis_latex/ have DIVERGED; LaTeX is now canonical per user. The
+Markdown still carries some of these (cliff_hero, §4.2 title, H5 wording) and is no longer
+the source of truth. NO numbers invented/changed.
+
+## 80. Reproducibility section (§4.10) added + abstract consolidation (2026-06-01)
+Added a dedicated Reproducibility section to Chapter 4 (LaTeX experiments.tex
+§4.10 "Reproducibility" before "Summary of Verdicts"; draft3.1.md §4.10, with
+Summary of Verdicts renumbered to §4.11). The section consolidates the
+previously-scattered 3-tier determinism story (Tier 1 byte-deterministic local
+H1/H2/H3 + figures; Tier 2 distributionally-deterministic local-LLM H4/H5/phi3;
+Tier 3 non-reproducible frontier API) into one table (tab:repro_tiers) + three
+tier paragraphs + a traceability paragraph pointing at CANONICAL_NUMBERS.md.
+Keyed to the NeurIPS reproducibility checklist (new bib entry pineau2021checklist,
+JMLR 22(164) 2021 — real). Compensating trim: removed the "frontier-server
+batching" mechanism sentence from BOTH abstracts (now lives only in §4.10) and
+pointed the abstract at the new section, so the section consolidates rather than
+restates (the plan's pay-for-itself criterion). All cross-refs resolve:
+sec:repro, tab:repro_tiers, sec:frontier_deepseek_repro, sec:gptoss_repro (new
+labels added to the DeepSeek/GPT-oss subsections), Appendix~D (plain text per
+house convention). Env balance clean (experiments.tex tables 11/11, figures 9/9).
+Builds on the now-real reproducibility artifacts from §79-adjacent work
+(Makefile repro-* targets, requirements.lock.txt, MODEL_CARDS.md, DATA_CARDS.md,
+CANONICAL_NUMBERS.md).
+
+## 76. W-SERIES ITEM 4 (SOTA/INTRO) + PARTIAL ITEM 9 (LANGUAGE) — LaTeX (2026-05-31)
+
+Item 4 (Intro & SOTA -> 5):
+- Added 3 peer-reviewed inference-cost citations to citations.bib: samsi2023words
+  (HPEC 2023, direct LLM-inference energy benchmark), pope2023efficiently (MLSys 2023,
+  serving cost vs sequence length), patterson2021carbon (arXiv 2104.10350). All resolve
+  in main.bbl.
+- Re-anchored §1.1 motivation + §2.3 cost section on these peer-reviewed sources; demoted
+  the Altman X/Twitter estimate to a one-clause "corroborating colour, not evidence" in
+  both places (no longer load-bearing).
+- Added SOTA-positioning table (tab:sota_positioning) to §2.8: rows for LLMLingua-2,
+  LongLLMLingua, RECOMP, MemIndex, Anthropic multi-agent report -> "what it measures /
+  what it does not", discriminating column = multi-fragment coordination success.
+- Privacy preprint refs (addison/bassit/zhou) already had titles+arXiv IDs in the bib
+  (less thin than the Markdown list implied); left as-is.
+
+Item 9 (Language -> partial): split the clearest genuine long PROSE sentence (§5.1 P3
+routing, ~65w -> 2 sentences). Most other >55w detector hits were table captions/rows
+(false positives) or structured em-dash enumerations that read acceptably. A full
+sentence-level copyedit of Ch4-5 remains for the "revised language" 5 — flagged to user.
+
+Build: latexmk exit 0, 0 undefined refs/citations, 93 pages, thesis.pdf refreshed.
+NEW citations are real/verifiable; no numbers invented.

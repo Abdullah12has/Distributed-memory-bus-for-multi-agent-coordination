@@ -7,7 +7,7 @@ evaluation, and the single-command reproducibility envelope. The
 intent is to give a reader enough detail to reproduce the system from
 the open-source repository without consulting the code, and to make
 the design choices explicit so that the experimental results in
-Chapter~\charef{experiments} can be read against the constraints
+\charef{experiments} can be read against the constraints
 those choices imposed.
 
 A scope reminder, stated once explicitly so that every claim in this
@@ -20,8 +20,7 @@ sweep (Corollary~1, frontier validation, real-data transfer). The
 memory bus is \emph{designed for} a future multi-agent integration
 with an AutoGen back-end available in the source tree, but its
 multi-agent operation is outside the empirical scope of this thesis.
-This boundary is documented in CONTEXT.md and recorded as
-ADR-009 in the project repository.
+This boundary is documented in the project repository.
 
 \section{The Memory-Bus Reference Implementation}
 \label{sec:architecture}
@@ -48,7 +47,7 @@ prefix-keep baseline, and \emph{CAAC} --- a cliff-aware adaptive
 wrapper that backs off compression when per-fragment recall would
 violate the compounding-error model's safety threshold
 (Section~\ref{sec:compressors_caac}, full discussion in
-Chapter~\charef{summary}).
+\charef{summary}).
 \item A \textbf{storage layer}, providing three protocols ---
 \texttt{AuditLog}, \texttt{Scratchpad}, and \texttt{VectorStore} ---
 implemented for the evaluation by SQLite in WAL mode with an
@@ -167,7 +166,7 @@ a 60-second per-\textit{(subject, slot-id)} deduplication: the first
 read miss for a given subject and slot is appended to the audit log
 as a \texttt{READ}/\texttt{ERROR} row, and subsequent misses within
 the window short-circuit silently so that an adversarial reader
-cannot inflate the audit log either. Appendix~\charef{appendix}
+cannot inflate the audit log either. Appendix~\ref{appendix}
 contains a verbatim \texttt{curl} trace exercising the write, read,
 and audit endpoints end-to-end against the reference service.
 
@@ -241,7 +240,7 @@ The C3 contribution evaluates three retrieval-augmented generation
 pipeline architectures that differ in where compression sits
 relative to retrieval. The three are described here as artefacts;
 the empirical comparison between them under matched cost regimes
-is the H3 result of Chapter~\charef{experiments},
+is the H3 result of \charef{experiments},
 Section~\ref{sec:h3}.
 
 \begin{description}\setlength\itemsep{2pt}
@@ -271,8 +270,12 @@ verbatim; fragments with $\theta_\text{low} \le s <
 $s < \theta_\text{low}$ are discarded. The default thresholds
 $\theta_\text{high}=0.75$ and $\theta_\text{low}=0.45$ on
 \texttt{BAAI/bge-large-en-v1.5}-cosine similarities are the
-analytical starting points. P3 follows the structural design of
-\cite{guo2025dynamic}.
+analytical starting points. P3's relevance-conditional routing is
+in the spirit of adaptive context-compression schemes that vary the
+compression decision by input relevance, such as the ACC-RAG
+framework of \cite{guo2025dynamic}; the three-way
+verbatim/compress/discard routing implemented here is this thesis's
+own design.
 \end{description}
 
 The three pipelines share the same FAISS-CPU + HNSW
@@ -308,6 +311,17 @@ isolates the compression mechanism from any training-data effect
 and lets the cross-compressor comparison turn on the algorithm
 rather than on training-budget asymmetry.
 
+To fix the counting once: there are \textbf{six} \texttt{Compressor}
+implementations in total (identity $+$ five active); the
+\textbf{five} active ones are all training-free; and \textbf{four}
+of them --- LLMLingua-2, the instruction-aware filter, Phi-3-Mini
+extractive, and truncation --- are the compressors \emph{swept} in
+the H1/H2 cliff experiments, since CAAC is a wrapper around an inner
+compressor and is evaluated separately (Chapter~5).
+Wherever this manuscript says ``four compressors'' it means the
+swept four; ``five'' means the active five; ``six'' includes the
+identity control.
+
 \subsection{LLMLingua-2 (token-level classifier)}
 
 The LLMLingua-2 wrapper is a thin adapter around the
@@ -325,7 +339,7 @@ without modification.
 The empirical token-recall curve $q(r)$ produced by LLMLingua-2
 under critical-token-recall measurement (Section~\ref{sec:ctr})
 is smooth and monotonic across the sweep ratios used in
-Chapter~\charef{experiments}, which is the property the
+\charef{experiments}, which is the property the
 compounding-error model presumes.
 
 \subsection{Instruction-aware filter}
@@ -374,7 +388,7 @@ A practically important property of Phi-3-Mini extractive is its
 pass plus the LLMLingua-2 fallback combine to bound the achievable
 compression ratio at approximately $2.5\times$, regardless of the
 requested target. This is documented as a limitation in
-Chapter~\charef{summary} and is the reason all evaluation reports
+\charef{summary} and is the reason all evaluation reports
 \emph{achieved} compression ratio (the ratio actually delivered)
 alongside the requested target ratio.
 
@@ -409,11 +423,11 @@ largest ratio that keeps recall above the threshold. A
 \texttt{min\_ratio} floor of $1.5\times$ prevents CAAC from
 abdicating to no-compression on hard fragments. The full
 algorithmic and empirical discussion lives in
-Chapter~\charef{summary} together with the constructive framing
+\charef{summary} together with the constructive framing
 that CAAC is the operational realisation of the compounding-error
 bound. Here it suffices to note that CAAC consumes the same
 \texttt{Compressor} protocol as the other variants, which is what
-makes its drop-in evaluation in Chapter~\charef{experiments}
+makes its drop-in evaluation in \charef{experiments}
 straightforward.
 
 \section{The C1 Coordination Benchmark}
@@ -432,7 +446,7 @@ bias, and per-instance variance. The thesis takes the position that
 the cliff is best characterised on a synthetic generator first,
 where information density can be placed by construction, and then
 externally validated on real benchmarks. The synthetic-first
-posture is responsible for the clean Chapter~\charef{experiments}
+posture is responsible for the clean \charef{experiments}
 results on H1, H2, and Corollary~1; the real-benchmark validation
 of Corollary~2 confirms that the structure transfers.
 
@@ -478,7 +492,7 @@ property of small LLM planners that is independent of compression:
 constraint tracking is hard for $\le 8$B-parameter models even
 without compression, so the family-b baseline success $p_0$ is low
 for small planners and the cliff is not detectable in that regime ---
-a \emph{floor effect} that Chapter~\charef{experiments} treats
+a \emph{floor effect} that \charef{experiments} treats
 explicitly.
 
 \item[Family-c --- multi-step retrieval.] Each instance presents a
@@ -493,7 +507,7 @@ information density $\theta_\text{info}\approx 0.62$ (the
 canonical AUC-based estimator on the family-c $\times$ LLMLingua-2
 sweep; not to be confused with the recall-threshold parameter
 $\theta_q^{\,(c)} = 0.590$ reported in
-Chapter~\charef{experiments}~Section~\ref{sec:cem_match}, which is
+\charef{experiments}~Section~\ref{sec:cem_match}, which is
 a different quantity computed by a different method --- see
 CONTEXT.md and Section~\ref{sec:theta_info_def}), and the cliff
 is gradual --- it is the family on which the
@@ -505,7 +519,7 @@ Each family contributes $50$ instances. The three families together
 span a deliberate range of information densities so that the cliff
 mechanism (a recall threshold $\theta_q$) and the cliff-position
 shift mechanism (information density $\theta_\text{info}$) can be
-separated; this separation is what Chapter~\charef{experiments}
+separated; this separation is what \charef{experiments}
 formalises as Corollary~2.
 
 \subsection{Tag distributions for the privacy axis}
@@ -543,7 +557,7 @@ isolating the compression-quality signal from LLM run-to-run
 variance. The trade-off is that the cliff measured here is an upper
 bound on what an LLM-based scorer would measure; the trade is in
 favour of clean attribution rather than ecological validity, and
-Chapter~\charef{summary} discusses the limitation.
+\charef{summary} discusses the limitation.
 
 \subsection{The critical-token-recall metric}
 \label{sec:ctr}
@@ -577,7 +591,7 @@ the literal \emph{FINAL} marker.
 CTR is what the compounding-error model uses as the per-round
 retention rate $q(r)$; CAAC uses CTR as its back-off signal; and
 the predicted-versus-empirical $\tau^{*}$ figure in
-Chapter~\charef{experiments} uses CTR to derive $\theta_q$. Generic
+\charef{experiments} uses CTR to derive $\theta_q$. Generic
 token-recall is reported for backwards compatibility with prior
 analyses but is not used in the verdict pipeline.
 
@@ -607,7 +621,7 @@ the GPU: H1, H2, the frontier API sweep, and the CAAC ablation
 all consume the cache rather than the live compressors.
 
 The compression cache is also a methodological device. It
-guarantees that every evaluation in Chapter~\charef{experiments}
+guarantees that every evaluation in \charef{experiments}
 sees the exact same compressed text for a given (compressor, ratio,
 workload) cell, so that any difference between runs is attributable
 to the evaluation protocol rather than to compressor stochasticity.
@@ -629,10 +643,10 @@ reader. The second is the OpenAI-compatible Featherless API used
 for the frontier validation (Qwen-2.5-72B-Instruct, DeepSeek V4
 Pro). The third is the OpenAI API for the GPT-class frontier
 arm (excluded from the calibrated regime per
-Chapter~\charef{summary}, retained on disk as a noncanonical
+\charef{summary}, retained on disk as a noncanonical
 diagnostic). All API calls are routed through the cost ledger so
 that the EUR-per-workflow figures in
-Chapter~\charef{experiments} are auditable.
+\charef{experiments} are auditable.
 
 \section{Scope of Evaluation: the Multi-Fragment Proxy}
 \label{sec:scope}
@@ -653,7 +667,7 @@ An AutoGen v0.4 multi-round agent backend
 exists~\cite{wu2023autogen} in \texttt{src/m6/orchestrator/} and
 integrates with the memory bus described in
 Section~\ref{sec:architecture}. It is not used in the empirical
-evaluation. The decision is documented as ADR-009 in the
+evaluation. The decision is documented in the project
 repository: the run-to-run variance introduced by multi-round
 agent negotiation dominates the compression signal at the C1
 ratios this thesis sweeps, and the value of the AutoGen runner is
@@ -669,7 +683,7 @@ the planner must combine information drawn from multiple
 fragments. It does not refer to the multi-round communication
 quality between agents; that property is what the AutoGen backend
 would enable measuring in future work, and is named in
-Chapter~\charef{summary} as part of the limitations and the
+\charef{summary} as part of the limitations and the
 future-work roadmap.
 
 \section{Compute Envelope and Reproducibility}
@@ -698,6 +712,6 @@ chapter headline figure. The filesystem layout under
 \texttt{results/} is fixed: one CSV per hypothesis run plus a
 \texttt{manifest.yaml} that records the resolved configuration,
 the configuration hash, the git revision, the Python version, the
-platform string, and the start time. Appendix~\charef{appendix}
+platform string, and the start time. Appendix~\ref{appendix}
 describes the package contents in detail and lists every command
 needed to reproduce the headline figures.
