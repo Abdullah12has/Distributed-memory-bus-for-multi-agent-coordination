@@ -132,21 +132,20 @@ the fragment text, its tag vector, and an optional task hint. The
 policy middleware parses the requester principal from the
 \texttt{X-M6-Principal} header and writes it to
 \texttt{request.state.principal} as a Starlette \texttt{State()}
-attribute. The service receives the request, checks that the
-principal's access-control mask is a superset of the fragment tag's
-mask and that the principal's classification is at least the
-fragment's classification, calls the active compressor's
+attribute. The service first checks that the principal's
+access-control mask is a superset of the fragment tag's mask and
+that the principal's classification is at least the fragment's. If
+the check passes, it calls the active compressor's
 \texttt{compress(fragment, target\_ratio)} method to produce a
-\texttt{CompressedSlot}, places that slot in the in-memory scratchpad
-keyed on the slot identifier, computes an embedding for the slot if
-the compressor exposes one and adds it to the FAISS index, and
-finally appends a row to the audit log whose
-\texttt{event\_type} is \texttt{WRITE}, \texttt{result} is
-\texttt{OK}, \texttt{prev\_hash} is the previous row's chain hash,
-and \texttt{chain\_hash} is $\textsc{SHA-256}(\texttt{prev\_hash}
-\mathbin\Vert \texttt{payload\_hash})$. The response carries the slot
-identifier, the chain hash hex-encoded, and the audit row
-identifier.
+\texttt{CompressedSlot}, places that slot in the in-memory
+scratchpad keyed on the slot identifier, and --- if the compressor
+exposes an embedding --- adds it to the FAISS index. Finally it
+appends a row to the audit log whose \texttt{event\_type} is
+\texttt{WRITE}, \texttt{result} is \texttt{OK}, \texttt{prev\_hash}
+is the previous row's chain hash, and \texttt{chain\_hash} is
+$\textsc{SHA-256}(\texttt{prev\_hash} \mathbin\Vert
+\texttt{payload\_hash})$. The response carries the slot identifier,
+the chain hash hex-encoded, and the audit row identifier.
 
 If the policy check fails, the bus appends a \texttt{DENY} row with
 the synthesised slot identifier \texttt{deny-<uuid8>}, with a

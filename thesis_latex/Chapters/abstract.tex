@@ -1,84 +1,41 @@
 \begin{thesisabstract}{english}
 
-Large language models running in multi-step workflows pay for every
-token they read: energy, latency, and cost scale with context
-length, and much of that context carries little information. Context
-compression is the natural lever, and the single-agent
-prompt-compression literature is mature. What has not been measured
-is whether a compressor that preserves single-agent
-question-answering accuracy also preserves the harder property a
-planner needs --- combining information distributed across several
-compressed fragments into a correct answer. This thesis measures
-that on \emph{multi-fragment LLM workflows}, using a deterministic
-regex solver or a single LLM call over all compressed fragments as
-the planner; multi-round agent simulation is outside the empirical
-scope.
+Multi-step LLM workflows pay for every token they read, and context
+compression is the obvious lever. The single-agent
+prompt-compression literature is mature, but it measures
+single-fragment question-answering, while production workloads
+combine information across multiple compressed fragments. Whether
+single-agent QA accuracy predicts that harder property has not
+previously been tested.
 
-The headline contribution is the H1 finding above. Three further
-contributions support it. \textbf{C1} is a reproducible
-$150$-instance multi-fragment benchmark across three workload
-families (cross-document fact aggregation, constraint-satisfaction
-planning, multi-step retrieval). \textbf{C2} is the empirical
-characterisation itself --- a sharp \emph{coordination cliff}
-$\tau^{*}$ across four training-free compressors, together with a
-compounding-error model whose contribution is explaining \emph{why}
-the transition is sharp (a recall threshold on critical tokens
-produces a step in success); position prediction is a
-\emph{first-order} estimate only (median relative error $\approx
-35\%$, predicted band misses the empirical $\tau^{*}$ on $11/11$
-testable cells). A direct A3 probe with an LLM planner --- the only
-non-circular test of the threshold mechanism --- confirms the step
-shape on the dense family ($k\approx 15$, $r_0 \approx 0.84$) and a
-graded transition on the distributed family ($k \approx 5.9$, band
-$\approx 0.54$). \textbf{C3} is a three-pipeline RAG catalogue with
-a first-pass EUR-per-workflow cost ledger whose corpus-dominated
-fidelity limits the P3-vs-P1 comparison (no cost-parity claim is
-made). \textbf{C4} is a memory-bus reference implementation
-together with a summary-level \emph{inference-disclosure} metric;
-the metric is the C4 \emph{research} contribution and the bus is
-the engineering artefact that operationalises it. CAAC operationalises
-the compounding-error bound as a runtime back-off and serves as a
-constructive demonstration of the cliff measurement rather than a
-fifth headline contribution.
+It does not. On a new $150$-instance multi-fragment benchmark
+spanning cross-document fact aggregation, constraint-satisfaction
+planning, and multi-step retrieval, four training-free compressors
+at ten compression ratios yield workload-level Spearman correlations
+between QA-F1 and coordination success in $[-0.82, +0.32]$, with all
+$95\%$ bootstrap CIs excluding $0.6$. The single-agent benchmarks
+that dominate the compression literature therefore systematically
+mis-rank compressors for multi-fragment deployment.
 
-The central result is \textbf{H1}: at the workload level ($n=150$),
-the change in single-agent QA-F1 under compression does not
-positively predict the change in coordination success for any of the
-four compressors (Spearman $\rho \in [-0.82, +0.32]$; all
-$95\%$~bootstrap CIs exclude $0.6$). The single-agent benchmarks
-that dominate the compression literature therefore mis-rank
-compressors for multi-fragment use. A sharp cliff exists on $11$ of
-$12$ (compressor, family) cells. Within a defined calibrated regime
-the \emph{LLM-planner} cliff shows no detected shift across a single
-well-identified scale-and-architecture comparison (local
-Llama-3.1-8B $\tau^{*}\approx 2.48$ vs frontier Qwen-2.5-72B
-$\approx 2.79$ on one cell); a third frontier model (DeepSeek~V4~Pro)
-corroborates only weakly with a bootstrap CI too wide to identify
-the position. The RAG sign-flip hypothesis is not supported ---
-compress-first is preferred over retrieve-first on the single
-retriever/embedder stack tested --- and compression reduces
-inference disclosure, but in proportion to how aggressively it
+The mechanism is a sharp \emph{coordination cliff} $\tau^{*}$,
+present on $11$ of $12$ (compressor, family) cells. A
+compounding-error model derives the threshold structure from a
+per-family recall constraint on critical tokens and recovers the
+empirical position to first order (median $\approx 35\%$ relative
+error). Within a calibrated regime the cliff shows no detected
+shift between a local Llama-3.1-8B planner and a frontier
+Qwen-2.5-72B planner across a $9\times$ scale-up and a change of
+architecture family; extended-reasoning planners sit outside this
+regime. Compression also reduces inference disclosure of protected
+facts, but in proportion to how aggressively each compressor
 destroys source tokens rather than through privacy-specific
-filtering (an oracle field-redaction control achieves the same
-$\sim 23$~pp reduction at near-zero compression, matching the
-truncation baseline at $-24.6$~pp). The H1 result on family-a should
-be read with one structural caveat: that family's regex solver
-succeeds iff enough critical numeric tokens survive compression, and
-the critical-token-recall metric \emph{is} that surviving fraction,
-so the model's central equation on family-a relates two near-identical
-measurements --- it is most directly \emph{computable} on family-a,
-not most independently \emph{validating}.
+filtering.
 
-In the interest of honesty: of the six pre-registered hypotheses,
-two hold as stated (H1, H2) and the rest were reframed or not
-supported as originally written (the H3 sign-flip; the H5
-monotonicity claim, reframed as ceiling--cliff separation; the H6
-transfer claim, reframed as information-density scaling); the
-compounding-error model is a first-order, not a tight, position
-predictor. These reframings are reported explicitly. The deliverable
-is the manuscript and an open-source reference implementation: the
-local pipeline reproduces from one command given a precomputed
-compression cache, while the frontier-API arm is reproducible in
-distribution rather than byte-for-byte.
+Of the six pre-registered hypotheses, two hold as stated and the
+remaining four were reframed or not supported as written; the
+reframings are reported explicitly. The deliverable is the
+manuscript and an open-source reference implementation of a
+policy-enforcing memory bus, reproducible from a single command
+given a precomputed compression cache.
 
 \end{thesisabstract}

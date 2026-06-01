@@ -4240,3 +4240,101 @@ sentence-level copyedit of Ch4-5 remains for the "revised language" 5 — flagge
 
 Build: latexmk exit 0, 0 undefined refs/citations, 93 pages, thesis.pdf refreshed.
 NEW citations are real/verifiable; no numbers invented.
+
+## 77. ITEM 3 READING-GUIDE + ITEM 9 COPYEDIT PASS + C4-BENCHMARK RECONCILE (LaTeX, 2026-05-31)
+
+Item 3 (Structure/emphasis + Item 1 prioritization):
+- Added §1.4.1 "Reading guide and contribution hierarchy" (label sec:reading_guide):
+  states H1 as the single load-bearing result, cliff/model (C2) as the mechanism, C1 as
+  enabling instrument, C3/C4/CAAC as deliberately secondary; tells a time-pressed reader
+  what to weight. Also makes the theme prioritisation explicit (item 1).
+
+Item 9 (Language) — substantive copyedit batch on Ch4-5 (split genuine long prose run-ons):
+- §4.1.2 piecewise-fit sentence, §4.7.4 + future cost-model sentence, §5.1 P3-routing,
+  §5.3 compress-first robustness, §5.4 C4 two-host metrics. Closing §5.7 left as a
+  deliberate summative sentence. (~110 >42w hits exist; most are tables/math/structured
+  enumerations — a full proof-read of all 94 pp still advisable for a guaranteed "revised".)
+
+Process leakage found DURING the pass and removed (LaTeX now 0 across all markers):
+- "earlier audit build ... project-internal bug list" (§4.1.2) -> neutral.
+- τ* register caption "canonical synthetic reference in earlier drafts" -> "grid-quantised
+  artefact".
+- "an earlier audit note mistook" (§4.7.4) -> neutral.
+- appendices.tex repro-frontier "scoped out per ADR-006" -> "as an extended-reasoning
+  planner". (last ADR ref in body gone)
+
+NEW inconsistency fixed: a memory-bus systems benchmark now EXISTS (§5.4 sec:bus_bench,
+results/bus_bench/bench.json + bench_gpu.json: policy ~5-7M ops/s, write/read ~18-20k
+ops/s M4 Pro, audit hash-chain 1.68-2.19 us/row). This contradicted the intro C4 caveat
+"no performance benchmark". Reworded intro C4 scope: bus IS benchmarked for single-host
+throughput/latency; only DISTRIBUTED/multi-tenant scaling is future work. This partly
+closes the C4-not-perf-evaluated gap from the review.
+
+Build: latexmk exit 0, 0 undefined, 94 pages, thesis.pdf refreshed.
+
+## 78. ITEM 9 COPYEDIT — Ch2-3 SWEEP + TERMINOLOGY CONSISTENCY (LaTeX, 2026-05-31)
+
+Finished the language pass across the remaining chapters:
+- Ch3 implementation.tex: split the 82-word write-path run-on into 3 sentences
+  (policy check / storage steps / audit-row append). Other long hits were enumerate
+  lists, left as lists.
+- Ch2 relatedwork.tex: long hits were structured semicolon enumerations / technical
+  definitions; no genuine run-ons needed splitting.
+- Terminology consistency: replaced informal "tau spread" -> "$\tau^{*}$ spread" in
+  intro, experiments, summary (3 sites). Verified "Theorem~1" (deliberate naming
+  explanation), "decorrelate" (deliberately disowned word, §4.2), and "task solvability"
+  (intended scope term) are all correct as-is. CTR defined at first use (§3.5).
+
+Build: latexmk exit 0, 0 undefined refs/citations, 94 pages, thesis.pdf refreshed.
+
+NOTE: user/linter also added (in parallel) a §1.2 "Operational definition of coordination
+success" paragraph and a §5.1 "What stands and what doesn't" paragraph — both align with
+the upgrade plan (emphasis + honest framing). Left intact.
+
+ITEM-9 STATUS: worst genuine prose run-ons across all chapters now split; terminology
+consistent; process jargon zero. A final cover-to-cover human proof-read is still the
+responsible last step before formally asserting "revised language" (rubric-9 level 5),
+but the mechanical/structural language defects are cleared.
+
+## 81. CITATIONS.BIB AUDIT — placeholder-author + venue/title fixes (2026-06-01)
+
+Senior-pass on every entry of thesis_latex/citations.bib via web search (arXiv, ACL
+Anthology, OpenReview, NeurIPS proceedings, ACM DL). 18 entries needed correction.
+
+Placeholder-author entries (had "{Surname et al.}" as a single token, which biblatex
+renders as a bogus single-name author) — replaced with real author lists from the
+source:
+- wang2024icf, cheng2024xrag, xu2025amem, chhikara2025mem0, rasmussen2025zep,
+  zhang2024agentprune, wang2025agentdropout, park2025collaborative, ye2025kvcomm,
+  yu2025memagent, zhou2025privacyrag, bassit2025securerag, zhao2024frag,
+  addison2024cfedrag, li2025securitylingua, saleh2025memindex, haseeb2025contextengineering
+
+Title corrections (paraphrased / wrong subtitles):
+- saleh2025memindex: "for Large Language Model Agents" -> "for Multi-agent Systems"
+  (matches the actual TAAS paper, DOI 10.1145/3774946 added)
+- ye2025kvcomm: "...Efficient LLM Inference" -> "...Efficient LLM-based Multi-agent
+  Systems" (the paper is specifically about multi-agent systems, not generic inference)
+- zhang2024agentprune: title was the colloquial name; corrected to official
+  "Cut the Crap: An Economical Communication Pipeline for LLM-based Multi-Agent Systems"
+- wang2025agentdropout, zhou2025privacyrag, bassit2025securerag, zhao2024frag,
+  li2025securitylingua: official titles substituted for paraphrases.
+
+Venue / type corrections:
+- wang2024icf: EMNLP main -> Findings of EMNLP 2024 (with pages 2445-2460)
+- tang2024multihoprag: Findings of EMNLP 2024 -> COLM 2024 (the actual venue)
+- cheng2024xrag: @misc -> @inproceedings (NeurIPS 2024)
+- wang2025agentdropout: @misc -> @inproceedings (ACL 2025)
+- bai2024longbench: @misc -> @inproceedings (ACL 2025), full author list added
+- guo2025dynamic: @misc -> @inproceedings (Findings of EMNLP 2025)
+- bassit2025securerag: @misc -> @inproceedings (NeurIPS 2025 GenAI4Health workshop)
+
+Missing arXiv IDs added:
+- zhao2024frag: arXiv:2410.13272
+- addison2024cfedrag: arXiv:2412.13163
+
+park2025collaborative: citekey is misleading (first author is Rezazadeh, not Park) but
+key kept to avoid touching every \cite{} site. Author list now correctly lists
+Rezazadeh et al.
+
+Build: latexmk exit 0, biber found 65 citekeys, no warnings, 94 pages, main.pdf
+refreshed.
