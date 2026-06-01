@@ -53,32 +53,41 @@ COLORS = {
 
 
 def fig1_cliff_hero(h5_csv: str, out: Path) -> None:
-    """Figure 1: Coordination cliff across model sizes for family-a."""
+    """Figure 1: Single-compressor coordination cliff.
+
+    LLMLingua-2 on family-a under the in-regime Llama-3.1-8B planner,
+    five seeds per ratio. Coordination success collapses from ~1.0 at
+    r=1 to ~0 by r=6, with the cliff midpoint at tau* ~ 2.7x. The
+    three-planner model-scaling view is a separate figure
+    (h5_model_overlay) used for the Corollary-1 narrative.
+    """
     df = pd.read_csv(h5_csv)
-    df = df[df["family"] == "a"]
+    df = df[(df["family"] == "a") & (df["planner_model"] == "8B")]
     if df.empty:
-        print("  [skip] fig1: no family-a data in H5 results")
+        print("  [skip] fig1: no family-a 8B data in H5 results")
         return
 
+    agg = df.groupby("ratio")["coord_success"].agg(["mean", "std"]).reset_index()
     fig, ax = plt.subplots(figsize=(6, 4))
-    for model in sorted(df["planner_model"].unique(), key=lambda m: float(m.replace("B", ""))):
-        sub = df[df["planner_model"] == model]
-        agg = sub.groupby("ratio")["coord_success"].agg(["mean", "std"]).reset_index()
-        color = COLORS.get(model, "#333333")
-        ax.plot(agg["ratio"], agg["mean"], "o-", color=color, label=model, markersize=4)
-        ax.fill_between(
-            agg["ratio"],
-            (agg["mean"] - agg["std"]).clip(0),
-            (agg["mean"] + agg["std"]).clip(0, 1),
-            alpha=0.15, color=color,
-        )
-
+    color = COLORS.get("lingua2", "#1b9e77")
+    ax.plot(agg["ratio"], agg["mean"], "o-", color=color, markersize=5,
+            label="LLMLingua-2, family-a (Llama-3.1-8B planner)")
+    ax.fill_between(
+        agg["ratio"],
+        (agg["mean"] - agg["std"]).clip(0),
+        (agg["mean"] + agg["std"]).clip(0, 1),
+        alpha=0.15, color=color,
+    )
+    ax.axhline(0.5, ls=":", color="gray", alpha=0.6)
+    ax.axvline(2.7, ls="--", color="#d62728", alpha=0.7)
+    ax.annotate(r"$\tau^* \approx 2.7\times$", xy=(2.7, 0.5),
+                xytext=(4.3, 0.62), fontsize=10, color="#d62728",
+                arrowprops=dict(arrowstyle="->", color="#d62728"))
     ax.set_xlabel("Compression Ratio")
     ax.set_ylabel("Coordination Success")
-    ax.set_title("Coordination Cliff — Family A (Numeric Aggregation)")
+    ax.set_title("Coordination Cliff — LLMLingua-2 on Family A")
     ax.set_ylim(-0.05, 1.05)
-    ax.legend(title="Planner Size")
-    ax.axhline(0.5, ls=":", color="gray", alpha=0.5)
+    ax.legend(fontsize=8, loc="upper right")
     fig.savefig(out / "cliff_hero.pdf")
     fig.savefig(out / "cliff_hero.png")
     plt.close(fig)
@@ -298,9 +307,13 @@ def fig4_caac_pareto(caac_csv: str, out: Path) -> None:
                         markeredgewidth=0.8,
                         label=f"CAAC({inner})")
 
-        # Annotate per-family theta_q (the q_min CAAC enforces)
+        # Annotate per-family theta_q (the q_min CAAC enforces) and draw
+        # the q(r) = theta_q contour from the compounding-error model as a
+        # horizontal reference line, with the sub-threshold region shaded.
         theta = fam_theta.get(fam)
         if theta is not None:
+            ax.axhline(theta, ls="--", color="gray", alpha=0.7, linewidth=1.0)
+            ax.axhspan(-0.05, theta, color="gray", alpha=0.08)
             ax.text(0.98, 0.02, f"θ_q = {theta:.2f}",
                     transform=ax.transAxes, ha="right", va="bottom",
                     fontsize=9, alpha=0.85,
@@ -640,11 +653,16 @@ def fig_h5_model_overlay(h5_csv: str, out: Path) -> None:
     ax.set_title("Model Size Affects Ceiling, Not Cliff Position")
     ax.legend(title="Planner")
     ax.set_ylim(-0.05, 1.05)
-    if len(models) >= 2 and fam_a.groupby("planner_model")["coord_success"].mean().max() > 0.1:
-        ax.annotate("Same cliff position\n(all models ~3-4x)",
-                    xy=(3.5, 0.15), fontsize=9, color="red", ha="center",
-                    arrowprops=dict(arrowstyle="->", color="red"),
-                    xytext=(6, 0.4))
+    # Accurate annotation: only the 8B planner clears the threshold and
+    # exhibits a cliff; the 1.5B/3.8B planners sit at the floor
+    # (p0 < theta_q), so cliff invariance is not testable on them.
+    ax.annotate("Only the 8B planner clears the threshold\n"
+                "and exhibits a cliff; 1.5B / 3.8B show the\n"
+                r"floor effect ($p_0 < \theta_q$) — invariance"
+                "\nnot testable on these.",
+                xy=(4.0, 0.20), fontsize=8, color="#333333", ha="left",
+                arrowprops=dict(arrowstyle="->", color="#7570b3"),
+                xytext=(5.0, 0.55))
     fig.savefig(out / "h5_model_overlay.pdf")
     fig.savefig(out / "h5_model_overlay.png")
     plt.close(fig)
@@ -1003,34 +1021,42 @@ def fig_frontier_multi(out: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
     model_colors = ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#e6ab02"]
-    color_idx = 0
 
+    # Dedupe to a single series per model: when a model appears in several
+    # frontier dirs (e.g. qwen72b + qwen72b_e2, or gpt-oss v1 + v2), keep the
+    # dir with the most rows (the canonical / largest-n run). This removes the
+    # duplicate "gpt-oss-120b" and double-Qwen series the audit flagged.
+    best_by_model: dict[str, tuple[int, Path]] = {}
     for d in frontier_dirs:
         csv = d / "results.csv"
         if not csv.exists() or "smoke" in d.name:
             continue
         df = pd.read_csv(csv)
-        if df.empty:
+        if df.empty or "model" not in df.columns:
             continue
         model = df["model"].iloc[0]
-        # Skip duplicate versions (use v2 if exists)
+        if model not in best_by_model or len(df) > best_by_model[model][0]:
+            best_by_model[model] = (len(df), d)
+
+    for color_idx, (model, (_, d)) in enumerate(sorted(best_by_model.items())):
+        df = pd.read_csv(d / "results.csv")
         agg = df.groupby("ratio")["coord_success"].mean().reset_index()
         color = model_colors[color_idx % len(model_colors)]
-        # Shorten model name for legend
         short_name = model.split("/")[-1] if "/" in model else model
         ax.plot(agg["ratio"], agg["coord_success"], "o-", color=color,
                 label=short_name, markersize=5)
-        color_idx += 1
 
-    # Overlay local 8B if H5 exists
-    h5_hits = sorted(Path("results").rglob("h5*/results.csv"))
-    if h5_hits:
-        h5 = pd.read_csv(h5_hits[-1])
+    # Overlay local Llama-3.1-8B from the canonical H5 final run (the
+    # alphabetically-last rglob hit was an empty/smoke dir, which drew this
+    # line flat at 0). Family-a, 8B planner: p0=1.0, cliff near r=2.5.
+    h5_final = Path("results/h5_final/results.csv")
+    if h5_final.exists():
+        h5 = pd.read_csv(h5_final)
         h5a = h5[(h5["family"] == "a") & (h5["planner_model"] == "8B")]
         if not h5a.empty:
             agg = h5a.groupby("ratio")["coord_success"].mean().reset_index()
             ax.plot(agg["ratio"], agg["coord_success"], "s--", color="#666666",
-                    label="Llama-3.1-8B (local)", markersize=4, alpha=0.6)
+                    label="Llama-3.1-8B (local)", markersize=4, alpha=0.7)
 
     ax.set_xlabel("Compression Ratio")
     ax.set_ylabel("Coordination Success")

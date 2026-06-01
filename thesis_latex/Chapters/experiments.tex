@@ -12,17 +12,23 @@ rather than the chronology of the runs; canonical results directories
 under \texttt{results/} are referenced for each section so that
 every number is traceable to an immutable artefact on disk.
 
-\section{Pre-registration and Refinement}
+\section{Pre-specification and Refinement}
 \label{sec:prereg_refinement}
 
-The six investigations of this chapter were pre-registered with
+The six investigations of this chapter were pre-specified with
 falsifiable criteria in \texttt{configs/experiments/h\{1-6\}.yaml}
-and \texttt{plan-v3.md}. The criteria for H3, H5, and H6 were
+and \texttt{plan-v3.md}. The six hypotheses and the statistical
+protocol were committed to the project repository on 2026-05-21,
+prior to the data-generation runs that produced the headline
+numbers reported in this chapter (the final sweeps ran from
+2026-05-26 onward). This is a pre-specified protocol committed to
+version control, not a third-party-frozen pre-registration
+(e.g.\ OSF or AsPredicted). The criteria for H3, H5, and H6 were
 refined after the sweeps; the refinements are documented as ADR-006--008
 in the project repository. The three-tier structure used in the rest
 of the chapter:
 
-\textbf{Three hold as pre-registered.} H1 (workload-level QA-F1 does
+\textbf{Three hold as pre-specified.} H1 (workload-level QA-F1 does
 not transferably predict coordination success), H2 (a sharp cliff
 at \mbox{$\ge\!30$\%} drop with $p<0.05$ on \mbox{$\ge\!7/9$} cells),
 and H4 (compression reduces inference disclosure with baseline above
@@ -79,7 +85,7 @@ claim is internal to that family.
 $5$~pp F1 is the smallest gap the practitioner cost-model
 (EUR-per-workflow, Section~\ref{sec:h3}) makes operationally
 meaningful; opposite sign is what would justify regime-conditional
-deployment of P1 versus P2 at all. The pre-registered predicate is
+deployment of P1 versus P2 at all. The pre-specified predicate is
 what the data did not support, which is the H3 narrative.
 \item[H4 (paired-bootstrap $p < 0.05$, positive direction).]
 Paired bootstrap because the same workloads appear in the
@@ -668,8 +674,8 @@ deployment numbers.
 \caption{The coordination cliff. LLMLingua-2 on family-a, five
 seeds per ratio. Coordination success collapses from $\sim 1.0$ at
 $r=1$ to $\sim 0$ by $r=6$, with the cliff midpoint at
-$\tau^{*}\approx 2.7\times$. The shaded band is the workload-level
-$95\%$ bootstrap CI. This is the canonical reference image for the
+$\tau^{*}\approx 2.7\times$. The shaded band is $\pm 1$ standard
+deviation across seeds. This is the canonical reference image for the
 H2 finding; see Figure~\ref{fig:cliff_families} for the
 twelve-cell grid.}
 \label{fig:cliff_hero}
@@ -1040,23 +1046,29 @@ family-c.
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\textwidth]{../figures/predicted_vs_empirical.pdf}
-\caption{Predicted-versus-empirical $\tau^{*}$ for the
-family-c~$\times$~LLMLingua-2 cell. The shaded band on the right
-panel is the $95\%$ workload-level bootstrap CI on the predicted
-$\tau^{*}$ derived from CTR-based $\theta_q$; the dashed curve is
-the empirical cliff. The band reflects \emph{sampling}
-uncertainty in $\theta_q$ only --- the empirical $\tau^{*}$ falls
-outside the band here and on all other testable cells, which is
-the model's specification error rather than a sampling artefact
-(see prose above). The model is
-conservative on family-c ($\Delta\tau^{*}\approx +0.64$), which
-Corollary~2 explains via the family-c information-density
-estimate $\theta_\text{info}\approx 0.62$ being lower than
-family-a's $\theta_\text{info}\approx 0.97$. The numerical
-proximity of $\theta_\text{info}^{\,(c)}\approx 0.62$ and
+\caption{Predicted-versus-empirical $\tau^{*}$ across all eleven
+testable (compressor, family) cells, grouped by family
+(A/B/C). For each cell the thick bar is the $95\%$ workload-level
+bootstrap CI on the predicted $\tau^{*}$ (from CTR-based
+$\theta_q$) and the short horizontal line is the predicted
+median; the marker is the empirical $\tau^{*}$ ($\times$ = outside
+the band, $\circ$ = inside). The empirical $\tau^{*}$ falls
+outside the bootstrap band on \textbf{$0/11$ cells}: the band
+reflects \emph{sampling} uncertainty in $\theta_q$ only, so the
+systematic misses are the model's first-order specification error
+rather than a sampling artefact, and the predicted-$\tau^{*}$ band
+is therefore presented as an uncertainty-banded first-order model
+rather than a calibrated predictor. The gap is largest on the
+lower-information-density families. As a representative single
+cell, family-c~$\times$~LLMLingua-2: the model is conservative by
+$\Delta\tau^{*}\approx +0.64$, which Corollary~2 explains via the
+family-c information-density estimate
+$\theta_\text{info}\approx 0.62$ being lower than family-a's
+$\theta_\text{info}\approx 0.97$. (The numerical proximity of
+$\theta_\text{info}^{\,(c)}\approx 0.62$ and
 $\theta_q^{\,(c)} = 0.590$ is coincidental --- the two are
 computed by different methods on different quantities and are
-not interchangeable; see Section~\ref{sec:theta_info_def}.}
+not interchangeable; see Section~\ref{sec:theta_info_def}.)}
 \label{fig:predicted_vs_empirical}
 \end{figure}
 
@@ -1231,7 +1243,12 @@ $\tau^{*}_\text{Phi-3-3.8B} = 4.68$,
 $\tau^{*}_\text{Llama-3.1-8B} = 4.01$ --- a spread of
 approximately $\mathbf{24\%}$ ($23.91\%$ exactly) within the
 bootstrap CI of each cell, which is what an invariance result
-looks like rather than a monotonicity result. (The local arm is
+looks like rather than a monotonicity result. The spread metric is
+$(\tau^{*}_{\max}-\tau^{*}_{\min})/\bar{\tau^{*}}$, computed by
+\texttt{validate\_model\_independence()} from the unrounded
+per-model $\tau^{*}$ values ($3.694$, $4.681$, $4.012$); the
+$23.91\%$ figure is exact to two decimal places under this
+definition. (The local arm is
 therefore a \emph{three-architecture} invariance test, not a
 within-family parameter-count sweep: only the
 1.5B planner is Qwen; Phi-3-Mini (3.8B) and Llama-3.1 (8B) are
@@ -1335,7 +1352,15 @@ the compressor remains LLMLingua-2 at the same ratios. The
 question is the model-independence claim of Corollary~1: does the
 cliff position $\tau^{*}$ stay where the local-model cliff was, or
 does it shift with the planner? The three planners tested are
-Qwen-2.5-72B-Instruct, DeepSeek~V4~Pro, and GPT-oss~120B. The
+Qwen-2.5-72B-Instruct, DeepSeek~V4~Pro,\footnote{DeepSeek-V4-Pro
+is the ``Pro'' variant of DeepSeek-AI's V4 Preview release
+(announced April 2026), the most recent frontier release in the
+DeepSeek lineage at the time of the experimental run, and is
+distinct from the more widely known V3/R1 models. It was accessed
+via the OpenAI-compatible Featherless endpoint, which exposes a
+$32$K-token context window for this model; the experiments use that
+$32$K endpoint and make no claim about long-context behaviour
+beyond $32$K.} and GPT-oss~120B. The
 first two are standard non-reasoning frontier models; the third is
 an extended-reasoning model and is the calibrated-regime
 boundary case.
@@ -1588,7 +1613,12 @@ storage-bounded and an accuracy-bounded regime, with $\ge\!5$~pp
 effect. \textbf{Verdict: not satisfied} --- no sign-flip is
 observed. \textbf{Narrowed finding:} P1 (compress-first) is preferred
 over P2 (retrieve-first) in \emph{both} regimes; P3 (joint
-relevance-conditional routing) leads both. This does not reproduce,
+relevance-conditional routing) leads both on F1, but P3 routes
+fragments \emph{verbatim} (achieved compression $1.00\times$) ---
+so the cross-pipeline F1 gap is not a matched-compression
+comparison and does \emph{not} support a Pareto claim for P3
+(see Section~\ref{sec:h3_cost_caveat} for the cost-attribution caveat).
+This does not reproduce,
 on the single retriever/embedder stack tested here, the
 post-retrieval-compression preference of the
 LongLLMLingua~\cite{jiang2024longllmlingua} line of work.
@@ -2411,7 +2441,7 @@ numbers.
 \hline
 ID & Claim & Verdict & Canonical dir \\
 \hline
-\multicolumn{4}{l}{\textbf{Tier A --- Holds as pre-registered.}} \\
+\multicolumn{4}{l}{\textbf{Tier A --- Holds as pre-specified.}} \\
 H1 & QA-F1 does not transferably predict coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
 H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$ cells) & \texttt{h1\_h2\_v2/} \\
 H4 & Compression reduces inference disclosure & SUPPORTED on unbiased benchmark (3/4 compressors; destruction-monotonic privacy scope) & \texttt{h4\_unbiased\_v2/} \\
@@ -2421,7 +2451,7 @@ H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime (Ceiling--C
 H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff (Information-Density Scaling) & SUPPORTED (empirical observation, $n=3$ benchmarks) & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
 \hline
 \multicolumn{4}{l}{\textbf{Tier C --- Narrowed to a supported single-stack ordering.}} \\
-H3 & RAG sign-flip across regimes (pre-registered); compress-first dominance on the tested stack (refined) & Pre-registered predicate NOT satisfied; refined ordering SUPPORTED & \texttt{h3\_final/} \\
+H3 & RAG sign-flip across regimes (pre-specified); compress-first dominance on the tested stack (refined) & Pre-specified predicate NOT satisfied; refined ordering SUPPORTED & \texttt{h3\_final/} \\
 \hline
 \end{tabular}
 \end{table}

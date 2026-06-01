@@ -83,7 +83,7 @@ def c1_architecture_overview(out: Path) -> None:
     ax.set_ylim(0, 6.5)
     ax.set_aspect("equal")
     ax.axis("off")
-    ax.set_title("System Architecture: Distributed Memory Bus", fontsize=13,
+    ax.set_title("System Architecture: Memory Bus", fontsize=13,
                  fontweight="bold", pad=15)
 
     # Data sources (left)

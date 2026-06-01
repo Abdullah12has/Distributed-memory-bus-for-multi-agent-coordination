@@ -116,21 +116,21 @@ ground-truth aggregate.
   "seed": 1247,
   "tag_distribution": "skewed",
   "initial_prompt":
-    "Aggregate the period-end report for project P-3219 across the
-     following systems: publication_db, contract_db, moodle, patio,
-     peppi, crm, tatu_sap, sap_travel. Report total hours and total
+    "Aggregate the period-end report for project P-0001 across the
+     following systems: system_1, system_2, system_3, system_4,
+     system_5, system_6, system_7, system_8. Report total hours and total
      budget.",
   "expected_answer": "hours=853;budget=148340",
   "n_agents": 8,
   "fragments": [
     {
-      "fragment_id": "c1-a-007/publication_db",
-      "text": "[publication_db] Project P-3219 - period 2025-Q3. ...",
+      "fragment_id": "c1-a-007/system_1",
+      "text": "[system_1] Project P-0001 - period 2025-Q3. ...",
       "tags": {"acl_mask": 12876, "classification": 1}
     },
     {
-      "fragment_id": "c1-a-007/contract_db",
-      "text": "[contract_db] Project P-3219 - period 2025-Q3. ...",
+      "fragment_id": "c1-a-007/system_2",
+      "text": "[system_2] Project P-0001 - period 2025-Q3. ...",
       "tags": {"acl_mask": 8901, "classification": 2}
     }
     // (six more fragments, one per system)
@@ -139,8 +139,8 @@ ground-truth aggregate.
     {
       "sub_task_id": "c1-a-007/sub-0",
       "description":
-        "Extract recorded hours and budget for project P-3219 from
-         publication_db.",
+        "Extract recorded hours and budget for project P-0001 from
+         system_1.",
       "expected_solver": "worker-0",
       "expected_answer": "hours=112;budget=18420"
     }
@@ -148,11 +148,11 @@ ground-truth aggregate.
   ],
   "protected_facts": [
     {
-      "fragment_id": "c1-a-007/contract_db",
-      "fact": "contract_db.budget=22150",
+      "fragment_id": "c1-a-007/system_2",
+      "fact": "system_2.budget=22150",
       "yesno_questions": [
-        "Did contract_db for project P-3219 exceed EUR 27150 in budget?",
-        "Was contract_db's recorded hours for P-3219 more than 142?"
+        "Did system_2 for project P-0001 exceed EUR 27150 in budget?",
+        "Was system_2's recorded hours for P-0001 more than 142?"
       ],
       "answers": ["no", "no"]
     }
@@ -262,7 +262,7 @@ $ curl -X POST http://localhost:8000/v1/write \
        -d @- <<'EOF'
 {
   "fragment_id": "demo-001",
-  "text": "Project P-3219 quarterly hours: 112; budget: EUR 18420.",
+  "text": "Project P-0001 quarterly hours: 112; budget: EUR 18420.",
   "tags": {"acl_mask": 12876, "classification": 2},
   "target_ratio": 4.0,
   "compressor": "lingua2"
@@ -277,7 +277,7 @@ EOF
 $ curl -H "X-M6-Principal: principal=alice;acl=0xFFFF;cls=3" \
        http://localhost:8000/v1/read/slot-1a4b9c2d
 {"slot_id": "slot-1a4b9c2d",
- "compressed_text": "Project P-3219 hours: 112 budget: 18420.",
+ "compressed_text": "Project P-0001 hours: 112 budget: 18420.",
  "compressor": "lingua2", "achieved_ratio": 3.72,
  "tags": {"acl_mask": 12876, "classification": 2},
  "created_at": "2026-05-30T07:42:15Z"}

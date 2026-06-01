@@ -9,10 +9,9 @@ million tokens through an API or amortises through on-premises
 hardware. Peer-reviewed measurements of inference-side cost are
 recent but consistent. Luccioni \emph{et~al.}'s 2024 \emph{Power
 Hungry Processing} study reports per-inference Watt-hour numbers
-for a broad set of open models, and finds that the wall-power cost
-of a single text-generation inference call on a modestly-sized
-model is within an order of magnitude of the wall-power cost of an
-internet search~\cite{luccioni2024powerhungry}; Samsi
+for a broad set of open models, measuring a text-generation energy
+on the order of $0.1$~Watt-hours per inference for a 6--7B-class
+open model~\cite{luccioni2024powerhungry}; Samsi
 \emph{et~al.}~\cite{samsi2023words} benchmark the energy cost of
 LLM inference directly and show it scales with the number of tokens
 processed, and Pope \emph{et~al.}~\cite{pope2023efficiently}
@@ -81,10 +80,9 @@ are dominated by token cost. Anthropic's own published report on
 their multi-agent research system notes that token usage explains
 approximately $80\%$ of the performance variance they
 observe~\cite{anthropic2025multiagent}; the corresponding
-context-engineering and context-editing reports describe an
+context-management report describes an
 $84\%$ token reduction on a 100-turn web-search
-evaluation~\cite{anthropic2025contextediting,
-anthropic2025contextengineering}. These are industry observations
+evaluation~\cite{anthropic2025contextediting}. These are industry observations
 on industry workflows; the master's-scale problem is the
 controlled cross-compressor, cross-task, cross-architecture
 measurement that turns the industry urgency into a technical
@@ -160,6 +158,32 @@ a deployment-time enforcement mechanism?
 
 The thesis answers all four with four artefacts, each delivered
 end-to-end and reproducible from the open-source repository.
+
+\subsection{Research questions and their mapping to hypotheses}
+\label{sec:rq_mapping}
+
+The four sub-questions above are stated as research questions and
+each is operationalised by one or more of the falsifiable
+hypotheses (H1--H6) that structure \charef{experiments}:
+
+\begin{description}\setlength\itemsep{2pt}
+\item[RQ1 (metric).] Does a coordination-quality metric on a
+multi-fragment workflow behave differently from single-agent
+question-answering accuracy? --- operationalised by \textbf{H1}.
+\item[RQ2 (characterisation).] Does compression induce a
+coordination cliff, and what determines its position? ---
+operationalised by \textbf{H2} (existence and sharpness),
+\textbf{H5}/\textbf{Corollary~1} (invariance to planner scale),
+and \textbf{H6}/\textbf{Corollary~2} (scaling with task
+information density).
+\item[RQ3 (deployment).] How should compression be combined with
+retrieval, and what is the cost trade-off across pipeline
+architectures? --- operationalised by \textbf{H3}.
+\item[RQ4 (governance).] Can compression be measured as a privacy
+lever and exposed as a deployment-time enforcement mechanism by a
+memory-bus service? --- operationalised by \textbf{H4} and the
+memory-bus integration of \charef{experiments}.
+\end{description}
 
 \section{Contributions}
 \label{sec:contributions}
