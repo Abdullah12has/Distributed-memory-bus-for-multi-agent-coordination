@@ -1,3 +1,57 @@
 \begin{thesisabstract}{finnish}
-\tiivistelmametadata
+
+Monivaiheiset suurten kielimallien työnkulut maksavat
+jokaisesta lukemastaan tokenista, joten kontekstin
+tiivistäminen on luonteva säätökeino. Yhden agentin
+kehotteentiivistämistä koskeva kirjallisuus on kypsää,
+mutta se mittaa kysymys--vastaus-tarkkuutta yhdellä
+fragmentilla, kun taas tuotannon työkuormat yhdistävät
+tietoa useasta tiivistetystä fragmentista. Sitä,
+ennustaako yhden agentin kysymys--vastaus-tarkkuus tätä
+vaikeampaa ominaisuutta, ei ole aiemmin testattu.
+
+Ei ennusta. Uudessa $150$ instanssin monifragmenttisessa
+vertailutestissä, joka kattaa faktojen yhdistämisen
+dokumenttien välillä, rajoiteperustaisen suunnittelun ja
+monivaiheisen tiedonhaun, neljä koulutusta vaatimatonta
+tiivistäjää kymmenellä tiivistyssuhteella tuottaa
+työkuormatason Spearman-korrelaatiot QA-F1-mittarin ja
+koordinaation onnistumisen välillä; korrelaatiot ovat
+välillä $[-0{,}82, +0{,}32]$, ja kaikki $95\,\%$:n
+bootstrap-luottamusvälit sulkevat pois arvon $0{,}6$.
+Tiivistämiskirjallisuutta hallitsevat yhden agentin
+vertailutestit asettavat siten tiivistäjät
+järjestelmällisesti väärään järjestykseen
+monifragmenttista käyttöä ajatellen.
+
+Mekanismi on jyrkkä koordinaation jyrkänne $\tau^{*}$,
+joka esiintyy $11$ solussa $12$:sta (tiivistäjä, perhe).
+Kumuloituvan virheen malli johtaa kynnysrakenteen
+perhekohtaisesta kriittisten tokenien recall-rajoitteesta
+ja palauttaa empiirisen sijainnin ensimmäisen kertaluvun
+tarkkuudella (mediaani $\approx 35\,\%$ suhteellinen
+virhe). Kalibroidulla alueella jyrkänteen sijainnissa ei
+havaittu siirtymää paikallisen Llama-3.1-8B-suunnittelijan
+ja huipputason Qwen-2.5-72B-suunnittelijan välillä,
+vaikka parametrimäärä kasvoi $9$-kertaiseksi ja
+arkkitehtuuriperhe vaihtui; laajennettua päättelyä
+käyttävät suunnittelijat jäävät tämän alueen ulkopuolelle.
+Tiivistäminen vähentää myös suojattujen faktojen
+päättelyilmaisua, mutta suhteessa siihen, kuinka
+aggressiivisesti kukin tiivistäjä tuhoaa lähdetokeneita,
+ei yksityisyyteen kohdistuvan suodatuksen kautta.
+
+Kolme ennalta rekisteröityä hypoteesia (H1, H2, H4) saa
+tuen sellaisinaan. Kaksi (H5, H6) terävöityi analyysin
+aikana muotoon \emph{Seurauslause~1
+(katto--jyrkänne-erottelu)} ja \emph{Seurauslause~2
+(informaatiotiheyden skaalautuminen)}; molemmat saavat
+tuen täsmennettyjen kriteerien mukaan. H3 kapeni
+regiimien välisen merkkivaihdon ennustuksesta yhden
+pinon tiivistä-ensin-järjestykseksi. Tuloksena on
+käsikirjoitus ja avoimen lähdekoodin viitetoteutus
+käytäntöä valvovasta muistiväylästä, joka on
+toistettavissa yhdellä komennolla esilasketun
+tiivistämisvälimuistin avulla.
+
 \end{thesisabstract}

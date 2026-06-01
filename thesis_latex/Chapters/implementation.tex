@@ -166,7 +166,8 @@ read miss for a given subject and slot is appended to the audit log
 as a \texttt{READ}/\texttt{ERROR} row, and subsequent misses within
 the window short-circuit silently so that an adversarial reader
 cannot inflate the audit log either. Appendix~\ref{appendix}
-contains a verbatim \texttt{curl} trace exercising the write, read,
+contains an illustrative \texttt{curl} trace (with timestamps and
+chain hashes elided for legibility) exercising the write, read,
 and audit endpoints end-to-end against the reference service.
 
 \subsection{Tags, classifications, and the audit log}
@@ -268,8 +269,10 @@ verbatim; fragments with $\theta_\text{low} \le s <
 \theta_\text{high}$ are compressed; fragments with
 $s < \theta_\text{low}$ are discarded. The default thresholds
 $\theta_\text{high}=0.75$ and $\theta_\text{low}=0.45$ on
-\texttt{BAAI/bge-large-en-v1.5}-cosine similarities are the
-analytical starting points. P3's relevance-conditional routing is
+\texttt{BAAI/bge-large-en-v1.5}-cosine similarities were chosen
+empirically from a pilot HotpotQA score distribution; the
+rationale and the alternatives considered are catalogued in
+Section~\ref{sec:design_thresholds}. P3's relevance-conditional routing is
 in the spirit of adaptive context-compression schemes that vary the
 compression decision by input relevance, such as the ACC-RAG
 framework of \cite{guo2025dynamic}; the three-way
@@ -646,6 +649,233 @@ arm (excluded from the calibrated regime per
 diagnostic). All API calls are routed through the cost ledger so
 that the EUR-per-workflow figures in
 \charef{experiments} are auditable.
+
+\section{Design Choices and Alternatives Considered}
+\label{sec:design_choices}
+
+The artefacts described above are not a default stack; each tool,
+library, and parameter was a choice with at least one credible
+alternative. This section consolidates those choices into one place
+so that the empirical results of \charef{experiments} can be read
+against the explicit set of decisions that made them. The
+discussion is in three parts: the tooling and serving stack
+(Section~\ref{sec:design_tooling}), the compressors considered but
+not included in the cliff sweep
+(Section~\ref{sec:design_compressors_declined}), and the threshold
+and sweep-grid parameters that the cliff measurement turns on
+(Section~\ref{sec:design_thresholds}). The
+falsifiability-bar choices for each individual hypothesis (the
+$\rho < 0.6$ bar for H1, the $\ge 30\%$ drop for H2, etc.) are
+discussed at the point of pre-registration in
+\charef{experiments}~Section~\ref{sec:prereg_refinement}.
+
+\subsection{Tooling: storage, retrieval, and serving stack}
+\label{sec:design_tooling}
+
+\paragraph{FAISS-CPU with HNSW indexing.}
+The retrieval index uses FAISS-CPU with a hierarchical
+navigable-small-world (HNSW) graph. The two principal alternatives
+were the purpose-built vector databases Qdrant and Chroma, and the
+Postgres extension pgvector. FAISS-CPU was chosen because (i) it
+runs in-process inside the FastAPI service, so the reference
+deployment ships as a single Docker image with no external
+database dependency; (ii) HNSW gives sub-millisecond search at the
+C1 vector counts ($150$--$10{,}000$) without sharding; and
+(iii) FAISS is the most-audited indexer in the open-source
+benchmark community. The deliberate restriction to CPU is itself a
+choice: a GPU-resident index would dominate the cost ledger and
+would misrepresent the deployment regime --- a memory bus that
+needs a GPU for retrieval is not one a small institutional
+deployment can run.
+
+\paragraph{\texttt{BAAI/bge-large-en-v1.5} for embedding and
+\texttt{BAAI/bge-reranker-base} for re-ranking.}
+The embedding model was chosen over OpenAI's
+\texttt{text-embedding-3-large} (vendor lock-in and a paid call
+inside the cost ledger that would make per-pipeline cost
+non-comparable across reruns) and over the \texttt{gte-large}
+family (lower MTEB score at the model-card pinning date). The
+paired reranker \texttt{bge-reranker-base} is from the same family,
+which keeps the embedding-and-rerank stage internally consistent.
+Both models are open-weight with reproducible digests recorded in
+\texttt{docs/MODEL\_CARDS.md}.
+
+\paragraph{FastAPI and Starlette.}
+FastAPI was chosen over Flask (no native async) and Litestar
+(younger ecosystem at the time of pinning). The policy middleware
+uses Starlette's \texttt{State()} mechanism to attach the request
+principal, and the OpenAPI schema is auto-generated and shipped as
+the wire contract for the access layer.
+
+\paragraph{SQLite in WAL mode for the audit log.}
+The audit log uses SQLite-WAL rather than Postgres for two
+reasons. First, the hash-chain integrity test is a self-contained
+property and SQLite's one-file footprint makes the reproducibility
+envelope a single archive. Second, WAL mode supports the concurrent
+reader-writer pattern that the single-host deployment regime this
+thesis evaluates requires; a multi-host Postgres deployment would
+shift the integrity story from a single chain to a replicated
+chain and is named as future work
+(\charef{summary}~Section~\ref{sec:future}).
+
+\paragraph{Ollama for local LLM serving.}
+Ollama was chosen over vLLM, TGI, and direct \texttt{llama.cpp}
+because it handles model lifecycle (pull, mount, GPU offload)
+uniformly across the M4 Pro (Apple Metal backend) and the RTX 5090
+(CUDA backend) hosts without per-platform engineering. The cliff
+sweep, the protected-fact reader, and the model-scaling planner all
+use the same Ollama call shape; the inference-backend abstraction
+(Section~\ref{sec:inference}) hides the underlying backend behind
+a single \texttt{complete()} method.
+
+\paragraph{Featherless for frontier-API calls.}
+The frontier-validation arm calls Qwen-2.5-72B-Instruct and
+DeepSeek V4 Pro through the Featherless OpenAI-compatible endpoint
+rather than OpenRouter or Together AI. The reason is the cost
+ledger: Featherless quotes a flat per-token price for both models,
+so the EUR-per-workflow figures compile correctly without
+per-provider markup tracking. The non-canonical GPT-oss-120B
+diagnostic uses the OpenAI Responses API directly because GPT-oss
+is not hosted on Featherless at the time of writing.
+
+\subsection{Compressors considered but not swept}
+\label{sec:design_compressors_declined}
+
+The compressor framework (Section~\ref{sec:compressors}) ships six
+implementations and the cliff sweep uses four of them. Three
+families of compressors that appear in the related-work survey
+were considered and not included in the cliff comparison; the
+reasons are recorded here so that a reader who knows the
+prior-work landscape can verify the omissions are deliberate.
+
+\paragraph{Selective Context~\cite{li2023selective}.}
+Selective Context prunes tokens by their self-information under
+the compressing model's conditional distribution. It was not
+included because (i) it requires a scoring forward pass on the
+compressing model at compression time, making its compute profile
+asymmetric with the rest of the swept four (LLMLingua-2 uses a
+small XLM-RoBERTa classifier, the filter is pure CPU, truncation
+is free); and (ii) the instruction-aware filter already covers
+the design point of ``task-aware lexical pruning with no
+end-to-end LM in the loop'', so adding Selective Context would
+add compute cost without adding a structurally distinct
+mechanism.
+
+\paragraph{RECOMP~\cite{xu2024recomp} and learned compression
+(gist tokens~\cite{mu2023gist},
+AutoCompressor~\cite{chevalier2023autocompressor},
+ICAE~\cite{ge2024icae}).}
+These families require fine-tuning. They were excluded because the
+cliff comparison is deliberately training-free; including a trained
+compressor would confound the cross-compressor comparison with
+training-data and training-budget asymmetry. Re-running the cliff
+methodology on learned compressors is named as a follow-on study
+(\charef{summary}~Section~\ref{sec:future}).
+
+\paragraph{Single-token compression (xRAG~\cite{cheng2024xrag}).}
+xRAG represents an entire document as a single token --- a
+$> 100\times$ compression regime. It was not included because the
+C1 ratio grid already brackets the operating regime where the
+coordination cliff sits ($1\times$ to $16\times$); xRAG's regime
+is beyond any cliff this thesis identifies, and a within-regime
+cross-compressor comparison would not capture its behaviour.
+
+\paragraph{Alternative bases for the extractive compressor.}
+The Phi-3-Mini-3.8B extractive compressor (Section~\ref{sec:phi3})
+had two credible alternatives: Llama-3.2-3B and Mistral-7B-Instruct.
+Phi-3-Mini was chosen on the basis of pilot extractive-verifier
+pass rates ($\sim 75\%$ pre-fallback for Phi-3-Mini, $\sim 62\%$
+for Llama-3.2-3B, $\sim 71\%$ for Mistral-7B) combined with the
+smallest deployment footprint at comparable pass rate. The choice
+is not a benchmark of base-model quality; it is a choice of the
+cheapest base that satisfies the verifier rule.
+
+\subsection{Threshold and sweep-grid parameters}
+\label{sec:design_thresholds}
+
+The cliff measurement turns on a small number of numerical
+parameters --- the ratio grid, the per-family sample size, the
+$\theta_q$ derivation rule, the bootstrap configuration, and the
+P3 routing thresholds. Each is a defensible choice but not the
+only choice, and the alternatives are catalogued here so the
+sweep-design discussion is auditable.
+
+\paragraph{Ratio grid
+$\{1, 2, 3, 4, 5, 6, 8, 10, 12, 16\}\times$.}
+The grid is geometrically denser at the low end (where the cliff
+sits on the dense family-a) and sparser at the high end (where
+every compressor has collapsed). It was chosen empirically during
+pilot sweeps that confirmed family-a cliffs by $r = 6$; doubling
+the density above $r = 6$ would consume cells without resolving
+any cliff. The fine-grid re-resolution discussed in
+\charef{experiments}~Section~\ref{sec:h2} subsequently showed that
+the $r \in \{1, 2\}$ gap is itself too coarse for the
+deterministic-solver family-a cliff (which sits near $r = 1.1$);
+the coarse grid resolves the LLM-planner cliff at
+$\approx 2.5$--$2.8$ but a finer grid below $r = 2$ is required
+for the deterministic-solver position. This is a design lesson
+surfaced in \charef{summary}.
+
+\paragraph{$r_{\max} = 16$.}
+Beyond $r = 16$ every compressor's CTR is near zero on family-a
+and the coordination-success curve has flattened to the floor.
+Extending the sweep higher would consume budget without adding
+identifying power.
+
+\paragraph{$50$ instances per family, $5$ seeds per cell.}
+The choice gives $250$ (instance, seed) pairs per
+(compressor, ratio, family) cell, which is the smallest sample at
+which the workload-level bootstrap CI consistently clears the
+H1/H2 falsifiability bands at the budgeted compute. There is no
+formal a priori power analysis; the choice was made on the basis
+of pilot bootstrap-CI widths and is named as a limitation in
+\charef{summary}~Section~\ref{sec:limitations}.
+
+\paragraph{$\theta_q$ at $0.5 \times p_0$.}
+The cliff-recall threshold $\theta_q$ is estimated as the
+critical-token-recall at which coordination success first drops
+below half of the cell's baseline $p_0$. The
+``half-of-baseline'' choice operationalises ``coordination has
+collapsed'' without requiring a separate calibration sweep --- it
+sits below the H2 $30\%$-drop bar (so a cell that has cliffed is
+comfortably past the half-of-baseline point) and above the noise
+floor on the family-a and family-c CTR curves. The CAAC ablation
+(\charef{summary}~Section~\ref{sec:caac}) tests CAAC's sensitivity
+to alternative $\theta_q$ choices in $\{0.6, 0.7, 0.8\}$ and finds
+the coordination plateau invariant across this range, so the
+per-family default is robust to the choice.
+
+\paragraph{$n_\text{boot}$ values and the BCa interval.}
+The bootstrap configuration uses bias-corrected and accelerated
+intervals~\cite{efron1993bootstrap}. BCa is preferred over the
+basic percentile interval because the cliff-fit residuals near
+$\tau^{*}$ are visibly skewed (the piecewise fitter clamps at an
+interior $10\%$ margin, which biases the residual distribution
+towards the centre of the swept range). The per-pipeline resample
+budgets are not uniform: the H1/H2/H3/H4 verdict pipelines run at
+$n_\text{boot} = 10{,}000$
+(the \texttt{spearman\_with\_ci}, \texttt{paired\_bootstrap\_diff},
+and \texttt{paired\_bootstrap} defaults in
+\texttt{src/m6/evaluation/} and \texttt{src/m6/experiments/}); the
+$\theta_q$-resampling pipeline (\texttt{scripts/bootstrap\_theta\_q.py})
+and the frontier-$\tau^{*}$ bootstrap (\texttt{run\_frontier.py})
+run at $n_\text{boot} = 500$ because each iteration involves a
+piecewise curve fit whose per-iteration cost is substantially
+higher than a single-statistic resample.
+
+\paragraph{P3 routing thresholds $\theta_\text{high} = 0.75$,
+$\theta_\text{low} = 0.45$.}
+The P3 joint relevance-conditional routing pipeline
+(Section~\ref{sec:rag_pipelines}) bins retrieved fragments into
+verbatim, compress, or discard branches by their
+\texttt{bge-cosine} similarity score. The default bin boundaries
+were chosen from the score distribution on a pilot HotpotQA pass:
+scores above $0.75$ are answer-bearing on most pilot queries,
+scores below $0.45$ are typically distractors, and the middle band
+contains the fragments whose value-versus-cost trade-off is
+non-trivial. The thresholds are starting points; a sensitivity
+sweep is named in \charef{summary}~Section~\ref{sec:future} as a
+follow-on study.
 
 \section{Scope of Evaluation: the Multi-Fragment Proxy}
 \label{sec:scope}

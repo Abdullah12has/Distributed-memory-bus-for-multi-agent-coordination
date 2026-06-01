@@ -6,7 +6,8 @@ text but would interrupt its narrative: the memory-bus HTTP contract
 every experiment runner (Appendix~B), an example C1 workload
 instance from family~(a) showing the source-fragment structure
 (Appendix~C), and a one-command reproducibility recipe together with
-a verbatim \texttt{curl} trace exercising the memory-bus endpoints
+an illustrative \texttt{curl} trace (with timestamps and chain hashes
+elided for legibility) exercising the memory-bus endpoints
 (Appendix~D). The full reproducibility package, including the
 model cards and the data cards, is shipped with the open-source
 release referenced in the closing section of
@@ -249,8 +250,9 @@ endpoints of the memory bus end-to-end against the
 \texttt{docker-compose}-up'ed reference service. The trace is
 the rubric-\#5 evidence for the C4 contribution: the memory bus
 is a running system, not a paper design. The output of each step
-is reproduced verbatim from a run against the reference image
-tagged \texttt{m6-memory-bus:thesis-v1.0}.
+is reproduced from a run against the reference image
+tagged \texttt{m6-memory-bus:thesis-v1.0}, with timestamps and chain
+hashes elided for legibility.
 
 \begin{verbatim}
 # Step 1: Write a CONFIDENTIAL fragment with target ratio 4x.

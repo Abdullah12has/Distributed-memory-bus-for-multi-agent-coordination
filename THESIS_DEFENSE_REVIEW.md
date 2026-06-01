@@ -21,12 +21,12 @@ The headline finding of this review is **not** that the thesis is weak. It is th
 | 7 | Significance | **3/5** | Synthetic benchmark + single-call + single-host + no multi-agent caps it at "expected." |
 | 8 | Initiative | **3/3** | Clearly active/self-directed. |
 | 9 | Language | **3–4/5** | Dense but precise; needs a legibility pass. |
-| 10 | Layout / Conformity | **AT RISK (1–2 if Finnish abstract missing, else 3)** | **Tiivistelmä is the #1 formal blocker.** Also regenerate flagged figures. |
+| 10 | Layout / Conformity | **3 achievable** | Finnish abstract **not required** (confirmed 2026-06-01) — no longer a blocker. Regenerate flagged figures; legibility pass. |
 
-**Realistic overall:** with the Tiivistelmä resolved and the H1/H2 emphasis inverted, this lands in the **"good" band** (Oulu ~3–4 weighted). Exceptional rigour/honesty pulls #6 high; the scope-vs-title gap and the reframed-nulls pattern cap #5/#7 at "expected." **If the Finnish abstract is missing at submission, the realistic range drops a full band** (#10 collapse + possible administrative return).
+**Realistic overall:** with the H1/H2 emphasis inverted and the overclaim/number cleanup done, this lands in the **"good" band** (Oulu ~3–4 weighted). Exceptional rigour/honesty pulls #6 high; the scope-vs-title gap and the reframed-nulls pattern cap #5/#7 at "expected." (The Finnish abstract is confirmed not required, so #10 is no longer at risk.)
 
 ### The 5 things to defend above all (in priority order)
-1. **The Tiivistelmä / conformity blocker** — resolve before submission (see §2). This is administrative, not intellectual, and it is the highest formal risk in the document.
+1. **Kill the abstract + closing overclaims that contradict your own body** (detailed before→after in **§6**). The visible abstract page is already clean; the stale copies live in the `\abstract{}` PDF-metadata block of `main.tex` and the Closing of `summary.tex`. These are the cheapest points an examiner can score, and fixing them costs minutes.
 2. **Lead with H2 (the cliff), not H1.** H2 is the one clean, positively-stated, well-powered affirmative result. H1 is a *negative* correlation result with 8/12 degenerate cells. Reframing H2 as the headline and H1 as "why existing QA benchmarks are structurally blind to it" converts a "thesis of nulls" first impression into "a thesis with one clean new phenomenon."
 3. **The honesty/self-audit record is your answer to every "reframed nulls / HARKing" attack.** Pre-registration is *stated*, failures are reported with exact magnitudes (H6 at 320% off), reframes carry their own falsifiable tests, and two reframes stay null. A HARKer hides the original prediction; you foreground it. Say this out loud.
 4. **The single-call scope is an identification strategy, not evasion.** Multi-round LLM variance provably dominates the compression signal; isolating the compressor on a single-call critical path is the *correct* experimental design to attribute the effect. A multi-round setup would be *less* rigorous, not more. Multi-fragment solvability is a genuine *necessary condition* for any downstream coordination — if a single planner with all fragments can't solve it post-compression, no negotiation protocol can.
@@ -38,12 +38,13 @@ The headline finding of this review is **not** that the thesis is weak. It is th
 
 These are cheap, factual, and indefensible if left in. An examiner who finds one on screen damages #6/#9/#10 and your credibility on every *other* number.
 
-1. **Finnish abstract (Tiivistelmä).** `Chapters/tiivistelma.tex` — verify the Finnish body is present (the English-side `\tiivistelma{}` in `main.tex` exists; confirm the chapter file isn't metadata-only). If a supervisor-signed exemption exists for the international MSc track, have it on file. **Highest formal risk, lowest effort.**
-2. **Abstract ↔ body contradictions (4 trivial wordings in `main.tex \abstract{}`):**
-   - "decorrelates from coordination success" → "does **not positively predict** … for any compressor tested" (the body deliberately disowned "decorrelate"; filter is ρ=−0.82, an anti-correlation).
-   - "a compounding-error model that **predicts its position**" → "…that **explains the cliff's threshold structure and gives a first-order position estimate**" (the body says the bootstrap band excludes empirical τ* on 11/11 cells).
-   - "cross-architecture **validated** on Qwen-72B and DeepSeek V4 Pro" → "cross-architecture **consistency-checked** on Qwen-72B (DeepSeek V4 Pro weakly corroborating)."
-   - "compress-first is **robustly preferred** in both … regimes" → "…**consistently but modestly preferred (2–3pp F1) on the single embedding+index stack evaluated**."
+1. ~~Finnish abstract (Tiivistelmä).~~ **RESOLVED — not required (confirmed 2026-06-01).** The Finnish `\tiivistelma{}` metadata block is already removed from `main.tex`; no action needed.
+2. **Abstract ↔ body contradictions (4 wordings in the `main.tex \abstract{}` PDF-metadata block; plus the Closing of `summary.tex`).** Key point: the **visible** abstract page (`Chapters/abstract.tex`) is *already* correctly hedged — only the metadata copy and the Closing are stale. **Full before→after text is in §6 (approval needed).** Summary of the four:
+   - "decorrelates from coordination success" → "does **not positively predict** … for any compressor tested" (the body, experiments.tex:159, deliberately disowned "decorrelate"; filter is ρ=−0.82, an anti-correlation).
+   - "a compounding-error model that **predicts its position**" → "…that **explains its threshold structure and recovers the empirical position only to first order**" (the body: bootstrap band excludes empirical τ* on 11/11 cells).
+   - "cross-architecture **validated** on Qwen-72B and DeepSeek V4 Pro" → "cross-architecture **consistency-checked … no cliff shift detected** between Llama-3.1-8B and Qwen-2.5-72B (DeepSeek V4 Pro corroborating weakly)."
+   - "compress-first is **robustly preferred** in both … regimes" → "…**consistently but modestly preferred (2–3 pp F1) over retrieve-first on the single embedding-and-index stack evaluated**."
+   - Closing (`summary.tex`): "validated across … planner scales, architectures … with a **predictive model**" → downgrade "validated" → "no-shift-detected rather than established" and "predictive model" → "first-order position model."
 3. **Verdict-label over-reads:**
    - Corollary 1 box (experiments.tex ~L900) and verdict table (~L2129): change **"SUPPORTED"** → **"NO SHIFT DETECTED (equivalence not established; ±20% TOST not passed)."** Your own validator writes `corollary1_supported: false`; keeping "SUPPORTED" invites the examiner to quote the false flag against the box.
    - Corollary 2: rename **"Corollary 2"** → **"Empirical Observation 2"** (or footnote that "Corollary" is a plan-naming convention, not formal deduction — the box itself says it is "not a derived consequence").
@@ -298,5 +299,87 @@ The web-grounding pass surfaced genuine prior art the thesis does **not** curren
 
 ---
 
+## 6. Detailed fix plan — Abstract + Closing overclaims (APPROVAL NEEDED before editing)
+
+**Scope of this plan:** the four overclaim wordings the examiner can score cheapest, plus the matching overclaim in the Closing paragraph. **Key finding from verification (2026-06-01):**
+
+- The **visible, graded abstract page** (`thesis_latex/Chapters/abstract.tex`) is *already* correctly hedged — it says "It does not [predict]", "recovers the empirical position to first order (median ≈35% relative error)", "no detected shift between … Llama-3.1-8B … and … Qwen-2.5-72B", and "H3 narrowed … to a single-stack compress-first ordering." **No change needed there.**
+- All four overclaims survive **only** in the `\abstract{}` **PDF-metadata block** of `thesis_latex/main.tex` (lines 71–96) — the stale copy the template says should "remain identical to" the rendered page. This is what shows in PDF document properties / accessibility metadata.
+- The **Closing** of `thesis_latex/Chapters/summary.tex` (lines 813–817) carries the matching "validated across … planner scales … with a predictive model" overclaim in the body text.
+- The Finnish `\tiivistelma{}` metadata is already gone, so there is **no Finnish copy to fix**.
+
+Constraint for the metadata block: the `\abstract{}` macro feeds PDF metadata and should avoid bare `%`, multiple paragraphs, and special characters — so the replacements below are plain text (no math, no `%`), mirroring the rendered page's meaning.
+
+### Fix A — `main.tex` abstract, lines 84–86 (covers overclaim #2 "predicts position" + #3 "validated on Qwen/DeepSeek")
+
+> **CURRENT:**
+> `with a compounding-error model that predicts its position from`
+> `per-round token recall, cross-architecture validated on Qwen-72B`
+> `and DeepSeek V4 Pro within a calibrated regime.`
+
+> **PROPOSED:**
+> `with a compounding-error model that explains its threshold`
+> `structure and recovers the empirical position only to first order`
+> `from per-round token recall. Within a calibrated regime the cliff`
+> `shows no detected shift between a local Llama-3.1-8B and a frontier`
+> `Qwen-2.5-72B planner, with DeepSeek V4 Pro corroborating weakly.`
+
+*Why:* the model's bootstrap band excludes empirical τ* on 11/11 testable cells (median ~35% error), so "predicts its position" is contradicted by the body; and neither frontier cell passes the TOST equivalence test (DeepSeek CI [1.76, 7.14] is too wide to confirm), so "validated" overstates "no shift detected." This now matches the rendered abstract page verbatim in spirit.
+
+### Fix B — `main.tex` abstract, lines 87–88 (overclaim #4 "robustly preferred")
+
+> **CURRENT:**
+> `three RAG pipelines showing compress-first is robustly preferred`
+> `in both storage- and accuracy-bounded regimes.`
+
+> **PROPOSED:**
+> `three RAG pipelines showing compress-first is consistently but`
+> `modestly preferred (2 to 3 pp F1) over retrieve-first on the single`
+> `embedding-and-index stack evaluated.`
+
+*Why:* the effect is 2–3 pp F1 pooled and shrinks to ~1.4 pp (non-significant) under the per-workload paired bootstrap; it is single-stack (bge-large-en-v1.5 + FAISS-CPU). "Robustly" is not supported by the magnitude; insights §3228 already specifies the "consistently" downgrade.
+
+### Fix C — `main.tex` abstract, lines 90–91 (overclaim #1 "decorrelates")
+
+> **CURRENT:**
+> `metric. Headline verdicts: question-answering accuracy decorrelates`
+> `from coordination success;`
+
+> **PROPOSED:**
+> `metric. Headline verdicts: question-answering accuracy does not`
+> `positively predict coordination success for any compressor tested;`
+
+*Why:* the body (experiments.tex:159) "deliberately avoid[s] the word 'decorrelate' for the filter" because filter is ρ=−0.82 (a strong *anti*-correlation, not ≈0 decorrelation). "Does not positively predict" is both accurate and *stronger* — a benchmark designer cannot use QA-F1 to rank compressors even directionally. Matches the chapter title "Does Not Transferably Predict."
+
+### Fix D — `summary.tex` Closing, lines 813–817 (the body's matching overclaim)
+
+> **CURRENT:**
+> `thesis's contribution: a structural characterisation of context`
+> `compression in multi-fragment LLM workflows, validated across`
+> `compressors, families, planner scales, architectures, and`
+> `benchmarks, with a predictive model, a deployment artefact, and`
+> `an open-source reproducibility package.`
+
+> **PROPOSED:**
+> `thesis's contribution: a structural characterisation of context`
+> `compression in multi-fragment LLM workflows, measured across`
+> `compressors, families, and benchmarks --- with planner-scale and`
+> `architecture invariance reported as no-shift-detected rather than`
+> `established --- supported by a first-order position model, a`
+> `deployment artefact, and an open-source reproducibility package.`
+
+*Why:* the Synthesis paragraph of this same chapter already says the contribution is "methodological and structural rather than predictive"; the Closing should inherit that instead of reverting to "predictive model" (35% median error, band excludes τ* on 11/11) and "validated across planner scales/architectures" (one underpowered frontier cell, TOST fails on both).
+
+### Optional Fix E (same Corollary-1 overclaim, flag only — you scoped to 4)
+The abstract's "planner capacity sets the success ceiling, **not the cliff position**, within the calibrated regime" (lines 91–93) states Corollary 1 as flat fact. For full consistency with Fix A you could soften to "…and planner capacity appears to set the success ceiling more than the cliff position within the calibrated regime." Left out of the main plan unless you want it.
+
+### Verification after editing
+- `grep -nE "decorrelat|predicts its position|validated on Qwen|robustly preferred|predictive model" main.tex Chapters/summary.tex` should return **nothing** (except experiments.tex:159 which *correctly* discusses avoiding "decorrelate").
+- Rebuild (`latexmk`) and confirm the abstract page is unchanged (it already had the correct wording) and the PDF document-properties abstract now matches it.
+
+**Net effort:** 4 small edits (≈5 minutes), zero risk to results, removes the cheapest examiner attack surface. Nothing here touches a number or a figure.
+
+---
+
 ### Bottom line
-The science is honest and the rigour is well above MSc baseline — that is your durable asset and it is exactly what rubric #6 rewards. You lose grade *not* on the science but on (a) **one conformity blocker** (Finnish abstract), (b) **abstract/closing overclaims that contradict your own body**, (c) **stale/inconsistent numbers** that falsify your traceability promise, and (d) **uncited prior art** that lets an examiner puncture novelty claims. All four are fixable in days. Fix them, **lead with H2**, downgrade the three over-read verdict labels, and walk in ready to *concede early and reframe* on every reframed-null — your honesty is the defense, not a liability.
+The science is honest and the rigour is well above MSc baseline — that is your durable asset and it is exactly what rubric #6 rewards. You lose grade *not* on the science but on (a) **abstract/closing overclaims that contradict your own body** (§6, fixable in minutes), (b) **stale/inconsistent numbers** that falsify your traceability promise (§2.4), and (c) **uncited prior art** that lets an examiner puncture novelty claims (§4). All fixable in days. Fix them, **lead with H2**, downgrade the three over-read verdict labels, and walk in ready to *concede early and reframe* on every reframed-null — your honesty is the defense, not a liability.

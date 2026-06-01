@@ -4382,3 +4382,138 @@ Literature LANDMINES found uncited (real examiner ammunition):
   et al (GPT-4 85% top-1 -> our reduction is optimistic not upper-bound).
 Action: cite-and-distinguish each; narrow novelty claims to the predict/threshold
 seam. Full per-section Q+defense+residual-risk in THESIS_DEFENSE_REVIEW.md.
+
+## 83. ABSTRACT + CLOSING OVERCLAIM FIXES (LaTeX, 2026-06-01)
+
+Applied 4 fixes from THESIS_DEFENSE_REVIEW.md §6 (user-approved). All 4
+overclaims lived only in the main.tex \abstract{} PDF-metadata block (the
+visible Chapters/abstract.tex page was already hedged; Finnish \tiivistelma{}
+already removed). Plus the matching Closing overclaim in summary.tex.
+- A (main.tex L84-86): "predicts its position ... validated on Qwen-72B and
+  DeepSeek" -> "explains its threshold structure and recovers the empirical
+  position only to first order ... no detected shift between Llama-3.1-8B and
+  Qwen-2.5-72B, with DeepSeek V4 Pro corroborating weakly."
+- B (main.tex L87-88): "robustly preferred" -> "consistently but modestly
+  preferred (2 to 3 pp F1) over retrieve-first on the single embedding-and-
+  index stack evaluated."
+- C (main.tex L90-91): "question-answering accuracy decorrelates" -> "does not
+  positively predict ... for any compressor tested" (matches experiments.tex:159
+  which deliberately avoids "decorrelate"; filter rho=-0.82).
+- D (summary.tex Closing): "validated across ... planner scales, architectures
+  ... with a predictive model" -> "measured across ... with planner-scale and
+  architecture invariance reported as no-shift-detected rather than established
+  ... supported by a first-order position model."
+Verify grep clean (decorrelat|predicts its position|validated on Qwen|robustly
+preferred|predictive model) returns nothing. latexmk exit 0, 94 pages,
+thesis.pdf synced. Optional Fix E (Corollary-1 "not the cliff position" in
+abstract) deferred, not applied.
+
+## 84. DESIGN-CHOICE / METRICS-CHOICE / CRITERIA-DEFENSE / ITERATION-HISTORY ADDITIONS (LaTeX, 2026-06-01)
+
+Advisor flagged four gaps in the manuscript: (1) design choices unjustified, (2)
+tools used without alternatives discussed, (3) experiment design + evaluation
+metrics not motivated, (4) iteration history ("tried but didn't do") not
+surfaced. Plan + 4 surgical additions applied in sequence with per-step
+LaTeX compile + cross-reference check.
+
+Outline 1 — implementation.tex §3.7 "Design Choices and Alternatives
+Considered" (between Inference Backends and Scope of Evaluation, ~3 pages):
+- §3.7.1 Tooling: FAISS-CPU+HNSW vs Qdrant/Chroma/pgvector; BAAI/bge-large
+  vs OpenAI emb / gte; FastAPI vs Flask/Litestar; SQLite-WAL vs Postgres;
+  Ollama vs vLLM/TGI/llama.cpp-direct; Featherless vs OpenRouter/Together.
+- §3.7.2 Compressors declined: Selective Context (compute asymmetry);
+  RECOMP / gist / AutoCompressor / ICAE (training-asymmetry); xRAG (regime
+  outside cliff range); Llama-3.2-3B / Mistral-7B as alt extractive bases
+  (lower pilot pass-rates).
+- §3.7.3 Threshold/grid: ratio grid, r_max=16, 50 instances/family, 5
+  seeds, theta_q-at-0.5*p0, n_boot=1000 BCa, P3 routing thresholds (0.75
+  / 0.45 are pilot HotpotQA empirically chosen — earlier text incorrectly
+  said "analytical starting points"; fixed both sides).
+
+Outline 2 — experiments.tex §4.3 "Choice of Evaluation Metrics"
+(between Experimental Protocol and H1, ~2 pages):
+- longtable catalogue of 11 metrics (coord_success, qa_f1, CTR, achieved
+  ratio, Spearman rho, BCa, Wilcoxon, Holm, TOST, theta_q, theta_info,
+  disclosure rate) with "Why chosen" + "Alternative declined" columns.
+- §4.3.2 Workload-level vs cell-level statistics — consolidates the H1
+  inference-unit defense as a methodological choice (was scattered in H1
+  prose).
+- §4.3.3 Coverage — names the metrics deliberately NOT in the table
+  (BERTScore, ROC-AUC variants, conditional-entropy theta_info probe).
+- Used [h] table block initially; "Float too large for page" warning;
+  converted to longtable (already loaded via dithesis.cls). Compile clean.
+
+Outline 3 — experiments.tex §4.1.X "Falsifiability criteria as
+practitioner-relevant minima" (subsection inside Pre-registration and
+Refinement, ~0.7 page):
+- description list defending each cutoff as practitioner-relevant minimum:
+  rho<0.6 (Cohen), >=30% drop (practitioner effect-size minimum), 5pp F1
+  (cost-model meaningful), p<0.05 paired-bootstrap, +/-20% TOST (strict
+  bar vs 50% permissive default), Delta theta_info >= 0.1 (above
+  estimator-noise floor — honest hedge after I initially over-claimed a
+  "two standard deviations" derivation I couldn't substantiate).
+- Initial "+/-20% matches H2 spec" claim softened to "strict
+  cliff-position-detectability tolerance" — H2 spec only has the 30% drop
+  bar, no explicit position-tolerance.
+
+Outline 4 — summary.tex §5.3 "Design Iteration and Methodological Course
+Corrections" (between CAAC and Limitations, ~1.5 pages):
+- H4 question-template bias + regeneration; rounds-field truthfulness fix;
+  CAAC theta hardcoded->derived; CAAC min_ratio 1.0->1.5; Mann-Whitney
+  ->Wilcoxon mid-project; fine-grid re-resolution and re-anchoring of
+  Corollary-1 reference to LLM-vs-LLM (already in H2 prose, surfaced here
+  as iteration); theta_info estimator unification (0.881->0.967);
+  Theorem 1 -> compounding-error model (ADR-008).
+- Closing paragraph: aggregate lesson is that spot-checked intermediate
+  outputs catch errors single-end-to-end runs miss, anchored to the
+  compression cache.
+
+Final coherence sweep:
+- All new labels unique (sec:design_choices, sec:design_tooling,
+  sec:design_compressors_declined, sec:design_thresholds, sec:metric_choices,
+  sec:metric_catalogue, sec:metric_unit, sec:metric_coverage,
+  sec:prereg_criteria_defense, sec:iteration).
+- All cross-refs resolve (no LaTeX undefined-reference warnings).
+- Fixed one directional error: criteria-defense subsection (§4.1.X) said
+  "metric choices in Section X above" but metric_choices (§4.3) comes
+  after; changed "above" -> "of this chapter".
+- Pre-existing inconsistency NOT fixed: H1 verdict table caption
+  (experiments.tex L460ish, was 217 before edits) says n_boot=2000 while
+  abbreviations + protocol + new sections say n_boot=1000. Predates this
+  task; flagged but left as-is.
+
+Compile: latexmk exit 0, 102 pages (was 94 pre-task, +8 for the four
+additions), thesis.pdf synced to project root. No undefined refs or
+multiply-defined labels; no float-too-large warnings after longtable
+conversion.
+
+The four additions together convert the manuscript's design rationale
+from "scattered across paragraphs throughout the chapters" to "four
+canonical sections an examiner can be pointed to". The defense-critical
+addition (Outline 2 / §4.3 metrics catalogue) is what most directly
+answers the advisor's question "what matrices, why, do they make sense?"
+
+## 85. N_BOOT VALUE UNIFICATION (LaTeX, 2026-06-01)
+
+Followed up on the inconsistency flagged in §84. The thesis previously had
+THREE different stated n_boot values, none matching the actual code:
+- abbreviations: "default 1000"
+- statistical protocol section: "1000"
+- H1 verdict table caption: "2000"
+- theta_q bootstrap section: "1000"
+- my §3.7.3 design choices and §4.3 metrics catalogue (added in §84): "1000",
+  with a fabricated "spot-checks at n=2000" claim
+Canonical code values (verified via grep src/m6/, scripts/):
+- spearman_with_ci, paired_bootstrap_diff, paired_bootstrap (H1/H2/H3/H4
+  bootstrap CIs): n_boot=10,000 (default)
+- scripts/bootstrap_theta_q.py: N_BOOTSTRAP=500
+- run_frontier.py tau-CI bootstrap: n_boot=500 (default)
+Resolution: every n_boot mention in the manuscript now says either 10,000
+(H1/H2/H3/H4 paths) or 500 (theta_q + frontier curve-fit paths), with the
+rationale ("per-iteration curve fit dominates cost") stated alongside the
+500-value pipelines. The fabricated "spot-checks at n=2000" claim was
+removed. All seven mentions verified consistent.
+
+Compile: latexmk exit 0, 103 pages (was 102 before this fix, +1 because the
+expanded abbreviations + statistical protocol prose bumped a line), thesis.pdf
+synced. No undefined refs.

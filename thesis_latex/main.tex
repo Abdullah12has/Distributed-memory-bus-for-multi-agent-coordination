@@ -81,19 +81,63 @@
   scope. Four contributions are delivered. A reproducible
   coordination benchmark of 150 instances across three workload
   families. An empirical characterisation of the coordination cliff
-  with a compounding-error model that predicts its position from
-  per-round token recall, cross-architecture validated on Qwen-72B
-  and DeepSeek V4 Pro within a calibrated regime. A catalogue of
-  three RAG pipelines showing compress-first is robustly preferred
-  in both storage- and accuracy-bounded regimes. A memory-bus
+  with a compounding-error model that explains its threshold
+  structure and recovers the empirical position only to first order
+  from per-round token recall. Within a calibrated regime the cliff
+  shows no detected shift between a local Llama-3.1-8B and a frontier
+  Qwen-2.5-72B planner, with DeepSeek V4 Pro corroborating weakly. A catalogue of
+  three RAG pipelines showing compress-first is consistently but
+  modestly preferred (2 to 3 pp F1) over retrieve-first on the single
+  embedding-and-index stack evaluated. A memory-bus
   reference implementation and a summary-level inference-disclosure
-  metric. Headline verdicts: question-answering accuracy decorrelates
-  from coordination success; a sharp cliff exists; planner capacity
+  metric. Headline verdicts: question-answering accuracy does not
+  positively predict coordination success for any compressor tested; a sharp cliff exists; planner capacity
   sets the success ceiling, not the cliff position, within the
   calibrated regime; information density scales the cliff across
   datasets; and compression measurably reduces protected-fact
   disclosure. A cliff-aware adaptive wrapper, CAAC, operationalises
   the compounding-error bound as a runtime back-off.}
+
+\tiivistelma{Suuria kielimalleja k\"aytt\"av\"at monivaiheiset
+  ty\"onkulut maksavat jokaisesta lukemastaan tokenista, ja
+  kontekstin tiivist\"aminen on luonteva s\"a\"at\"okeino. Yhden
+  agentin kehotteentiivist\"amist\"a koskeva kirjallisuus ei
+  kuitenkaan mittaa sit\"a, s\"ailytt\"a\"ak\"o
+  kysymys-vastaus-tarkkuutta s\"ailytt\"av\"a tiivist\"aminen
+  my\"os sit\"a vaikeampaa ominaisuutta, jonka suunnittelija
+  tarvitsee: useaan tiivistettyyn fragmenttiin jaetun tiedon
+  yhdist\"amist\"a oikeaksi vastaukseksi. T\"am\"a tutkielma
+  tarkastelee kysymyst\"a monifragmenttisilla
+  kielimallity\"onkuluilla. Arvioinnissa suunnittelijana toimii
+  joko deterministinen regex-j\"asennin tai yksi kielimallikutsu,
+  jossa kaikki tiivistetyt fragmentit ovat n\"akyvill\"a;
+  monikierroksinen agenttisimulointi on rajattu empiirisen
+  tarkastelun ulkopuolelle. Ty\"o esitt\"a\"a nelj\"a p\"a\"atulosta.
+  Toistettava koordinaation vertailutesti, jossa on 150 instanssia
+  kolmesta ty\"okuormaperheest\"a. Empiirinen kuvaus koordinaation
+  jyrk\"anteest\"a yhdess\"a kumuloituvan virheen mallin kanssa,
+  joka selitt\"a\"a jyrk\"anteen kynnysrakenteen ja palauttaa
+  empiirisen sijainnin ensimm\"aisen kertaluvun tarkkuudella
+  kierroskohtaisesta token-recallista. Havainto, jonka mukaan
+  kalibroidulla alueella jyrk\"anteen sijainnissa ei havaita
+  siirtym\"a\"a paikallisen Llama-3.1-8B-suunnittelijan ja
+  huipputason Qwen-2.5-72B-suunnittelijan v\"alill\"a, DeepSeek V4
+  Pro:n vahvistaessa tuloksen heikosti. Sek\"a kolmen RAG-putken
+  katalogi, jossa tiivist\"a-ensin-j\"arjestys osoittautuu yhdess\"a
+  testatussa upotus- ja indeksipinossa johdonmukaisesti mutta vain
+  kohtuullisesti paremmaksi (2--3 prosenttiyksik\"on F1-ero) kuin
+  hae-ensin-j\"arjestys. Lis\"aksi ty\"o toimittaa muistiv\"ayl\"an
+  viitetoteutuksen ja yhteenvetotason p\"a\"attelyilmaisumetriikan.
+  P\"a\"atulokset: kysymys-vastaus-tarkkuus ei ennusta
+  positiivisesti koordinaation onnistumista mill\"a\"an testatulla
+  tiivist\"aj\"all\"a; jyrkk\"a jyrk\"anne on olemassa; suunnittelijan
+  kapasiteetti m\"a\"aritt\"a\"a onnistumiskaton mutta ei
+  jyrk\"anteen sijaintia kalibroidulla alueella; informaation tiheys
+  skaalaa jyrk\"annett\"a aineistojen v\"alill\"a; ja tiivist\"aminen
+  v\"ahent\"a\"a mitattavasti suojattujen faktojen
+  p\"a\"attelyilmaisua. Jyrk\"annetietoinen adaptiivinen k\"a\"are
+  CAAC operationaalistaa kumuloituvan virheen rajan ajonaikaisena
+  per\"a\"antymismekanismina.}
 
 
 % Keywords are also included in the PDF metadata, and cannot contain any

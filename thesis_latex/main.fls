@@ -835,6 +835,9 @@ INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/amsfonts/symbols/
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxsy7.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txsys.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txex-bar.tfm
+INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT ./Chapters/experiments.tex
 INPUT ./Chapters/experiments.tex
 INPUT ./Chapters/experiments.tex
@@ -843,11 +846,17 @@ INPUT Chapters/experiments.tex
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxsy7.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txsys.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txex-bar.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Italic-tlf-t1.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmi.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/NewTXMI.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/stxscr.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmia.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txmiaSTbb.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmi7.vf
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/NewTXMI7.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/stxscr.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxsy7.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txsys.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txex-bar.tfm
@@ -859,7 +868,6 @@ INPUT ../figures/cliff_hero.pdf
 INPUT ../figures/cliff_hero.pdf
 INPUT ../figures/cliff_hero.pdf
 INPUT ../figures/cliff_hero.pdf
-INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT ../figures/cliff_families.pdf
 INPUT ../figures/cliff_families.pdf
 INPUT ../figures/cliff_families.pdf
@@ -888,8 +896,6 @@ INPUT ../figures/h5_model_overlay.pdf
 INPUT ../figures/h5_model_overlay.pdf
 INPUT ../figures/h5_model_overlay.pdf
 INPUT ../figures/h5_model_overlay.pdf
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT ../figures/frontier_multi.pdf
 INPUT ../figures/frontier_multi.pdf
 INPUT ../figures/frontier_multi.pdf
@@ -903,8 +909,6 @@ INPUT ../figures/frontier_validation.pdf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-ot1.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-ot1.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-ot1.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntx-Bold-tlf-ot1.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txbmiaX.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-ot1r.tfm
@@ -968,7 +972,6 @@ INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-ot1r.
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxsy.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txsys.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txex-bar.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Italic-tlf-t1.tfm
 INPUT ./Chapters/summary.tex
 INPUT ./Chapters/summary.tex
 INPUT ./Chapters/summary.tex

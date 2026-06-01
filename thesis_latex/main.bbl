@@ -3070,6 +3070,57 @@
       \field{title}{{C-FedRAG}: A Confidential Federated Retrieval-Augmented Generation System}
       \field{year}{2024}
     \endentry
+    \entry{li2025securitylingua}{inproceedings}{}{}
+      \name{author}{6}{}{%
+        {{hash=8e417b0eb6d78af30c7f97963a79ac25}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Yucheng},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=443520aa477d8fedb48e051c3b9e990d}{%
+           family={Ahn},
+           familyi={A\bibinitperiod},
+           given={Surin},
+           giveni={S\bibinitperiod}}}%
+        {{hash=1912259f480fb6f14a6e51608226c582}{%
+           family={Jiang},
+           familyi={J\bibinitperiod},
+           given={Huiqiang},
+           giveni={H\bibinitperiod}}}%
+        {{hash=667e98748c712d3da007ab32a0175af0}{%
+           family={Abdi},
+           familyi={A\bibinitperiod},
+           given={Amir\bibnamedelima H.},
+           giveni={A\bibinitperiod\bibinitdelim H\bibinitperiod}}}%
+        {{hash=36c0b9306bc41c62b571a0e5e59e4e2c}{%
+           family={Yang},
+           familyi={Y\bibinitperiod},
+           given={Yuqing},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=2a1f50cbbdc123b5415d21c3405054df}{%
+           family={Qiu},
+           familyi={Q\bibinitperiod},
+           given={Lili},
+           giveni={L\bibinitperiod}}}%
+      }
+      \strng{namehash}{32d212064bad2bda745fe835db977826}
+      \strng{fullhash}{468e25d88e7cafeaea59b30e05e0df1e}
+      \strng{fullhashraw}{468e25d88e7cafeaea59b30e05e0df1e}
+      \strng{bibnamehash}{468e25d88e7cafeaea59b30e05e0df1e}
+      \strng{authorbibnamehash}{468e25d88e7cafeaea59b30e05e0df1e}
+      \strng{authornamehash}{32d212064bad2bda745fe835db977826}
+      \strng{authorfullhash}{468e25d88e7cafeaea59b30e05e0df1e}
+      \strng{authorfullhashraw}{468e25d88e7cafeaea59b30e05e0df1e}
+      \field{extraname}{4}
+      \field{sortinit}{7}
+      \field{sortinithash}{108d0be1b1bee9773a1173443802c0a3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proc. Conf. on Language Modeling (CoLM)}
+      \field{note}{arXiv:2506.12707.}
+      \field{title}{{SecurityLingua}: Efficient Defense of {LLM} Jailbreak Attacks via Security-Aware Prompt Compression}
+      \field{year}{2025}
+    \endentry
     \entry{nistairmf}{report}{}{}
       \name{author}{1}{}{%
         {{hash=ef9cb61878e61d434507444346b29d1a}{%
@@ -3216,8 +3267,8 @@
       \strng{authornamehash}{5c03685c9f7f37796bba48432d40df61}
       \strng{authorfullhash}{5c03685c9f7f37796bba48432d40df61}
       \strng{authorfullhashraw}{5c03685c9f7f37796bba48432d40df61}
-      \field{sortinit}{9}
-      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{An Introduction to the Bootstrap}
@@ -3239,8 +3290,8 @@
       \strng{authornamehash}{405b308b1e8e33ef3275bf6cb9c9b281}
       \strng{authorfullhash}{405b308b1e8e33ef3275bf6cb9c9b281}
       \strng{authorfullhashraw}{405b308b1e8e33ef3275bf6cb9c9b281}
-      \field{sortinit}{9}
-      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{Biometrics Bulletin}
@@ -3272,8 +3323,8 @@
       \strng{authornamehash}{faa025e01f364e80ee2e1076e0bc30ac}
       \strng{authorfullhash}{faa025e01f364e80ee2e1076e0bc30ac}
       \strng{authorfullhashraw}{faa025e01f364e80ee2e1076e0bc30ac}
-      \field{sortinit}{9}
-      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{Annals of Mathematical Statistics}

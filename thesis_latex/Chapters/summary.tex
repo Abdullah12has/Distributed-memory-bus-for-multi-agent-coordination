@@ -179,8 +179,8 @@ have crossed the cliff. The wrapper is therefore an
 wrapper}: by construction it trades compression for a recall
 guarantee, so it cannot strict-dominate the fixed-ratio compressor
 that makes the opposite trade. The empirical strict-Pareto rate
-against the fixed-ratio baseline is $0/7$ at every cliff ratio of
-the canonical sweep --- exactly the structural property the model
+against the fixed-ratio baseline is $0/5$ cliff-region ratios
+($0/7$ across all seven swept ratios) of the canonical sweep --- exactly the structural property the model
 predicts. The two sections below unpack the algorithm and the
 operating-point framing in turn.
 
@@ -232,7 +232,7 @@ where the fixed compressor cliffs to zero coordination, CAAC is
 backing off to $\sim 3\times$ achieved ratio while the fixed
 compressor delivers $\sim 12\times$ at zero coordination.
 Strict-Pareto says CAAC does not dominate the fixed compressor;
-the empirical 0/7 result reflects this faithfully.
+the empirical $0/5$ cliff-region (and $0/7$ overall) result reflects this faithfully.
 
 The framing we adopt as the substantive
 contribution is the operating-point one: CAAC's selected ratio is
@@ -311,6 +311,140 @@ CAAC at any target ratio with the guarantee that the achieved
 operating point sits on the safe side of the cliff. This
 deployment-mode property is what makes the cliff measurement
 useful as something other than a publication finding.
+
+\section{Design Iteration and Methodological Course Corrections}
+\label{sec:iteration}
+
+The findings reported in \charef{experiments} are not the first
+ones the empirical pipeline produced. Several measurements turned
+out to be wrong on first pass and had to be regenerated; several
+design choices that looked correct on paper required revision
+after the first sweep made their failure modes visible. This
+section surfaces those course corrections explicitly, because the
+design narrative an external reviewer reads in
+\charef{introduction}~Section~\ref{sec:contributions} should not
+suggest that the final design fell from the sky. The catalogue is
+in order of impact on the manuscript's verdict block.
+
+\paragraph{H4 question-template bias and benchmark regeneration.}
+The original H4 benchmark generator produced ``at least X''
+questions whose ground-truth answer was always YES and ``exceed
+X'' questions whose ground-truth was always NO. A surface-pattern
+reader could in principle score $100\%$ on the verb alone. The
+Llama-3.1-8B reader did not exploit this in practice (priors
+stayed near $0.50$), but the data was biased, which inflated the
+baseline rate to $0.97$. The generator was fixed
+(\texttt{fact\_aggregation.py:119--156}) to use a single
+comparator phrasing with parity-based threshold sign, the H4
+sweep was rerun, and the unbiased benchmark is what every H4
+number in \charef{experiments} reports. The cached
+compressed-fragment data was unchanged across the rerun. Lesson:
+synthetic-benchmark generators need bias audits before the reader
+is held responsible for the result.
+
+\paragraph{The \texttt{rounds} field truthfulness fix.}
+An earlier version of the orchestrator reported a \texttt{rounds}
+field equal to \texttt{len(sub\_tasks)}, conflating ``how many
+sub-tasks did the planner see'' with ``how many rounds of agent
+communication occurred''. Since the empirical setup is a single
+LLM call (no multi-round communication, per
+Section~\ref{sec:limitations}), the truthful value is one and the
+field was changed accordingly. The earlier value never appeared in
+a reported figure but was visible in some CSV columns; the
+misnaming was a name-versus-meaning drift of the kind a downstream
+reader could be misled by. Lesson: metric-name versus
+implementation drift; metrics referenced in the manuscript text
+need name-audits.
+
+\paragraph{CAAC's \texttt{theta} hardcoded $\to$ derived.}
+An initial CAAC implementation hardcoded $\theta = 0.65$ with no
+derivation. The strict-Pareto rate against the fixed-ratio
+compressor was $0/7$, but the verdict was ambiguous because a
+different hardcoded $\theta$ would have produced a different
+operating point and the model's per-family $\theta_q$ machinery
+was not connected. The fix was to wire \texttt{derive\_theta()}
+per-family into CAAC and reframe the strict-Pareto-zero result as
+the structural property the model predicts. The $0/7$ verdict
+survived the change, but is now defensible as an operating-point
+property of the model rather than a tuning artefact.
+
+\paragraph{CAAC's \texttt{min\_ratio} $1.0 \to 1.5$.}
+The original CAAC implementation set \texttt{min\_ratio} to $1.0$,
+which let CAAC abdicate to no-compression on hard fragments.
+Pilot runs at high target ratios on family-a showed that this
+abdication was the dominant CAAC behaviour, defeating the
+``adaptive compression'' framing because CAAC's output on those
+fragments was indistinguishable from the identity control. Raising
+\texttt{min\_ratio} to $1.5$ enforces the constructive guarantee
+that CAAC always delivers at least $1.5\times$ compression while
+staying on the safe side of the cliff.
+
+\paragraph{Mann--Whitney $U$ $\to$ paired Wilcoxon (mid-project).}
+The first H2 cliff analyses used the Mann--Whitney $U$ test for
+the two-cell drop comparison. A statistical-protocol review
+(Section~\ref{sec:metric_choices} of \charef{experiments}) caught
+that the same workloads appear in both conditions on the paired
+comparison, which violates the independence assumption
+Mann--Whitney requires. All H2 cells were recomputed under the
+paired Wilcoxon signed-rank test. The verdict (cliff significant
+on $11/12$ cells) was unchanged but the $p$-values tightened;
+the corrected numbers are the ones in
+Table~\ref{tab:h2_tau} of \charef{experiments}.
+
+\paragraph{Fine-grid re-resolution and the canonical-reference correction.}
+The early Corollary~1 evidence compared frontier-model cliffs
+against a synthetic reference $\tau^{*} = 2.5$ derived from the
+coarse-grid deterministic-solver sweep. A fine-grid re-resolution
+that interpolated $r \in \{1.25, 1.5, 1.75\}$ between $r = 1$ and
+$r = 2$ later revealed that the deterministic solver actually
+cliffs at $\approx 1.1$ on family-a $\times$ LLMLingua-2; the
+$2.5$ value was a grid-quantisation artefact of the coarse sweep
+(\charef{experiments}~Section~\ref{sec:h2}). The Corollary~1
+evidence was re-anchored to the LLM-vs-LLM comparison
+(Llama-3.1-8B versus Qwen-2.5-72B both cliffing at
+$\approx 2.5$--$2.8$ on the same cell), which is now the
+load-bearing finding rather than the deterministic-solver number.
+The cross-architecture invariance claim was strengthened rather
+than weakened by the correction; the early framing against
+$\tau^{*} = 2.5$ is retained only as an approximate coincidence
+between the LLM cliff and the coarse-grid deterministic value.
+Lesson: always run a fine-grid re-resolution at the cliff midpoint
+before publishing position numbers.
+
+\paragraph{$\theta_\text{info}$ estimator unification.}
+An earlier value for C1 family-a's $\theta_\text{info}$ was
+$0.881$, computed by a different estimator from the current
+AUC-based \texttt{estimate\_task\_theta()} implementation. After
+the estimator was unified across the three benchmarks the
+canonical value is $0.967$ (Table~\ref{tab:corollary2} of
+\charef{experiments}). The corollary verdict and the
+dense-vs-distributed ordering were unchanged; the absolute number
+shifted by $\sim 9\%$ because of the estimator change. Lesson:
+cross-benchmark estimates require a single estimator
+implementation reused across benchmarks.
+
+\paragraph{Theorem~1 $\to$ compounding-error model.}
+The early draft of \charef{experiments} called
+Section~\ref{sec:cem} ``Theorem~1'' and shipped a formal LaTeX
+proof. The empirical match rate ($33\%$ at $\pm 25\%$) is the
+wrong character for a ``theorem'', because the residuals are
+dominated by specification error rather than sampling error. The
+naming was downgraded to ``compounding-error model'' and the
+formal proof was dropped; the derivation paragraph is what
+survives in Section~\ref{sec:cem}. Codebase identifiers
+(\texttt{theorem\_validation.json},
+\texttt{validate\_theorem.py}) are retained for backwards
+compatibility with on-disk artefacts and are documented in the
+project repository.
+
+The aggregate lesson across these corrections is that a verdict
+pipeline whose intermediate outputs are spot-checked against
+expected shapes catches errors that a single end-to-end run does
+not. The compression cache
+(\charef{implementation}~Section~\ref{sec:cache}) supports this by
+making intermediate outputs persistent and inspectable; the
+practice generalises to any thesis whose experiment pipeline
+iterates many times over the same workloads.
 
 \section{Limitations}
 \label{sec:limitations}
@@ -811,10 +945,11 @@ ties them together, the memory-bus reference implementation
 that operationalises the privacy lever, and the CAAC algorithm
 that operationalises the cliff bound, jointly constitute the
 thesis's contribution: a structural characterisation of context
-compression in multi-fragment LLM workflows, validated across
-compressors, families, planner scales, architectures, and
-benchmarks, with a predictive model, a deployment artefact, and
-an open-source reproducibility package. The single deliverable
+compression in multi-fragment LLM workflows, measured across
+compressors, families, and benchmarks --- with planner-scale and
+architecture invariance reported as no-shift-detected rather than
+established --- supported by a first-order position model, a
+deployment artefact, and an open-source reproducibility package. The single deliverable
 sentence is the one the abstract opens with: every token that
 does not change the answer is waste, and what this thesis
 contributes is a way of knowing which tokens those are, when

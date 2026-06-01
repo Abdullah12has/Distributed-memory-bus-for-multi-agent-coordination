@@ -528,12 +528,36 @@ generation; it addresses the retrieval-index-level privacy
 question rather than the compressor-level disclosure question
 that this thesis takes up.
 
+The closest published prior work that connects compression
+directly to privacy is
+SecurityLingua~\cite{li2025securitylingua} (CoLM 2025), from the
+LLMLingua group, which uses prompt compression as a
+\emph{defense} against jailbreak attacks --- the compressor is
+trained to strip adversarial structure from inputs before they
+reach the model. SecurityLingua's framing is the dual of
+C4's: SecurityLingua applies compression as an input-side
+filter against the \emph{adversary's} prompt, whereas C4 measures
+compression as an unintended leakage channel for protected facts
+in the \emph{defender's} stored content, with a per-question
+disclosure rate against a fixed downstream reader. The two
+contributions are complementary rather than overlapping --- a
+deployed memory bus could in principle combine
+SecurityLingua-style input filtering with C4-style summary-level
+disclosure auditing --- but they measure different sides of the
+compression-versus-privacy interaction.
+
 \emph{What is missing in prior work.} No published academic
-work, to the author's knowledge, measures inference disclosure
-through the compressor at the summary level. Privacy-aware
-retrieval protects the index; this thesis protects the summary.
-The two are complementary, and a future system would presumably
-combine them.
+work, to the author's knowledge, measures \emph{summary-level}
+inference disclosure: the rate at which a downstream reader
+recovers a protected fact from a compressed summary of source
+content the reader has never seen.
+SecurityLingua~\cite{li2025securitylingua} measures the dual
+property (compression as input-side defense, not output-side
+leakage); the privacy-aware-retrieval line protects the index
+rather than the summary. This thesis fills the summary-level
+measurement gap, and the policy layer of
+\charef{implementation} converts the resulting disclosure rate
+into a deployment-time budget.
 
 \section{The Gap This Thesis Closes}
 \label{sec:rw_gap}

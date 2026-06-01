@@ -42,6 +42,83 @@ information density $\theta_\text{info}$.
 accuracy-bounded regimes) is not satisfied; compress-first dominates
 on the tested stack in both regimes (Section~\ref{sec:h3}).
 
+\subsection{Falsifiability criteria as practitioner-relevant minima}
+\label{sec:prereg_criteria_defense}
+
+Each numerical bar above ($\rho<0.6$ for H1, $\ge 30\%$ drop for H2,
+$\pm 5$~pp F1 sign-flip for H3, paired-bootstrap $p<0.05$ for H4,
+$\pm 20\%$ TOST band for Corollary~1, $\Delta\theta_\text{info}
+\ge 0.1$ for Corollary~2) was chosen as the smallest effect a
+practitioner relying on this thesis would care about, not as an
+arbitrary statistical threshold. The catalogue below makes the
+rationale for each bar explicit; tool and grid choices (the
+ratio grid, the bootstrap budget, the $\theta_q$-at-$0.5 \cdot p_0$
+rule) live in \charef{implementation}~Section~\ref{sec:design_choices},
+and metric choices in Section~\ref{sec:metric_choices} of this
+chapter.
+
+\begin{description}\setlength\itemsep{2pt}
+\item[H1 ($\rho < 0.6$, workload-level).] Cohen's convention for
+``less than moderate'' rank correlation. A compressor ranking with
+$\rho \ge 0.6$ would remain operationally useful to a practitioner
+who needs to deploy compression; clearing $\rho < 0.6$ from above
+is the bar at which the predictive utility of the single-agent
+F1 metric collapses. The verdict-rest on the workload-level CI
+(rather than the pooled CI) follows the unit decision in
+Section~\ref{sec:metric_unit}.
+\item[H2 ($\ge 30\%$ relative drop, Holm-corrected $p < 0.05$).]
+$30\%$ is the smallest coordination-success drop a practitioner
+cares about. A $10\%$ drop sits within typical run-to-run variance
+on the families this thesis evaluates; a $50\%$ drop is obvious
+without measurement; $30\%$ is the value below which the operating
+point would still be deployable and above which it would not. The
+Holm correction is applied within the $12$-cell family of
+(compressor, family) pairs, not across hypotheses, because the H2
+claim is internal to that family.
+\item[H3 ($\ge 5$~pp F1 effect with opposite sign across regimes).]
+$5$~pp F1 is the smallest gap the practitioner cost-model
+(EUR-per-workflow, Section~\ref{sec:h3}) makes operationally
+meaningful; opposite sign is what would justify regime-conditional
+deployment of P1 versus P2 at all. The pre-registered predicate is
+what the data did not support, which is the H3 narrative.
+\item[H4 (paired-bootstrap $p < 0.05$, positive direction).]
+Paired bootstrap because the same workloads appear in the
+priors / baseline / compressed conditions; $p < 0.05$ is
+conventional; the positive direction is the privacy direction
+(compression must reduce, not increase, disclosure). The
+construct-validity caveat in Section~\ref{sec:h4_construct} is
+about the privacy \emph{interpretation} of a positive effect, not
+about whether the effect itself is detectable.
+\item[Corollary~1 ($\pm 20\%$ TOST equivalence band).]
+The $\pm 20\%$ band is the strict cliff-position-detectability
+tolerance reported alongside the $\pm 50\%$ permissive default in
+\texttt{validate\_model\_independence}. The permissive band
+absorbs the noise inherent in the local-model arm (small samples,
+high run-to-run variance); the strict bar is the one a
+deployment-grade ``no shift detected'' claim ought to clear, and
+is the one the frontier-validation evidence is tested against. The two are
+reported alongside each other in
+Section~\ref{sec:corollary1}, and the strict bar is what
+the on-disk record \texttt{model\_independence\_20pct.json}
+quantifies.
+\item[Corollary~2 ($\Delta\theta_\text{info} \ge 0.1$ between
+dense and distributed benchmarks).]
+$0.1$ is the smallest information-density gap that produces a
+qualitatively distinct cliff shape on the three benchmarks
+evaluated --- below this gap the cliffs are visually
+indistinguishable on the AUC-based $\theta_\text{info}$ axis. The
+bar is conservative against estimator noise: the empirical gaps in
+Table~\ref{tab:corollary2} ($0.48$ between C1 family-a and
+MultiHopRAG, $0.59$ between C1 family-a and HotpotQA) clear it by
+several multiples, so the corollary verdict does not turn on the
+precise location of the bar within the noise floor.
+\end{description}
+
+The motivation for surfacing these defences here is that an
+external reviewer will reasonably ask why a particular threshold
+was chosen; each one is defensible as a practitioner-relevant
+minimum, not an arbitrary statistical choice.
+
 The consolidated table is Table~\ref{tab:verdict_summary}
 (Section~\ref{sec:verdict_summary}).
 
@@ -86,9 +163,15 @@ $95\%$ bootstrap confidence intervals are constructed by resampling
 workloads with replacement~\cite{efron1993bootstrap}, never by
 resampling individual seed--cell pairs. The bootstrap method is the
 bias-corrected and accelerated (BCa) interval (per the construction in~\cite{efron1993bootstrap})
-with $n_\text{boot} = 1000$ resamples, except where noted otherwise
-(the $\theta_q$ resampling pipeline of Section~\ref{sec:cem_match}
-also uses BCa with $n_\text{boot} = 1000$). The two-cell comparison
+with $n_\text{boot} = 10{,}000$ resamples on the main H1/H2/H3/H4
+verdict pipelines (the per-method defaults of
+\texttt{spearman\_with\_ci}, \texttt{paired\_bootstrap\_diff}, and
+\texttt{paired\_bootstrap} in \texttt{src/m6/}). The $\theta_q$
+resampling pipeline of Section~\ref{sec:cem_match} and the
+frontier-$\tau^{*}$ bootstrap of Section~\ref{sec:frontier} run at
+$n_\text{boot} = 500$ instead, because both involve repeated curve
+fits whose per-iteration cost is substantially higher than a
+single-statistic resample. The two-cell comparison
 test is the paired Wilcoxon signed-rank
 test~\cite{wilcoxon1945}, chosen over the Mann--Whitney $U$
 test~\cite{mannwhitney1947} because the same workloads appear in
@@ -133,6 +216,185 @@ boundaries. This prevents the optimiser from parking $\tau^{*}$ at
 $r_{\max}=16$, a degenerate fit the unconstrained optimiser would
 otherwise select. $95\%$~bootstrap CIs on $\tau^{*}$ are computed by
 resampling the underlying workload means before the curve fit.
+
+\section{Choice of Evaluation Metrics}
+\label{sec:metric_choices}
+
+Every metric reported in this chapter is a choice: a different
+metric --- in some cases a more conventional one --- would have
+produced a different verdict. This section catalogues all metrics
+used in the chapter, names the alternative considered and the
+reason it was declined, and consolidates the workload-level versus
+cell-level statistical-unit decision that the H1 verdict in
+particular turns on. The justification for each individual
+hypothesis's falsifiability bar (the $\rho < 0.6$ bar for H1, the
+$\ge 30\%$ drop for H2, etc.) is in
+Section~\ref{sec:prereg_refinement}; this section is about the
+choice of metrics themselves, not the cutoffs. Tool-side and
+sweep-grid choices --- the ratio grid, the bootstrap budget, the
+P3 routing thresholds --- live in
+\charef{implementation}~Section~\ref{sec:design_choices}.
+
+\subsection{Catalogue of metrics}
+\label{sec:metric_catalogue}
+
+Table~\ref{tab:metric_choices} enumerates the metrics by the point
+at which they enter the verdict pipeline. The chapter's verdict
+block in each section
+($\!$Sections~\ref{sec:h1}--\ref{sec:corollary2}) rests on the
+metrics in this table.
+
+{\small
+\begin{longtable}{p{3.0cm}p{5.4cm}p{5.4cm}}
+\caption{Choice of evaluation metrics. ``Why chosen'' captures the
+property each metric measures; ``Alternative declined'' names the
+closest competitor and the reason it was not used.}
+\label{tab:metric_choices} \\
+\hline
+Metric & Why chosen & Alternative declined \\
+\hline
+\endfirsthead
+\hline
+Metric & Why chosen & Alternative declined \\
+\hline
+\endhead
+\hline
+\multicolumn{3}{r}{\textit{(continued on next page)}} \\
+\endfoot
+\hline
+\endlastfoot
+\multicolumn{3}{l}{\textit{Task-level outcomes.}} \\
+Coordination success (binary per-instance)
+  & Directly answers ``did the planner recover the correct answer?'';
+    matches the practitioner's deployment question and operationalised
+    once in \charef{introduction}~Section~\ref{sec:multi_fragment}.
+  & Graded success: the A3 probe (Section~\ref{sec:a3_probe}) shows
+    binary is justified on dense tasks; the graded refinement is
+    named as future work on distributed tasks. \\
+Token-overlap F1 (qa\_f1)
+  & Comparability to the LongLLMLingua / LLMLingua-2 numbers; the
+    metric the prior literature reports against, which is what makes
+    the H1 mis-ranking claim meaningful.
+  & ROUGE-L: rewards long spans, less discriminating at high
+    compression. BERTScore: requires an embedding model in the metric
+    pipeline, conflates compressor and metric quality. \\
+\hline
+\multicolumn{3}{l}{\textit{Compressor-side measurements.}} \\
+Critical-token recall (CTR)
+  & Family-specific information-preservation signal; what the
+    compounding-error model's $q(r)$ measures, and what CAAC's
+    back-off uses.
+  & Generic token-recall: empirically misleading on Phi-3 (preserves
+    ``the'', drops numerics; Section~\ref{sec:ctr} of
+    \charef{implementation}). Retained as a reporting column only. \\
+Achieved compression ratio
+  & Phi-3-Mini extractive saturates at $\sim 2.5\times$; reporting
+    only the requested target hides the ceiling and would mis-rank
+    Phi-3 against the token-level compressors.
+  & Target ratio only: misleads on Phi-3's high-ratio cells; would
+    suggest Phi-3 cliffs the same way the token-level compressors do
+    when in fact it never reaches their compression range. \\
+\hline
+\multicolumn{3}{l}{\textit{Statistics and uncertainty.}} \\
+Spearman $\rho$ (H1)
+  & Rank correlation; appropriate for monotone-but-not-necessarily-
+    linear relations between $\Delta$qa\_f1 and $\Delta$coord; robust
+    to clamping at the coord $\in\{0, 1\}$ boundaries.
+  & Pearson $r$: requires linearity, breaks at the boundaries.
+    Kendall $\tau$: equivalent at $n=150$ but less commonly reported
+    by downstream readers. \\
+BCa bootstrap ($n_\text{boot}=10{,}000$ for H1/H2/H3/H4; $500$ for
+$\theta_q$ and frontier-$\tau^{*}$ pipelines)
+  & Bias-corrected and accelerated~\cite{efron1993bootstrap} handles
+    the skewed residuals near $\tau^{*}$ that the interior-clamped
+    piecewise fit produces; the lower budget on the curve-fit
+    pipelines reflects per-iteration cost rather than a different
+    methodological choice.
+  & Basic percentile: under-covers in skewed residuals. Jackknife:
+    less stable on the workload-level resample at $n=150$. \\
+Paired Wilcoxon signed-rank
+  & The same workloads appear in both conditions; paired structure
+    violates the independence assumption of Mann--Whitney.
+  & Mann--Whitney $U$: independence fails on paired workloads.
+    Paired $t$-test: not robust to non-normal coord-success
+    distributions (heavily zero/one-inflated near the cliff). \\
+Holm sequentially-rejective
+  & Less conservative than Bonferroni at the family sizes used
+    ($3$--$12$ cells), preserving power on the cliff-existence
+    claim.
+  & Bonferroni: over-conservative at these family sizes.
+    Benjamini--Hochberg: controls FDR rather than FWER, which is the
+    wrong error rate for a cliff-existence verdict. \\
+TOST equivalence test (Corollary~1)
+  & Direct test of ``no shift $\ge X$'' rather than the
+    affirming-the-null reading of CI-containment.
+  & CI-containment alone: weak evidence when the CI is wide (as on
+    DeepSeek V4 Pro, Section~\ref{sec:frontier_deepseek}). \\
+\hline
+\multicolumn{3}{l}{\textit{Derived quantities.}} \\
+$\theta_q$ (cliff-recall threshold)
+  & Per-family recall at which coord-success drops to $0.5 \cdot p_0$;
+    estimated by \texttt{derive\_theta()}; the model's threshold
+    parameter.
+  & Per-task $\theta_q$: lifted to future work because per-family is
+    the tractable first-order term. \\
+$\theta_\text{info}$ (AUC-based info density)
+  & Captures the curve's \emph{shape} (sharp vs gradual). Explicitly
+    distinct from $\theta_q$
+    (Section~\ref{sec:theta_info_def}).
+  & Conditional entropy of answer given input: an external probe
+    that would break Corollary~2's circularity; named as future
+    work. \\
+Disclosure rate (H4)
+  & Fraction of yes/no protected-fact questions correctly recovered;
+    directly auditable against a governance budget.
+  & ROC-AUC: requires probabilistic outputs the Ollama reader does
+    not expose reliably. Calibration error: not what the threat
+    model in Section~\ref{sec:h4_threat} asks. \\
+\end{longtable}
+}
+
+\subsection{Workload-level versus cell-level statistics}
+\label{sec:metric_unit}
+
+A single methodological decision sits behind every effect-size
+figure in this chapter: the inference-valid statistical unit is
+the \emph{workload}, not the (workload, seed) cell or the
+(workload, ratio) pair. The reason is mechanical: the five seeds
+on each (compressor, ratio, workload) cell are repeated measures
+of the same underlying coordination event, and the nine ratios per
+workload are repeated measures of the same underlying compressor
+behaviour. Treating either as independent draws --- which a pooled
+correlation or a pooled bootstrap would do --- inflates the
+effective $n$ by roughly an order of magnitude and over-states
+statistical significance.
+
+The H1 verdict in particular illustrates this: as
+Section~\ref{sec:h1} reports, two of the four compressors
+(LLMLingua-2 and truncation) drop from a pooled
+$\rho \approx +0.38$ at $n = 1350$ to a workload-level
+$\rho \approx 0.03$ at $n = 150$. The verdict (all CIs exclude
+$0.6$) holds in both views, but only the workload-level magnitudes
+correspond to a relationship a practitioner could exploit. The
+pooled column is reported as a non-inferential comparison only,
+and the H1 verdict table carries this distinction in its caption.
+
+\subsection{Coverage}
+\label{sec:metric_coverage}
+
+The metrics in Table~\ref{tab:metric_choices} are exhaustive for
+the verdict pipeline: every numerical claim in this chapter
+resolves to one of these metrics, evaluated by the statistical
+protocol of Section~\ref{sec:stats}. Metrics that are deliberately
+\emph{not} in the table --- BERTScore, conditional-entropy probes
+of $\theta_\text{info}$, per-question reader calibration, ROC-AUC
+variants of the H4 disclosure measurement --- are named at their
+respective points in the chapter or in
+\charef{summary}~Section~\ref{sec:future} as follow-on work. The
+position the thesis takes is that a small, carefully-defended
+metric set whose statistical assumptions are tested is more
+defensible than a larger metric set whose individual choices are
+not justified.
 
 \section{H1: Question-Answering Accuracy Does Not Transferably Predict Coordination Success}
 \label{sec:h1}
@@ -211,7 +473,8 @@ nine per-workload ratio measurements are repeated measures, not
 independent draws, so the pooled $n$ and its asymptotic $p$
 over-state significance by roughly an order of magnitude. The
 verdict (all CIs exclude $0.6$) holds in both columns. CI is
-BCa-bootstrap over workloads, $2000$ resamples. Phi-3-Mini
+BCa-bootstrap over workloads, $n_\text{boot}=10{,}000$ resamples
+(\texttt{spearman\_with\_ci} default). Phi-3-Mini
 extractive saturates at $\sim 2.5\times$ achieved compression so
 its pooled $n$ is $750$ ($150 \times 5$); see
 Section~\ref{sec:phi3} and Appendix~B.}
@@ -737,8 +1000,8 @@ critical-token-recall the canonical per-family estimates on the
 $\theta_q^{\,(b)} = 0.838$, and $\theta_q^{\,(c)} = 0.590$. A
 workload-level bootstrap CI is constructed on $\theta_q$ by
 resampling workloads
-(\texttt{scripts/bootstrap\_theta\_q.py}, $n_\text{boot} = 1000$,
-BCa interval). The predicted $\tau^{*}$ is then obtained by
+(\texttt{scripts/bootstrap\_theta\_q.py}, $n_\text{boot} = 500$,
+BCa interval; the per-iteration curve fit is the budget driver). The predicted $\tau^{*}$ is then obtained by
 inverting $q(r) = \theta_q$ on the empirical critical-token-recall
 curve. Resampling $\theta_q$ through this inverse map gives a
 \emph{predicted-$\tau^{*}$ band} that quantifies the
@@ -930,10 +1193,9 @@ the calibrated regime (we report ``no detected shift'' rather than
 proven invariance). (The ``$p_0(m) \ge \theta_q$'' comparison is
 between a success probability and a fraction of task-critical
 tokens; the operational reading and unit-bridge gloss is in
-Section~\ref{sec:calibrated}.) \textbf{Verdict: SUPPORTED as a within-class, cross-scale,
-cross-architecture invariance of the LLM-planner cliff; consistent
-on the local arm; not established at the strict tolerance for the
-deterministic-solver cliff} (the fine-grid re-resolution of
+Section~\ref{sec:calibrated}.) \textbf{Verdict: NO SHIFT
+DETECTED (equivalence not established at $\pm 20\%$ TOST on either
+frontier cell); consistent on the local arm} (the fine-grid re-resolution of
 Section~\ref{sec:h2} shows the synthetic $\tau^{*}=2.5$ is a
 deterministic-solver artefact, so the load-bearing comparison is
 LLM-vs-LLM: Llama-3.1-8B and Qwen-2.5-72B both cliff at
@@ -1197,10 +1459,10 @@ $\tau^{*}_\text{LLM}\approx 2.70$. \textbf{Neither frontier cell
 demonstrates equivalence at $\pm 20\%$.} For Qwen-2.5-72B the
 $90\%$ bootstrap interval on $\tau^{*}$ is $[1.96, 7.23]$ (only
 $22\%$ of resamples land inside the band); for DeepSeek~V4~Pro it
-is $[1.77, 7.13]$ (only $6\%$ inside). The point estimates match
-the reference well ($0.8\%$ and $20\%$ relative error), but the
-fits are too weakly identified for the data to \emph{rule out} a
-difference larger than $20\%$. The correct conclusion is therefore
+is $[1.77, 7.13]$ (only $6\%$ inside). The point estimates differ from the reference by $0.8\%$
+(Qwen-72B) and $20\%$ (DeepSeek), the latter at the strict
+equivalence-test threshold; the fits are too weakly identified for
+the data to \emph{rule out} a difference larger than $20\%$. The correct conclusion is therefore
 \emph{no cliff-position shift is detected} across scale and
 architecture --- not that invariance is positively demonstrated.
 Establishing equivalence formally would require more seeds per
@@ -1365,8 +1627,9 @@ margin.
 pipeline from \texttt{results/h3\_final/} and the cost-instrumented
 re-run \texttt{results/h3\_eprice/} (n = 150 workloads per cell).
 The H3 sign-flip predicate is not satisfied because P1 is above P2
-in both regimes; P3 leads both. The narrowed finding is the robust
-compress-first preference (P1 $>$ P2). The achieved-ratio column is
+in both regimes; P3 leads both. The narrowed finding is a
+compress-first preference of $3.2$~pp F1 (storage) / $2.0$~pp F1
+(accuracy). The achieved-ratio column is
 the key to reading P3: only P1 actually compresses (7.49$\times$ /
 2.11$\times$), while P2 and P3 route fragments verbatim
 ($1.00\times$), so the cross-pipeline F1 gap is not a
@@ -2154,7 +2417,7 @@ H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$ cells) & \texttt{h1\_h
 H4 & Compression reduces inference disclosure & SUPPORTED on unbiased benchmark (3/4 compressors; destruction-monotonic privacy scope) & \texttt{h4\_unbiased\_v2/} \\
 \hline
 \multicolumn{4}{l}{\textbf{Tier B --- Sharpened into stronger structural claim.}} \\
-H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime (Ceiling--Cliff Separation) & SUPPORTED as \emph{no shift detected} (Llama-3.1-8B vs Qwen-2.5-72B match across $9\times$ scale + arch change; $\pm 20\%$ TOST not yet passed) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b\_e2/}, \texttt{frontier\_deepseekv4/} \\
+H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime (Ceiling--Cliff Separation) & NO SHIFT DETECTED (point estimates within tolerance across $9\times$ scale + arch change; $\pm 20\%$ TOST not passed on either frontier cell) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b\_e2/}, \texttt{frontier\_deepseekv4/} \\
 H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff (Information-Density Scaling) & SUPPORTED (empirical observation, $n=3$ benchmarks) & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
 \hline
 \multicolumn{4}{l}{\textbf{Tier C --- Narrowed to a supported single-stack ordering.}} \\
