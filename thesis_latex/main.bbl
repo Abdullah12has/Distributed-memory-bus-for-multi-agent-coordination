@@ -929,7 +929,7 @@
       \field{title}{{LongBench v2}: Towards Deeper Understanding and Reasoning on Realistic Long-context Multitasks}
       \field{year}{2025}
     \endentry
-    \entry{hsieh2024ruler}{misc}{}{}
+    \entry{hsieh2024ruler}{inproceedings}{}{}
       \name{author}{8}{}{%
         {{hash=e35969147a3d81230a490a286da67e44}{%
            family={Hsieh},
@@ -984,7 +984,8 @@
       \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{howpublished}{arXiv preprint arXiv:2404.06654}
+      \field{booktitle}{Proc. Conf. on Language Modeling (CoLM)}
+      \field{note}{arXiv:2404.06654.}
       \field{title}{{RULER}: What's the Real Context Size of Your Long-Context Language Models?}
       \field{year}{2024}
     \endentry
@@ -1672,7 +1673,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{booktitle}{Proc. International Conference on Learning Representations (ICLR)}
-      \field{title}{{RECOMP}: Improving Retrieval-Augmented {LMs} with Compression and Selective Augmentation}
+      \field{title}{{RECOMP}: Improving Retrieval-Augmented {LMs} with Context Compression and Selective Augmentation}
       \field{year}{2024}
     \endentry
     \entry{wang2024icf}{inproceedings}{}{}
@@ -1945,7 +1946,7 @@
       \field{title}{{MetaGPT}: Meta Programming for a Multi-Agent Collaborative Framework}
       \field{year}{2024}
     \endentry
-    \entry{li2023camel}{misc}{}{}
+    \entry{li2023camel}{inproceedings}{}{}
       \name{author}{5}{}{%
         {{hash=443005f46fb507467e2eb90c40ebcec8}{%
            family={Li},
@@ -1986,8 +1987,8 @@
       \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{howpublished}{arXiv preprint arXiv:2303.17760}
-      \field{title}{{CAMEL}: Communicative Agents for ``Mind'' Exploration of Large Scale Language Model Society}
+      \field{booktitle}{Advances in Neural Information Processing Systems (NeurIPS)}
+      \field{title}{{CAMEL}: Communicative Agents for ``Mind'' Exploration of Large Language Model Society}
       \field{year}{2023}
     \endentry
     \entry{shinn2023reflexion}{inproceedings}{}{}
@@ -2093,7 +2094,7 @@
       \field{title}{{MemGPT}: Towards {LLM}s as Operating Systems}
       \field{year}{2023}
     \endentry
-    \entry{park2025collaborative}{misc}{}{}
+    \entry{rezazadeh2025collaborative}{misc}{}{}
       \name{author}{6}{}{%
         {{hash=8bfb7c3b19ab21db0f8183bf66c344a8}{%
            family={Rezazadeh},
@@ -2752,7 +2753,7 @@
       \field{title}{Enhancing {RAG} Efficiency with Adaptive Context Compression}
       \field{year}{2025}
     \endentry
-    \entry{mialon2023gaia}{misc}{}{}
+    \entry{mialon2023gaia}{inproceedings}{}{}
       \name{author}{6}{}{%
         {{hash=283d29472bacedfbd4123cb1ddc4ff97}{%
            family={Mialon},
@@ -2797,9 +2798,10 @@
       \field{sortinithash}{b33bc299efb3c36abec520a4c896a66d}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{howpublished}{arXiv preprint arXiv:2311.12983}
+      \field{booktitle}{Proc. International Conference on Learning Representations (ICLR)}
+      \field{note}{arXiv:2311.12983.}
       \field{title}{{GAIA}: A Benchmark for General {AI} Assistants}
-      \field{year}{2023}
+      \field{year}{2024}
     \endentry
     \entry{liu2024agentbench}{inproceedings}{}{}
       \true{moreauthor}
@@ -2968,7 +2970,7 @@
       \field{labeltitlesource}{title}
       \field{booktitle}{Proc. Conference on Language Modeling (COLM)}
       \field{note}{arXiv:2401.15391.}
-      \field{title}{{MultiHopRAG}: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries}
+      \field{title}{{MultiHop-RAG}: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries}
       \field{year}{2024}
     \endentry
     \entry{addison2024cfedrag}{misc}{}{}
@@ -3142,6 +3144,7 @@
       \field{sortinithash}{a231b008ebf0ecbe0b4d96dcc159445f}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
+      \field{number}{NIST AI 100-1}
       \field{title}{{AI} Risk Management Framework ({AI RMF} 1.0)}
       \field{type}{techreport}
       \field{year}{2023}
