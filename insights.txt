@@ -4338,3 +4338,47 @@ Rezazadeh et al.
 
 Build: latexmk exit 0, biber found 65 citekeys, no warnings, 94 pages, main.pdf
 refreshed.
+
+## 82. ADVERSARIAL DEFENSE REVIEW — full skeptical-examiner pass (2026-06-01)
+
+Ran a 14-agent adversarial review (one skeptical examiner per chapter/hypothesis
++ 4 literature-grounding web passes) against Evaluation_Instructions.md and the
+two prior on-disk audits. Output: THESIS_DEFENSE_REVIEW.md (root). 79 examiner
+questions (13 critical, 39 high) + 18 literature-grounded challenges.
+
+Headline: thesis is unusually HONEST (pre-empts most attacks in-text) — that is
+the #6 asset AND the #5/#7 ceiling. Grade loss is NOT on the science but on four
+fixable things:
+(1) Tiivistelmä/conformity blocker (#10) — verify Finnish abstract present.
+(2) Abstract + Closing OVERCLAIMS that contradict the body: "decorrelates"
+    (filter is -0.82 anti-corr), model "predicts position" (band excludes tau*
+    on 11/11), "validated on Qwen-72B + DeepSeek" (DeepSeek weakly id'd),
+    "robustly preferred" (2-3pp single-stack), Closing "predictive model /
+    validated across planner scales".
+(3) Verdict-label over-reads: Corollary 1 box says SUPPORTED while validator
+    writes corollary1_supported:false + TOST fails both frontier cells + local
+    arm 23.9%>20%. Change to "NO SHIFT DETECTED (equivalence not established)".
+    "Corollary 2" -> "Empirical Observation 2".
+(4) Stale/inconsistent numbers falsifying the traceability promise:
+    corollary2_theta_info.json tau=2.0/3.0 vs table 2.5/11.3; filter plateau
+    50% (post-CTR) vs 64% (insights §54 ablation); "0/7 at every cliff ratio"
+    vs verdict 0/5; line 1172 calls 20% rel error a good "match".
+
+Top defensive moves: lead with H2 (the one clean positive) not H1; concede-and-
+reframe on every reframed null; defend single-call scope as identification
+strategy; retreat Corollary 1 to "scale is not the dominant driver".
+
+Literature LANDMINES found uncited (real examiner ammunition):
+- Cliff novelty: Jan-2026 "intelligence degradation" paper (arXiv 2601.15300)
+  uses ~same >30%-drop threshold def; + lost-in-the-middle, RULER, BABILong,
+  Schaeffer "Mirage" (metric-artifact attack).
+- Intro's "nobody measures multi-fragment compression" is FALSE: RECOMP (ICLR24),
+  BRIEF, BRIEF-Pro, "Characterizing Prompt Compression Methods" (2024) runs OUR
+  exact compressors on HotpotQA/2Wiki/MuSiQue. Must cite-and-distinguish.
+- H3 "compress-first dominance" runs AGAINST field consensus (query-aware
+  retrieve-then-compress wins); target-vs-achieved ratio cost-model soft spot.
+- H4 privacy: privacy-funnel (theoretical home, uncited), CanaryBench (extractive
+  leaks 96% verbatim — indicts phi3), CompLeak, proxy-reader-bias papers, Staab
+  et al (GPT-4 85% top-1 -> our reduction is optimistic not upper-bound).
+Action: cite-and-distinguish each; narrow novelty claims to the predict/threshold
+seam. Full per-section Q+defense+residual-risk in THESIS_DEFENSE_REVIEW.md.

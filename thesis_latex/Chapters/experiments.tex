@@ -1,16 +1,49 @@
 This chapter presents the empirical work that this thesis turns on:
 the cliff sweep on which H1, H2, and the compounding-error model are
-based; the model-scaling sweep reframed as Corollary~1; the frontier
-validation that promotes the model-independence claim from
-small-model evidence to a cross-architecture result inside a defined
-calibrated regime; the retrieval-augmented-generation pipeline
-catalogue (H3); the summary-level inference-disclosure measurement
-(H4); and the information-density scaling result on real benchmarks
-reframed as Corollary~2. The chapter is organised around the
-falsifiable claims rather than the chronology of the runs; canonical
-results directories under \texttt{results/} are referenced for each
-section so that every number is traceable to an immutable artefact
-on disk.
+based; the model-scaling sweep whose result is reported as
+Corollary~1; the frontier validation that promotes the
+model-independence claim from small-model evidence to a
+cross-architecture result inside a defined calibrated regime; the
+retrieval-augmented-generation pipeline catalogue (H3); the
+summary-level inference-disclosure measurement (H4); and the
+information-density scaling result on real benchmarks reported as
+Corollary~2. The chapter is organised around the falsifiable claims
+rather than the chronology of the runs; canonical results directories
+under \texttt{results/} are referenced for each section so that
+every number is traceable to an immutable artefact on disk.
+
+\section{Pre-registration and Refinement}
+\label{sec:prereg_refinement}
+
+The six investigations of this chapter were pre-registered with
+falsifiable criteria in \texttt{configs/experiments/h\{1-6\}.yaml}
+and \texttt{plan-v3.md}. The criteria for H3, H5, and H6 were
+refined after the sweeps; the refinements are documented as ADR-006--008
+in the project repository. The three-tier structure used in the rest
+of the chapter:
+
+\textbf{Three hold as pre-registered.} H1 (workload-level QA-F1 does
+not transferably predict coordination success), H2 (a sharp cliff
+at \mbox{$\ge\!30$\%} drop with $p<0.05$ on \mbox{$\ge\!7/9$} cells),
+and H4 (compression reduces inference disclosure with baseline above
+priors).
+
+\textbf{Two sharpened.} H5's monotonicity prediction resolved into
+the invariance result \textbf{Corollary~1 (Ceiling--Cliff
+Separation)}, Section~\ref{sec:corollary1}: $\tau^{*}$ is determined
+by the compressor and the task within a calibrated regime, while
+planner scale moves the ceiling $p_0$. H6's transfer prediction
+resolved into \textbf{Corollary~2 (Information-Density Scaling)},
+Section~\ref{sec:corollary2}: the cliff position varies with task
+information density $\theta_\text{info}$.
+
+\textbf{One narrowed.} H3's regime sign-flip predicate
+($\ge\!5$~pp F1 effect with opposite sign across storage- and
+accuracy-bounded regimes) is not satisfied; compress-first dominates
+on the tested stack in both regimes (Section~\ref{sec:h3}).
+
+The consolidated table is Table~\ref{tab:verdict_summary}
+(Section~\ref{sec:verdict_summary}).
 
 \section{Experimental Protocol}
 \label{sec:protocol}
@@ -925,7 +958,7 @@ constraint tracking is hard for $\le 8$B planners independent of
 compression.
 \end{tcolorbox}
 
-This corollary is the reframing of the original H5 hypothesis,
+This corollary is the sharpened form of the original H5 hypothesis,
 which predicted strict monotonicity of $\tau^{*}$ across planner
 scales. The empirical result on family-c across the three local
 planners --- \textbf{Qwen-2.5-1.5B-Instruct,
@@ -940,13 +973,12 @@ looks like rather than a monotonicity result. (The local arm is
 therefore a \emph{three-architecture} invariance test, not a
 within-family parameter-count sweep: only the
 1.5B planner is Qwen; Phi-3-Mini (3.8B) and Llama-3.1 (8B) are
-different architecture families.) The original H5
-predicate (gap $\ge 1.5$ ratio units) is not satisfied because
-the spread is well below $1.5$; the reframed Corollary~1
-predicate (invariance within the calibrated regime) is supported
-by the local sweep at a $\pm 50\%$ tolerance but \emph{fails the
-strict} $\pm 20\%$ \emph{tolerance} that matches the H2
-falsifiable-claim spec. The local-model sweep is therefore
+different architecture families.) The original H5 predicate (gap $\ge 1.5$ ratio units in the
+monotone direction) is not satisfied --- the spread is well below
+$1.5$ and points to invariance. The refined Corollary~1 predicate
+(invariance within the calibrated regime) is supported by the local
+sweep at $\pm 50\%$ tolerance but fails the strict $\pm 20\%$
+tolerance matching the H2 spec. The local-model sweep is therefore
 \emph{necessary but not sufficient} for Corollary~1; the
 load-bearing evidence is the LLM-cliff invariance re-anchored
 below (the re-anchoring paragraph; Section~\ref{sec:frontier})
@@ -961,7 +993,7 @@ the strict-$20\%$-tolerance local-arm result
 (\texttt{n\_testable\_families: 1, n\_invariant\_families: 0}, the
 other two floored), which this section already reports as failing
 the strict bar --- it is honest about the local arm, not a
-refutation of the reframed claim, whose support comes from the
+refutation of the refined claim, whose support comes from the
 cross-architecture LLM-cliff comparison the validator does not
 evaluate.
 
@@ -1027,13 +1059,10 @@ demonstration of Corollary~1.}
 \label{fig:h5_model_overlay}
 \end{figure}
 
-The honest statement of the reframing is in the title of this
-section. The original H5 predicate did not hold; the reframed
-Corollary~1 predicate, which is the structurally interesting
-claim, did. The reframing was made on the basis of the cliff
-machinery's prediction and was registered as a design decision
-before the frontier validation that promotes it from a
-small-model result to a cross-architecture one.
+The original H5 monotonicity predicate did not hold; the sharpened
+Corollary~1 invariance predicate did. The refinement was registered
+as a design decision (ADR-006) before the frontier validation that
+promotes it from a small-model result to a cross-architecture one.
 
 \section{Frontier Validation Within the Calibrated Regime}
 \label{sec:frontier}
@@ -1293,16 +1322,14 @@ sample named in Section~\ref{sec:future}.
                   top=2pt, bottom=2pt]
 \textbf{H3 (original predicate).} The optimal pipeline between
 compress-first (P1) and retrieve-first (P2) sign-flips between a
-storage-bounded and an accuracy-bounded regime. \textbf{Verdict:
-NOT SUPPORTED} for the predicted sign-flip. \textbf{Reframed
-finding:} P1 (compress-first) is robustly preferred over P2
-(retrieve-first) in both regimes; P3 (joint
-relevance-conditional routing) leads both. The reframed result is
-itself a substantive finding because it does not reproduce, on the
-single retriever/embedder stack tested here, the
+storage-bounded and an accuracy-bounded regime, with $\ge\!5$~pp
+effect. \textbf{Verdict: not satisfied} --- no sign-flip is
+observed. \textbf{Narrowed finding:} P1 (compress-first) is preferred
+over P2 (retrieve-first) in \emph{both} regimes; P3 (joint
+relevance-conditional routing) leads both. This does not reproduce,
+on the single retriever/embedder stack tested here, the
 post-retrieval-compression preference of the
-LongLLMLingua~\cite{jiang2024longllmlingua} line of work (a
-single-stack non-reproduction, not a general falsification).
+LongLLMLingua~\cite{jiang2024longllmlingua} line of work.
 \end{tcolorbox}
 
 \subsection{Setup}
@@ -1338,7 +1365,7 @@ margin.
 pipeline from \texttt{results/h3\_final/} and the cost-instrumented
 re-run \texttt{results/h3\_eprice/} (n = 150 workloads per cell).
 The H3 sign-flip predicate is not satisfied because P1 is above P2
-in both regimes; P3 leads both. The reframed finding is the robust
+in both regimes; P3 leads both. The narrowed finding is the robust
 compress-first preference (P1 $>$ P2). The achieved-ratio column is
 the key to reading P3: only P1 actually compresses (7.49$\times$ /
 2.11$\times$), while P2 and P3 route fragments verbatim
@@ -1890,16 +1917,15 @@ distributed), and HotpotQA ($\approx 0.37$, highly distributed),
 and by the qualitatively distinct degradation shapes visible in
 Figure~\ref{fig:hotpotqa_cliff} and
 Figure~\ref{fig:cliff_families}. The original H6 predicate
-(synthetic-vs-real $\tau^{*}$ within $\pm 15\%$) is honestly NOT
-SUPPORTED --- MultiHopRAG cliffs at $11.3$, far from the C1
-reference --- and that is what motivated the reframing from
-\emph{position transfers} to \emph{shape transfers}.
+(synthetic-vs-real $\tau^{*}$ within $\pm 15\%$) is not satisfied
+--- MultiHopRAG cliffs at $11.3$, far from the C1 reference --- which
+motivated the sharpening from position transfers to shape transfers.
 \end{tcolorbox}
 
 \subsection{\texorpdfstring{$\theta_\text{info}$ versus $\theta_q$}{theta\_info versus theta\_q}}
 \label{sec:theta_info_def}
 
-A subtle point that the corollary reframing makes explicit: the
+A subtle point that the corollary's refined framing makes explicit: the
 information-density $\theta_\text{info}$ that Corollary~2 talks
 about is \emph{not} the cliff-recall threshold $\theta_q$ that
 Corollary~1 and the compounding-error model talk about. The two
@@ -1994,11 +2020,10 @@ new task can estimate $\theta_\text{info}$ on a small calibration
 set and predict whether the task is dense (cliff early, sharp) or
 distributed (cliff late, gradual) before sweeping the full curve.
 
-The dropped H6 original predicate (synthetic-versus-real
-$\tau^{*}$ within $\pm 15\%$) is honestly NOT SUPPORTED at the
-table-level numbers; the reframed Corollary~2 predicate (gap in
-$\theta_\text{info}$ $\ge 0.1$ between dense and distributed
-benchmarks) is comfortably SUPPORTED. The synthetic
+The original H6 predicate (synthetic-versus-real $\tau^{*}$ within
+$\pm 15\%$) is not satisfied at the table-level numbers; the
+sharpened Corollary~2 predicate (gap in $\theta_\text{info}$
+$\ge 0.1$ between dense and distributed benchmarks) is SUPPORTED. The synthetic
 benchmark is still the right place to characterise the cliff
 mechanism cleanly, and the real benchmarks are the right place to
 validate the structure transfers.
@@ -2105,29 +2130,35 @@ the pinned \texttt{requirements.lock.txt}, and the
 up locally.
 
 \section{Summary of Verdicts}
+\label{sec:verdict_summary}
 
 Table~\ref{tab:verdict_summary} consolidates the verdict block of
-this chapter for easy reference. Each row links to the canonical
+this chapter for easy reference, using the three-tier structure
+introduced in Section~\ref{sec:prereg_refinement}. Each row links to the canonical
 results directory under \texttt{results/} that produced the
 numbers.
 
 \begin{table}[h]
 \centering
-\caption{Consolidated verdict table. Original predicate verdicts
-are reported alongside the reframed corollary verdicts where the
-reframing was made before the chapter was written.}
+\caption{Consolidated verdict table, three-tier structure
+(Section~\ref{sec:prereg_refinement}).}
 \label{tab:verdict_summary}
 \small
 \begin{tabular}{p{2.0cm}p{5.5cm}p{2.5cm}p{4.0cm}}
 \hline
 ID & Claim & Verdict & Canonical dir \\
 \hline
+\multicolumn{4}{l}{\textbf{Tier A --- Holds as pre-registered.}} \\
 H1 & QA-F1 does not transferably predict coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
-H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$) & \texttt{h1\_h2\_v2/} \\
-H3 & RAG sign-flip across regimes & NOT SUPPORTED (reframed as compress-first dominance) & \texttt{h3\_final/} \\
-H4 & Compression reduces inference disclosure & SUPPORTED on unbiased & \texttt{h4\_unbiased\_v2/} \\
-H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime & SUPPORTED as \emph{no shift detected} (frontier point estimates match; $\pm 20\%$ TOST not passed) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b\_e2/}, \texttt{frontier\_deepseekv4/} \\
-H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff & SUPPORTED (empirical observation, $n=3$ benchmarks) & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
+H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$ cells) & \texttt{h1\_h2\_v2/} \\
+H4 & Compression reduces inference disclosure & SUPPORTED on unbiased benchmark (3/4 compressors; destruction-monotonic privacy scope) & \texttt{h4\_unbiased\_v2/} \\
+\hline
+\multicolumn{4}{l}{\textbf{Tier B --- Sharpened into stronger structural claim.}} \\
+H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime (Ceiling--Cliff Separation) & SUPPORTED as \emph{no shift detected} (Llama-3.1-8B vs Qwen-2.5-72B match across $9\times$ scale + arch change; $\pm 20\%$ TOST not yet passed) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b\_e2/}, \texttt{frontier\_deepseekv4/} \\
+H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff (Information-Density Scaling) & SUPPORTED (empirical observation, $n=3$ benchmarks) & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
+\hline
+\multicolumn{4}{l}{\textbf{Tier C --- Narrowed to a supported single-stack ordering.}} \\
+H3 & RAG sign-flip across regimes (pre-registered); compress-first dominance on the tested stack (refined) & Pre-registered predicate NOT satisfied; refined ordering SUPPORTED & \texttt{h3\_final/} \\
 \hline
 \end{tabular}
 \end{table}

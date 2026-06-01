@@ -11,27 +11,27 @@ and where the most natural follow-on studies sit.
 \label{sec:synthesis}
 
 \paragraph{What stands and what doesn't.}
-Of the six pre-registered hypotheses, \textbf{H1 (QA-F1 mis-ranks
-compressors for multi-fragment use)} holds as stated and is the
-manuscript's most-citable result; \textbf{H2 (a sharp cliff exists)}
-holds on $11$ of $12$ (compressor, family) cells, with the
-remaining cell (filter $\times$ family-c) accounted for mechanically
-in Section~\ref{sec:h2}. The remaining four hypotheses were
-reframed: \textbf{H3} (RAG sign-flip between regimes) is
-\emph{not supported} on the predicate as written --- a narrower
-single-stack compress-first-over-retrieve-first ordering survives;
-\textbf{H5} (planner-scale monotonicity) is reframed as
-\emph{Corollary 1 (ceiling--cliff separation)} and is carried by
-one well-identified frontier cell (Llama-3.1-8B vs Qwen-2.5-72B,
-family-a $\times$ LLMLingua-2) rather than by the original
-parameter-scale sweep; \textbf{H6} (cross-benchmark $\tau^{*}$
-transfer) is reframed as \emph{Corollary 2 (information-density
-scaling)} on three benchmarks; \textbf{H4} (compression reduces
-inference disclosure) is supported on three of four compressors but
-the privacy interpretation is deflationary --- the reduction is
-monotonic in information destruction and matched at
-$\sim 23$~pp by trivial oracle field-redaction at near-zero
-destruction. The compounding-error model is a \emph{first-order}
+\textbf{Three hold as stated.} \textbf{H1 (QA-F1 mis-ranks
+compressors for multi-fragment use)} is the manuscript's
+most-citable result; \textbf{H2 (a sharp cliff exists)} holds on
+$11$ of $12$ (compressor, family) cells, with the remaining cell
+(filter $\times$ family-c) accounted for in Section~\ref{sec:h2};
+\textbf{H4 (compression reduces inference disclosure)} is supported
+on three of four compressors, with the reduction monotonic in
+information destruction and matched at $\sim 23$~pp by oracle
+field-redaction at near-zero destruction --- the metric ranks
+compressors but the privacy interpretation requires a
+destruction-aware threat model. \textbf{Two sharpened.}
+\textbf{H5}'s directional prediction resolved into the invariance
+result \emph{Corollary~1 (Ceiling--Cliff Separation)}, carried by
+the Llama-3.1-8B vs Qwen-2.5-72B family-a $\times$ LLMLingua-2 cell
+across a $9\times$ scale-up and a change of architecture family.
+\textbf{H6}'s transfer prediction resolved into
+\emph{Corollary~2 (Information-Density Scaling)} across three
+benchmarks. \textbf{One narrowed.} \textbf{H3}'s regime sign-flip
+predicate is not satisfied; the data resolved it into a single-stack
+compress-first-over-retrieve-first ordering that does not reproduce
+LongLLMLingua's post-retrieval preference on the tested stack. The compounding-error model is a \emph{first-order}
 position estimate (median $\sim 35\%$ relative error) and an
 \emph{explanation} of why the cliff is sharp; the threshold
 mechanism it posits is independently confirmed on the dense family
@@ -109,8 +109,8 @@ both storage- and accuracy-bounded RAG regimes under the single
 retriever/embedder stack we evaluate
 (\texttt{BAAI/bge-large-en-v1.5} + FAISS-CPU;
 Section~\ref{sec:h3}). The H3 hypothesis as written (sign-flip
-between regimes with $\ge 5$~pp effect) is not supported, but the
-reframed finding --- that the simpler, more amortisable architecture
+between regimes with $\ge 5$~pp effect) is not satisfied; the
+narrowed finding --- that the simpler, more amortisable architecture
 is also the better one under the stack we tested --- does not
 reproduce the post-retrieval-compression preference of the
 LongLLMLingua line of work on this stack and is the substantive C3
@@ -234,7 +234,7 @@ compressor delivers $\sim 12\times$ at zero coordination.
 Strict-Pareto says CAAC does not dominate the fixed compressor;
 the empirical 0/7 result reflects this faithfully.
 
-The reframing we adopt as the substantive
+The framing we adopt as the substantive
 contribution is the operating-point one: CAAC's selected ratio is
 \emph{determined by the compounding-error bound}, not by tuning.
 For each family, $\theta_q$ is a measurement; CAAC's
