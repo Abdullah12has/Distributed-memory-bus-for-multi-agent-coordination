@@ -11,8 +11,8 @@ and where the most natural follow-on studies sit.
 \label{sec:synthesis}
 
 \paragraph{What stands and what doesn't.}
-\textbf{Three hold as stated.} \textbf{H1 (QA-F1 mis-ranks
-compressors for multi-fragment use)} is the manuscript's
+\textbf{Three hold as stated.} \textbf{H1 (source-retention F1
+mis-ranks compressors for multi-fragment use)} is the manuscript's
 most-citable result; \textbf{H2 (a sharp cliff exists)} holds on
 $11$ of $12$ (compressor, family) cells, with the remaining cell
 (filter $\times$ family-c) accounted for in Section~\ref{sec:h2};
@@ -141,7 +141,7 @@ reduction.
 The cliff position varies with task information density across
 benchmarks (Section~\ref{sec:corollary2}): C1 family-a
 ($\theta_\text{info}\approx 0.97$) cliffs early and sharply,
-MultiHopRAG ($\theta_\text{info}\approx 0.48$) cliffs late and
+MultiHop-RAG ($\theta_\text{info}\approx 0.48$) cliffs late and
 gradually, HotpotQA ($\theta_\text{info}\approx 0.37$) degrades
 gradually from a lower baseline. This is the empirical evidence
 that $\theta_\text{info}$ is a useful second-order term beyond
@@ -254,9 +254,11 @@ boundary that CAAC is constructed to respect.
 \centering
 \includegraphics[width=0.85\textwidth]{../figures/caac_pareto.pdf}
 \caption{CAAC and the fixed-ratio compressor on the
-(coord-success, achieved-ratio) plane. The shaded curve is the
-$q(r) = \theta_q$ contour from the compounding-error model. CAAC's
-operating points sit on the high-coord side of the contour by
+(coord-success, achieved-ratio) plane. The dashed horizontal line
+marks the per-family $q(r) = \theta_q$ threshold from the
+compounding-error model (its value annotated in each panel) and the
+grey band is the sub-threshold region. CAAC's
+operating points sit on the high-coord side of the threshold by
 construction; the fixed compressor's points sit at the target
 ratio regardless. The two compressors populate complementary
 regions of the frontier; there is no strict-Pareto-dominance
@@ -601,7 +603,7 @@ its formal A1 regime rather than as a within-regime prediction.
 structural level.}
 The C1 benchmark is synthetic, by design: cliff characterisation
 requires controlled information density. The transfer validation
-on HotpotQA and MultiHopRAG shows that the cliff structure
+on HotpotQA and MultiHop-RAG shows that the cliff structure
 (existence, sharpness gradient with $\theta_\text{info}$) transfers
 to real benchmarks, but the absolute cliff positions differ
 substantially. Generalisation to arbitrary task structures
@@ -949,7 +951,7 @@ compression in multi-fragment LLM workflows, measured across
 compressors, families, and benchmarks --- with planner-scale and
 architecture invariance reported as no-shift-detected rather than
 established --- supported by a first-order position model, a
-deployment artefact, and an open-source reproducibility package. The single deliverable
+deployment artefact, and a reproducibility package. The single deliverable
 sentence is the one the abstract opens with: every token that
 does not change the answer is waste, and what this thesis
 contributes is a way of knowing which tokens those are, when

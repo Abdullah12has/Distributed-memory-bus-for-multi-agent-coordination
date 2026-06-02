@@ -5,15 +5,16 @@ compression is the obvious lever. The single-agent
 prompt-compression literature is mature, but it measures
 single-fragment question-answering, while production workloads
 combine information across multiple compressed fragments. Whether
-single-agent QA accuracy predicts that harder property has not
-previously been tested.
+single-fragment information preservation predicts that harder
+property has not previously been tested.
 
 It does not. On a new $150$-instance multi-fragment benchmark
 spanning cross-document fact aggregation, constraint-satisfaction
 planning, and multi-step retrieval, four training-free compressors
 at ten compression ratios yield workload-level Spearman correlations
-between QA-F1 and coordination success in $[-0.82, +0.32]$, with all
-$95\%$ bootstrap CIs excluding $0.6$. The single-agent benchmarks
+between source-retention F1 --- token overlap between each compressed
+fragment and its original source text --- and coordination success in
+$[-0.82, +0.32]$, with all $95\%$ bootstrap CIs excluding $0.6$. The single-agent benchmarks
 that dominate the compression literature therefore systematically
 mis-rank compressors for multi-fragment deployment.
 
@@ -37,8 +38,9 @@ stated. Two (H5, H6) sharpened during analysis into
 \emph{Corollary~2 (Information-Density Scaling)}, both supported on
 their refined criteria. H3 narrowed from a regime sign-flip
 prediction to a single-stack compress-first ordering. The
-deliverable is the manuscript and an open-source reference
-implementation of a policy-enforcing memory bus, reproducible from a
-single command given a precomputed compression cache.
+deliverable is the manuscript and a reference implementation of a
+policy-enforcing memory bus, released to examiners and collaborators
+and reproducible from a single command given a precomputed
+compression cache.
 
 \end{thesisabstract}

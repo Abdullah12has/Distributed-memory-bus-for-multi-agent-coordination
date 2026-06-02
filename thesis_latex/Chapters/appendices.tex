@@ -9,7 +9,7 @@ instance from family~(a) showing the source-fragment structure
 an illustrative \texttt{curl} trace (with timestamps and chain hashes
 elided for legibility) exercising the memory-bus endpoints
 (Appendix~D). The full reproducibility package, including the
-model cards and the data cards, is shipped with the open-source
+model cards and the data cards, is shipped with the reference
 release referenced in the closing section of
 \charef{summary}.
 
@@ -170,12 +170,17 @@ reader can verify they are looking at the same release.
 
 \subsection{D.1 One-command reproduction of every chapter figure}
 
-The reproducibility package is the complete open-source repository.
+The reproducibility package is the complete reference repository
+released to examiners and collaborators.
+Historical planning documents in the repository reflect earlier
+protocol designs; the canonical experiment protocol for the submitted
+thesis is the final set of experiment runners and result artefacts
+listed in this appendix.
 The compute envelope is a single Apple~M4~Pro 48~GB workstation, with
 an optional RTX~5090 32~GB workstation (Tailscale-accessible WSL2
 host) for the GPU-bound compression precomputation, the
 model-scaling sweep at $8$B, the frontier-API sweep, and the
-HotpotQA / MultiHopRAG transfer arm. Total wallclock end-to-end is
+HotpotQA / MultiHop-RAG transfer arm. Total wallclock end-to-end is
 approximately $30$~hours of GPU time and $\sim 12$~hours of laptop
 time. The package contains a \texttt{docker-compose.yml} that
 brings the memory-bus reference service up locally, a GitHub
@@ -218,7 +223,7 @@ runs the H4 inference-disclosure measurement against the unbiased
 benchmark, producing Section~\ref{sec:h4_disclosure}'s figures.
 Wallclock $\sim 1$~hour on the M4~Pro.
 \item[\texttt{make repro-transfer}]
-runs the HotpotQA and MultiHopRAG transfer arm, producing
+runs the HotpotQA and MultiHop-RAG transfer arm, producing
 Section~\ref{sec:corollary2}'s figures. Wallclock $\sim 2$~hours.
 \item[\texttt{make repro-figs}]
 regenerates every PDF and PNG figure under \texttt{figures/} from

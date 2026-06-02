@@ -28,8 +28,9 @@ refined after the sweeps; the refinements are documented as ADR-006--008
 in the project repository. The three-tier structure used in the rest
 of the chapter:
 
-\textbf{Three hold as pre-specified.} H1 (workload-level QA-F1 does
-not transferably predict coordination success), H2 (a sharp cliff
+\textbf{Three hold as pre-specified.} H1 (workload-level
+source-retention F1 does not transferably predict coordination
+success), H2 (a sharp cliff
 at \mbox{$\ge\!30$\%} drop with $p<0.05$ on \mbox{$\ge\!7/9$} cells),
 and H4 (compression reduces inference disclosure with baseline above
 priors).
@@ -115,7 +116,7 @@ evaluated --- below this gap the cliffs are visually
 indistinguishable on the AUC-based $\theta_\text{info}$ axis. The
 bar is conservative against estimator noise: the empirical gaps in
 Table~\ref{tab:corollary2} ($0.48$ between C1 family-a and
-MultiHopRAG, $0.59$ between C1 family-a and HotpotQA) clear it by
+MultiHop-RAG, $0.59$ between C1 family-a and HotpotQA) clear it by
 several multiples, so the corollary verdict does not turn on the
 precise location of the bar within the noise floor.
 \end{description}
@@ -149,9 +150,11 @@ lower-bound argument: any compressor that does not beat truncation
 on the coordination metric is paying training or inference cost for
 no coordination-quality return.
 
-Every cell records the coordination-success binary, an F1 over
-extracted answer tokens versus ground truth (this is what H1's
-``QA accuracy'' refers to), the achieved compression ratio, the
+Every cell records the coordination-success binary, the
+source-retention F1 (token-overlap F1 between the compressed
+fragments and the original source text --- the \texttt{qa\_f1}
+column H1 analyses, \emph{not} answer-level QA-F1 against a gold
+answer), the achieved compression ratio, the
 generic token-recall, and the critical-token-recall described in
 Section~\ref{sec:ctr} of \charef{implementation}. The
 compression cache (Section~\ref{sec:cache}) guarantees that every cell
@@ -402,7 +405,7 @@ metric set whose statistical assumptions are tested is more
 defensible than a larger metric set whose individual choices are
 not justified.
 
-\section{H1: Question-Answering Accuracy Does Not Transferably Predict Coordination Success}
+\section{H1: Single-Fragment Information Preservation Does Not Transferably Predict Coordination Success}
 \label{sec:h1}
 
 \begin{tcolorbox}[colback=black!4, colframe=black!50, sharp corners,
@@ -414,8 +417,8 @@ coordination success: workload-level
 Spearman~$\rho(\Delta_\text{qa}, \Delta_\text{coord}) < 0.6$ for
 every compressor, with $95\%$ bootstrap CIs excluding $0.6$ from
 above. \textbf{Verdict: SUPPORTED.} The finding is most honestly
-stated as \emph{QA-F1 change does not positively predict
-coordination change for any compressor at the workload level},
+stated as \emph{source-retention F1 change does not positively
+predict coordination change for any compressor at the workload level},
 plus a methodological warning that pooled single-number correlations
 are distorted. At the workload level (the inference-valid unit),
 the instruction-aware filter is strongly negative
@@ -436,15 +439,21 @@ n.s.); and the single significant within-family relationship is
 \emph{negative} (LLMLingua-2/family-c, $-0.46$). The pooled
 positive correlations for LLMLingua-2 and truncation are thus
 inflated by pseudo-replication and between-family pooling and must
-not be read as evidence that QA-F1 tracks coordination.
+not be read as evidence that source-retention F1 tracks coordination.
 \end{tcolorbox}
 
 \subsection{Result}
 
+The H1 single-fragment metric is \emph{source-retention F1}:
+token-overlap F1 between the compressed fragment representation and
+the original source text (\texttt{single\_agent\_qa} in
+\texttt{run\_h1\_h2.py}, reported in the \texttt{qa\_f1} column). It
+is \emph{not} answer-level QA-F1 against a gold answer; it is the
+single-fragment information-preservation proxy that stands in for
+the single-agent quality metric the prompt-compression literature
+optimises~\cite{jiang2024longllmlingua,pan2024llmlingua2}.
 Table~\ref{tab:h1_rho} reports the Spearman correlation between the
-change in token-overlap F1 (the ``QA accuracy'' metric the
-LongLLMLingua line of work
-reports~\cite{jiang2024longllmlingua,pan2024llmlingua2}) and the
+change in source-retention F1 and the
 change in coordination success under compression, at both the
 workload level (the inference-valid unit) and pooled-over-ratios
 (for comparison only). The signature finding is twofold. First,
@@ -554,7 +563,7 @@ Table~\ref{tab:h1_rho}) does \textbf{not} reproduce within any
 single family (family-a is only $-0.13$ and n.s.; b and c are
 degenerate): it is a between-family pooling effect, not a
 within-task law. The practical reading is the conservative one ---
-QA-F1 change does not positively and consistently predict
+source-retention F1 change does not positively and consistently predict
 coordination change anywhere we can measure it within a task
 family, which is exactly why a single-agent F1 ranking cannot be
 trusted to transfer to a multi-fragment deployment.
@@ -577,15 +586,17 @@ choose the wrong compressor.
 The negative-correlation behaviour of the filter compressor is the
 mechanism behind H1. The TF-IDF and cross-encoder re-ranker stages
 of the filter are explicitly task-aware: they preserve tokens that
-are relevant to the task hint and drop tokens that are not. The
-F1 metric, by contrast, scores token-overlap against the
-\emph{ground-truth answer}, not the task hint. So the filter drops
-F1-positive tokens (the answer string itself is sometimes
-re-ranked out) while preserving the chain-of-reasoning tokens the
-planner needs to derive the answer. The result is that the same
-compression operation that the F1 metric scores as a quality drop
-is, by the coordination metric, a quality preservation. The
-single-agent benchmark is measuring the wrong thing.
+are relevant to the task hint and drop tokens that are not.
+Source-retention F1, by contrast, scores token-overlap against the
+\emph{entire original source text}, rewarding bulk survival of
+source tokens regardless of task relevance. So the filter drops
+source tokens that the task does not need (lowering source-retention
+F1) while preserving the chain-of-reasoning tokens the
+planner needs to derive the answer (holding coordination up). The
+result is that the same compression operation that source-retention
+F1 scores as a quality drop is, by the coordination metric, a
+quality preservation. The single-agent benchmark is measuring the
+wrong thing.
 
 \subsection{Comparison to prior work}
 
@@ -743,7 +754,7 @@ Truncation $\times$ a    & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12
 Truncation $\times$ b    & $2.5^{\dagger}$ & 1.00 & 1.61 & $8.5\!\times\!10^{-12}$ \\
 Truncation $\times$ c    & 4.95 & 0.71 & 1.36 & $9.6\!\times\!10^{-10}$ \\
 \hline
-\multicolumn{4}{l}{\textbf{Verdict}: $11/12$ cells significant with observed drop $\ge 0.30$ ($3$ of those $11$ are Phi-3 cells whose $\tau^{*}$ positions are not numerically comparable across compressors --- see Section~\ref{sec:phi3}).} & \textbf{SUPP.} \\
+\multicolumn{5}{p{0.95\linewidth}}{\textbf{Verdict}: $11/12$ cells significant with observed drop $\ge 0.30$ ($3$ of those $11$ are Phi-3 cells whose $\tau^{*}$ positions are not numerically comparable across compressors --- see Section~\ref{sec:phi3}). \textbf{SUPPORTED.}} \\
 \hline
 \end{tabular}
 \end{table}
@@ -789,10 +800,13 @@ argument predicts.
 \includegraphics[width=0.95\textwidth]{../figures/cliff_families.pdf}
 \caption{Cliff curves for the four compressors $\times$ three
 families. Sharp cliffs are visible on family-a for every
-compressor; family-c degrades gradually for LLMLingua-2 and
-Phi-3-Mini extractive, and does not show a detectable cliff for
-the instruction-aware filter. Truncation cliffs earliest in every
-family, providing the lower-bound baseline.}
+compressor. On family-c the compressors diverge: LLMLingua-2
+($\tau^{*}\approx 6.7$) and truncation ($\tau^{*}\approx 5.0$)
+degrade gradually, Phi-3-Mini extractive cliffs early
+($\tau^{*}\approx 2.5$), and the instruction-aware filter shows no
+detectable cliff because its re-ranker preserves the chain-reference
+tokens family-c depends on. Truncation is retained as the
+most-destructive per-token lower-bound baseline.}
 \label{fig:cliff_families}
 \end{figure}
 
@@ -1060,8 +1074,10 @@ rather than a sampling artefact, and the predicted-$\tau^{*}$ band
 is therefore presented as an uncertainty-banded first-order model
 rather than a calibrated predictor. The gap is largest on the
 lower-information-density families. As a representative single
-cell, family-c~$\times$~LLMLingua-2: the model is conservative by
-$\Delta\tau^{*}\approx +0.64$, which Corollary~2 explains via the
+cell, family-c~$\times$~LLMLingua-2: the model predicts
+$\tau^{*}\approx 2.8$ (bootstrap median) against an empirical
+$\tau^{*}\approx 6.7$ --- conservative by $\Delta\tau^{*}\approx 3.8$,
+the largest gap of any cell --- which Corollary~2 explains via the
 family-c information-density estimate
 $\theta_\text{info}\approx 0.62$ being lower than family-a's
 $\theta_\text{info}\approx 0.97$. (The numerical proximity of
@@ -1320,7 +1336,8 @@ with $m$, $\tau^{*}$ does not.
 \centering
 \includegraphics[width=0.85\textwidth]{../figures/scaling_auc.pdf}
 \caption{Coordination-curve AUC by planner scale and family.
-Family-c shows three near-overlapping lines, consistent with
+Family-c shows near-equal AUC across all three planner sizes
+(left panel), consistent with
 ceiling--cliff separation. Family-a small-model cells are in the
 floor regime ($p_0 < \theta_q$); family-b is below
 threshold for all sizes due to constraint-tracking difficulty.}
@@ -1533,9 +1550,9 @@ direction the thesis opens.
 Figure~\ref{fig:frontier_multi} overlays the three frontier cliff
 curves with the synthetic reference band. The Qwen and DeepSeek
 curves overlap the reference band; the GPT-oss curve diverges
-visibly. Figure~\ref{fig:frontier_validation} is the per-model
-$\tau^{*}$ scatter with the calibrated-regime boundary marked
-explicitly.
+visibly. Figure~\ref{fig:frontier_validation} overlays the frontier
+Qwen-2.5-72B and local Llama-3.1-8B cliff curves directly --- the
+load-bearing local-versus-frontier comparison for Corollary~1.
 
 \begin{figure}[h]
 \centering
@@ -1551,11 +1568,14 @@ support the Corollary~1 verdict.}
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.75\textwidth]{../figures/frontier_validation.pdf}
-\caption{Per-model $\tau^{*}$ against the synthetic reference.
-Qwen-72B sits at the reference; DeepSeek~V4~Pro's CI brackets the
-reference; GPT-oss~120B sits at the right tail with the
-\emph{out-of-regime} annotation. The dashed envelope is the
-$\pm 25\%$ tolerance band against the synthetic reference.}
+\caption{Frontier versus local coordination cliff on
+family-a~$\times$~LLMLingua-2. The frontier Qwen-2.5-72B planner
+(solid) and the local Llama-3.1-8B planner (dashed) cliff at
+essentially the same position across a $9\times$ scale-up and a
+change of architecture family --- the load-bearing ``no shift
+detected'' comparison for Corollary~1. The DeepSeek~V4~Pro and
+GPT-oss~120B comparisons against the synthetic reference band are in
+Figure~\ref{fig:frontier_multi}.}
 \label{fig:frontier_validation}
 \end{figure}
 
@@ -1649,6 +1669,13 @@ optimal does not change between regimes, and P1 is the better of
 the two compressed-corpus pipelines in both. P3 (joint
 relevance-conditional routing) leads both regimes by a substantial
 margin.
+
+\emph{Note:} P2 and P3 achieved compression ratio $1.00\times$ on
+retrieved fragments in this implementation --- routing them verbatim
+--- while P1 applies compression pre-retrieval. The F1 comparison is
+therefore not matched on compression across all three pipelines, so
+the P3 lead is not a Pareto claim; see
+Section~\ref{sec:h3_cost_caveat} for the cost-model implications.
 
 \begin{table}[h]
 \centering
@@ -1920,8 +1947,9 @@ results directory is \texttt{results/h4\_unbiased\_v2/} (the
 
 \subsection{Result}
 
-Table~\ref{tab:h4} reports the per-compressor signal and
-reduction. The signal is positive and $p$-significant for every
+Table~\ref{tab:h4} reports the per-compressor reduction (the
+compressor-independent signal is given in the caption). The signal
+is positive and $p$-significant for every
 compressor (the uncompressed baseline beats priors-only by
 $28.6$~pp on average), and the reduction is positive and
 $p$-significant for the three token-destructive compressors
@@ -1937,8 +1965,11 @@ developed in Section~\ref{sec:h4_construct}.
 \caption{H4 verdict table from
 \texttt{results/h4\_unbiased\_v2/} (4 compressors including
 truncation; canonical from 2026-05-30 GPU rerun). The signal
-(priors $\to$ baseline) is positive and significant for every
-compressor; the reduction (baseline $\to$ compressed-4$\times$) is
+$\Delta$ (priors $\to$ baseline) is $+0.286$
+($p_\text{Holm}=8\times10^{-4}$) for every compressor --- identical
+across rows because it does not depend on the compressor, so it is
+omitted from the table; the reduction (baseline $\to$
+compressed-4$\times$) is
 positive and significant for three of four compressors and
 \emph{not significant} for Phi-3-Mini extractive ($p=0.91$).
 Compressors are listed in order of how aggressively they destroy
@@ -1951,16 +1982,16 @@ Section~\ref{sec:h4_construct} for the construct-validity finding
 on this ordering.}
 \label{tab:h4}
 \small
-\begin{tabular}{lccc|cc}
+\begin{tabular}{lccc|c}
 \hline
-Compressor & priors & baseline & compr-$4\times$ & signal $\Delta$ & reduction $\Delta$ \\
+Compressor & priors & baseline & compr-$4\times$ & reduction $\Delta$ \\
 \hline
-Truncation (most destructive)             & 0.50 & 0.78 & 0.54 & $+0.286\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ & $-0.246\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ \\
-Instruction-aware filter                  & 0.50 & 0.78 & 0.58 & $+0.286\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ & $-0.204\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ \\
-LLMLingua-2                               & 0.50 & 0.78 & 0.59 & $+0.286\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ & $-0.189\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ \\
-Phi-3-Mini extractive (most preserving)   & 0.50 & 0.78 & 0.78 & $+0.286\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ & $-0.004\ (p_\text{Holm}\!=\!0.91,$ \textbf{n.s.}) \\
+Truncation (most destructive)             & 0.50 & 0.78 & 0.54 & $-0.246\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ \\
+Instruction-aware filter                  & 0.50 & 0.78 & 0.58 & $-0.204\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ \\
+LLMLingua-2                               & 0.50 & 0.78 & 0.59 & $-0.189\ (p_\text{Holm}\!=\!8\!\times\!10^{-4})$ \\
+Phi-3-Mini extractive (most preserving)   & 0.50 & 0.78 & 0.78 & $-0.004\ (p_\text{Holm}\!=\!0.91,$ \textbf{n.s.}) \\
 \hline
-\multicolumn{6}{l}{\textbf{Verdict}: Signal significant for all 4; reduction significant for 3 of 4 compressors. \textbf{SUPPORTED} (with construct-validity caveat).} \\
+\multicolumn{5}{p{0.9\linewidth}}{\textbf{Verdict}: signal significant for all 4 (see caption); reduction significant for 3 of 4 compressors. \textbf{SUPPORTED} (with construct-validity caveat).} \\
 \hline
 \end{tabular}
 \end{table}
@@ -2032,12 +2063,17 @@ frontier across compressors --- is named in Section~\ref{sec:future}.
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.8\textwidth]{../figures/privacy_quality.pdf}
-\caption{The privacy-versus-coordination operating-point landscape.
-At $4\times$ compression, the aggressive token-level compressors
-(filter, LLMLingua-2) trade a few coordination-success points for
-substantial disclosure reduction; Phi-3 extractive preserves more
-coordination at the cost of more leakage. Each point is a
-(compressor, ratio) cell; the axes are pooled across families.}
+\caption{Summary-level inference disclosure by compressor at
+$4\times$. For each of the four compressors the bars give the
+protected-fact recovery rate of a priors-only reader (no fragment
+access), the uncompressed baseline reader ($1\times$), and the
+compressed reader ($4\times$). Compression lowers recovery toward
+the priors floor \emph{in proportion to how aggressively the
+compressor destroys source tokens}: truncation (most destructive)
+gives the largest reduction ($24.6$~pp), then LLMLingua-2 and the
+instruction-aware filter, while Phi-3-Mini extractive preserves
+enough surface tokens that the leak persists (the structural
+exception). Rates are pooled across families.}
 \label{fig:privacy_quality}
 \end{figure}
 
@@ -2180,7 +2216,7 @@ scaling curve remain future work (Section~\ref{sec:future} of
                   top=2pt, bottom=2pt]
 \textbf{Corollary~2 (information-density scaling) --- empirical
 observation, $n=3$.} Across the three benchmarks tested (C1
-family-a, MultiHopRAG, HotpotQA), the \emph{shape} of the cliff
+family-a, MultiHop-RAG, HotpotQA), the \emph{shape} of the cliff
 --- sharpness and pre-cliff plateau --- varies systematically with
 the AUC-based information-density estimate $\theta_\text{info}$
 (defined formally in Section~\ref{sec:theta_info_def}, distinct
@@ -2205,13 +2241,13 @@ to dense C1 family-a) yet has $\theta_\text{info} \approx 0.37$
 $0.59$ and the degradation shape is gradual rather than
 precipitous. \textbf{Verdict: SUPPORTED as an empirical observation
 on $n=3$ benchmarks} by the gap in $\theta_\text{info}$ between C1
-family-a ($\approx 0.97$, dense), MultiHopRAG ($\approx 0.48$,
+family-a ($\approx 0.97$, dense), MultiHop-RAG ($\approx 0.48$,
 distributed), and HotpotQA ($\approx 0.37$, highly distributed),
 and by the qualitatively distinct degradation shapes visible in
 Figure~\ref{fig:hotpotqa_cliff} and
 Figure~\ref{fig:cliff_families}. The original H6 predicate
 (synthetic-vs-real $\tau^{*}$ within $\pm 15\%$) is not satisfied
---- MultiHopRAG cliffs at $11.3$, far from the C1 reference --- which
+--- MultiHop-RAG cliffs at $11.3$, far from the C1 reference --- which
 motivated the sharpening from position transfers to shape transfers.
 \end{tcolorbox}
 
@@ -2242,7 +2278,7 @@ empirical $\tau^{*}$ for the three benchmarks. The information
 density spans from $0.97$ on the dense C1 family-a to $0.37$ on
 HotpotQA, and the cliff position correspondingly spans from
 $\tau^{*} \approx 2.7$ on family-a to $\tau^{*} \approx 11.3$ on
-MultiHopRAG --- a $4\times$ shift in the cliff position that the
+MultiHop-RAG --- a $4\times$ shift in the cliff position that the
 single-$\theta_q$ compounding-error model cannot account for and
 that the information-density scaling claim does.
 
@@ -2266,10 +2302,10 @@ corollary verdict.}
 Task & $\theta_\text{info}$ & $\tau^{*}$ & $\theta_\text{info}$ source CSV \\
 \hline
 C1 family-a (dense, numeric)  & $0.97$ & $2.5$  & \texttt{h1\_h2\_v2/} (a, lingua2) \\
-MultiHopRAG (distributed QA)   & $0.48$ & $11.3$ & \texttt{h6\_final/results.csv} \\
+MultiHop-RAG (distributed QA)   & $0.48$ & $11.3$ & \texttt{h6\_final/results.csv} \\
 HotpotQA (very distributed)    & $0.37$ & $2.7$  & \texttt{hotpotqa\_sweep/} \\
 \hline
-\multicolumn{3}{l}{\textbf{Gap} (dense vs MultiHopRAG) $= 0.48$; (dense vs HotpotQA) $= 0.59$.} & \\
+\multicolumn{3}{l}{\textbf{Gap} (dense vs MultiHop-RAG) $= 0.48$; (dense vs HotpotQA) $= 0.59$.} & \\
 \hline
 \multicolumn{4}{p{12cm}}{\footnotesize All three $\theta_\text{info}$ values are computed by \texttt{estimate\_task\_theta()} (AUC-based) from the per-task CSVs above and consolidated in \texttt{results/corollary2\_theta\_info.json}. The $\tau^{*}$ for C1 family-a is the canonical \texttt{h1\_h2\_v2} fit $2.5$ (the earlier $2.7$ was the superseded \texttt{h1\_h2\_final} auxiliary fit; the fine-grid deterministic-solver cliff is lower still, $\approx 1.1$, Section~\ref{sec:h2}).} \\
 \end{tabular}
@@ -2290,7 +2326,8 @@ the HotpotQA cliff with the gradual-degradation pattern visible.
 \includegraphics[width=0.8\textwidth]{../figures/hotpotqa_cliff.pdf}
 \caption{HotpotQA cliff curve under LLMLingua-2 compression. The
 baseline coordination success is $0.59$, lower than family-a's
-$1.00$; the cliff position by the $0.5 \cdot p_0$ rule is
+$1.00$; the fitted cliff position (piecewise/logistic breakpoint,
+\texttt{results/hotpotqa\_sweep/}) is
 $\tau^{*} \approx 2.7$, similar to family-a's; but the
 \emph{shape} of the degradation is gradual rather than sharp, as
 captured by the lower $\theta_\text{info}$ of $0.37$.}
@@ -2357,7 +2394,7 @@ H4 reader, H5 planner, Phi-3 extractive compressor
   & \texttt{results/h4\_unbiased\_v2/}, \texttt{results/h5\_final/} \\
 Frontier API arm (Qwen-2.5-72B, DeepSeek~V4~Pro, GPT-oss~120B)
   & No
-  & \texttt{results/frontier\_\{qwen72b,deepseekv4\}/} \\
+  & \texttt{results/frontier\_qwen72b/},\newline \texttt{results/frontier\_deepseekv4/} \\
 \hline
 \end{tabular}
 \end{table}
@@ -2415,7 +2452,7 @@ Every quantitative claim in this thesis is traceable to one named
 directory under \texttt{results/} through the
 \texttt{CANONICAL\_NUMBERS.md} registry in the repository root, which
 maps each reported figure to its source artefact and the key or column
-that yields it. The open-source release bundles the manuscript source,
+that yields it. The reference release bundles the manuscript source,
 the code and configuration, the canonical CSVs and JSONs, the model and
 data cards (\texttt{docs/MODEL\_CARDS.md}, \texttt{docs/DATA\_CARDS.md}),
 the pinned \texttt{requirements.lock.txt}, and the
@@ -2442,7 +2479,7 @@ numbers.
 ID & Claim & Verdict & Canonical dir \\
 \hline
 \multicolumn{4}{l}{\textbf{Tier A --- Holds as pre-specified.}} \\
-H1 & QA-F1 does not transferably predict coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
+H1 & Source-retention F1 does not transferably predict coordination success & SUPPORTED & \texttt{h1\_h2\_v2/} \\
 H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$ cells) & \texttt{h1\_h2\_v2/} \\
 H4 & Compression reduces inference disclosure & SUPPORTED on unbiased benchmark (3/4 compressors; destruction-monotonic privacy scope) & \texttt{h4\_unbiased\_v2/} \\
 \hline

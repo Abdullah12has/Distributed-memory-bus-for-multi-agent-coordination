@@ -22,11 +22,12 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 # Canonical results paths per insights §55 (post-audit reconciliation):
 # - H1/H2 use h1_h2_v2 (4 compressors incl truncation, 27k rows)
-# - H4 uses h4_unbiased (question-template bias fix landed 2026-05-29)
+# - H4 uses h4_unbiased_v2 (canonical 4-compressor rerun incl. truncation,
+#   2026-05-30 GPU run; matches the H4 verdict table in the manuscript)
 # - Other final dirs unchanged.
 H1H2 = str(ROOT / "results/h1_h2_v2/sweep_results.csv")
 H3   = str(ROOT / "results/h3_final/results.csv")
-H4   = str(ROOT / "results/h4_unbiased/results.csv")
+H4   = str(ROOT / "results/h4_unbiased_v2/results.csv")
 H5   = str(ROOT / "results/h5_final/results.csv")
 H6   = str(ROOT / "results/h6_final/results.csv")
 CAAC = str(ROOT / "results/caac/results.csv")

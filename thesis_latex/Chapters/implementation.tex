@@ -5,7 +5,7 @@ critical-token-recall metrics that the cliff analysis turns on, the
 precomputed compression cache that decouples compression from
 evaluation, and the single-command reproducibility envelope. The
 intent is to give a reader enough detail to reproduce the system from
-the open-source repository without consulting the code, and to make
+the reference repository without consulting the code, and to make
 the design choices explicit so that the experimental results in
 \charef{experiments} can be read against the constraints
 those choices imposed.
@@ -442,7 +442,7 @@ The empirical centrepiece of this thesis --- the
 Detecting and characterising a cliff requires sweeping compression
 ratios densely from $1\times$ to $16\times$, holding everything else
 constant, and reading off where coordination success crosses a
-threshold. Real-world benchmarks (HotpotQA, MultiHopRAG) confound
+threshold. Real-world benchmarks (HotpotQA, MultiHop-RAG) confound
 the cliff with task difficulty, retrieval distribution, dataset
 bias, and per-instance variance. The thesis takes the position that
 the cliff is best characterised on a synthetic generator first,
@@ -925,7 +925,7 @@ Chapters~\charef{experiments} and~\charef{summary} when the
 compression cache is in place. The second is an RTX~5090 32~GB
 workstation (Tailscale-accessible WSL2 host) used for the
 compression precomputation, the model-scaling sweep at \textsc{8B},
-the frontier API sweep, and the HotpotQA / MultiHopRAG transfer
+the frontier API sweep, and the HotpotQA / MultiHop-RAG transfer
 arm. Total wallclock for the canonical evaluation pipeline (cache
 precompute on GPU + cliff sweep + scaling + RAG + disclosure +
 real-data transfer) is approximately $30$ hours of GPU time and

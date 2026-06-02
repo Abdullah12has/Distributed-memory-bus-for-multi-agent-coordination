@@ -4517,3 +4517,233 @@ removed. All seven mentions verified consistent.
 Compile: latexmk exit 0, 103 pages (was 102 before this fix, +1 because the
 expanded abbreviations + statistical protocol prose bumped a line), thesis.pdf
 synced. No undefined refs.
+
+## 86. EXTERNAL-REVIEW REVISION PASS (LaTeX + figure regen, 2026-06-01)
+
+Processed three external review documents (final edit checklist; reference
+audit; Lauri Lovén manuscript revision-check R1-R8/I1-I8). Verified every
+claim against the CURRENT draft + code before acting — a large fraction were
+already fixed in prior passes (stale), and two reviewers directly contradicted
+each other on one point.
+
+KEY FACTUAL BUG FOUND (not flagged by any reviewer): the thesis prose in TWO
+places described the H1 metric as token-overlap "against the ground-truth
+answer" / "F1 over extracted answer tokens versus ground truth"
+(experiments.tex §4.3 metrics catalogue + §H1 Interpretation). The CODE
+(run_h1_h2.py:single_agent_qa, 242-265) is explicit: qa_f1 = token F1 of
+compressed text vs ORIGINAL SOURCE TEXT (information-preservation), NOT
+answer-level QA-F1. So the prose was self-contradictory with the column it
+analyses. Fixed both passages + renamed the reported statistic to
+"source-retention F1" in abstract (EN+FI), H1 section title, verdict box,
+result/interpretation prose, pre-spec section, and the summary-of-verdicts
+table. Added the checklist's disambiguation sentence ("...not answer-level
+QA-F1 against a gold answer") at the first metric definition. Prior-work
+mentions of QA-F1 (LLMLingua/LongBench rows) left unchanged.
+
+LICENSE CONTRADICTION (checklist #3, real): root README.md says "Proprietary
+— University of Oulu / TalentAdore" but the thesis called the code deliverable
+"open-source" in 8 places (incl. introduction.tex claiming artefacts "released
+under a permissive licence"). Per the user's agreed checklist, softened all
+thesis-owned mentions to "reference implementation/repository released to
+examiners and collaborators"; left prior-work mentions (FAISS, GPT models,
+AutoGen) intact. OPEN DECISION for author: alternatively make the repo license
+actually open (CC-BY/MIT) — the supervisor's review assumes open-source.
+
+R2 (real, FIXED): figures/privacy_quality showed only 3 compressors (generated
+from results/h4_unbiased) while the H4 verdict table + §4.8.5
+destruction-monotonic argument use the canonical 4-compressor rerun
+(results/h4_unbiased_v2, incl. truncation @24.6pp). Pointed regen_figures.py
+H4 to h4_unbiased_v2 and regenerated; figure now shows truncation (most
+destructive, compressed≈0.54) → lingua2/filter → phi3 (exception). Also
+rewrote the privacy_quality caption, which had separately described a
+(compressor,ratio) scatter "landscape" though the figure is a grouped bar
+chart of recovery rates (a latent R1-class caption mismatch).
+
+ALREADY-DONE / STALE (verified, no action): R1a cliff_hero (now single
+LLMLingua-2/family-a cliff), R1b predicted_vs_empirical (caption already
+all-cells), R1d h5_model_overlay (annotation already the corrected
+floor-effect text), R1e frontier_multi (single gpt-oss series, Llama-3.1-8B
+baseline peaks at 1.0), R3a Luccioni (already 0.1 Wh, no internet-search
+claim), R3b Anthropic-84% (already cites context-management alone; bib authors
++ URLs already live/correct), R4 English pre-specified (already done +
+2026-05-21 commit sentence present; only FI abstract still said
+"rekisteröityä" → fixed to "määriteltyä"), R5 AutoGen (prose already names
+COLM 2024; bib note simplified to drop "Best Paper"), R6 LongBench (already
+cleanly v1), R7 ghost refs (loven2025paper1-4 + park2025collaborative already
+removed; sheikhi/loven20256g already corrected), R8 architecture_overview
+(leftover PNG, NOT included in PDF — inline TikZ used), I4 H3 verdict-box
+caveat, I6 RQ-to-H mapping subsection, I3 most bib metadata (camel,
+multihoprag hyphen, ruler COLM, nistairmf number).
+
+RECOMP TITLE CONTRADICTION resolved: reference-audit [30] said remove "Context"
+from xu2024recomp title; Lauri I3 said keep "Context". The arXiv version is
+"...with Compression..." but the ICLR-2024 published version (the one the bib
+cites, booktitle=ICLR) is "...with Context Compression...". Bib cites ICLR →
+"Context" is CORRECT. Left unchanged.
+
+BIB FIXES APPLIED: chevalier2023autocompressor (removed stray
+note={AutoCompressor.}); wang2024icf (author order Xie before Xu);
+li2023selective (order Lin before Guerin); guo2025dynamic (removed spurious
+"Shuo Zhang"; downgraded to @misc arXiv since EMNLP-2025-Findings venue
+unverifiable); wu2023autogen (note: dropped "Best Paper"); bassit2025securerag
+(added OpenReview URL).
+
+NOT CHANGED (author judgement / flagged to author): saleh2025messagebrokers &
+saleh2025memindex (supervisor's own group; published ACM versions with DOIs —
+do not second-guess author-list/DOI from arXiv-only audit); I1 FCG-internal
+cost docs (needs author cost-data decision); I8 real Oulu system-name
+anonymisation ("raise in next meeting"); I2 DeepSeek-V4 footnote, I5
+subsection-granularity restructure, Finnish tiivistelmä expansion (optional
+polish).
+
+I7 verified: spread metric (τ_max−τ_min)/τ̄ matches code
+(cliff_prediction.py:755); thesis already states it explicitly and uses
+unrounded values (3.694,4.681,4.012 → 23.90%, consistent with stated "23.91%
+exact" to display precision; Lauri's 23.99% used 2-decimal inputs). No change.
+
+Compile: latexmk exit 0, 103 pages, no undefined refs/citations, no biber
+warnings, Finnish ä rendered. thesis.pdf synced.
+
+## 87. INDEPENDENT FIGURE/CAPTION + NUMBER AUDIT (LaTeX, 2026-06-01)
+
+Second-pass independent review (beyond the 3 external review docs) — visually
+inspected all 10 figures actually \includegraphic'd in the PDF against their
+captions + body text, and spot-checked load-bearing numbers against the
+canonical result JSON/CSVs. Found FIVE caption issues none of the external
+reviewers flagged (Lauri's R1 only covered cliff_hero/predicted_vs_empirical/
+caac_pareto/h5_model_overlay/frontier_multi):
+
+1. frontier_validation (SERIOUS): both the caption AND the body sentence
+   (§frontier "multi-model figure") described a per-model τ* SCATTER with
+   DeepSeek-V4-Pro + GPT-oss-120B + a ±25% tolerance band. The actual figure
+   (fig6_frontier → frontier_validation.pdf, verified in generate.py:422) is a
+   TWO-LINE cliff-curve overlay of frontier Qwen-2.5-72B vs local
+   Llama-3.1-8B on family-a × LLMLingua-2 — i.e. the load-bearing
+   local-vs-frontier "no shift detected" comparison for Corollary 1. Rewrote
+   caption + body to describe the actual figure; pointed the DeepSeek/GPT-oss
+   discussion to frontier_multi where it actually lives. (Confirmed the local
+   overlay filters family=="a" & lingua2/8B, so the new "family-a × LLMLingua-2"
+   caption is data-accurate.)
+
+2. cliff_families (REAL, verified vs tab:h2_tau): caption said family-c
+   "degrades gradually for LLMLingua-2 and Phi-3-Mini extractive". Table shows
+   family-c τ*: LLMLingua-2=6.7 (gradual), truncation=4.95 (gradual),
+   Phi-3=2.5/drop0.94 (cliffs EARLY), filter=no cliff. So the gradual pair is
+   LLMLingua-2 + truncation, NOT phi3. Caption's closing "Truncation cliffs
+   earliest in every family" is also false (phi3 earliest on family-c at 2.5;
+   fine-grid family-a: LLMLingua-2≈1.1 earliest, truncation≈1.85 latest).
+   Rewrote caption with correct per-compressor family-c τ* and kept truncation
+   framed as the most-destructive-per-token lower bound (not "earliest cliff").
+
+3. hotpotqa_cliff (REAL): caption claimed τ*≈2.7 "by the 0.5·p0 rule". With
+   p0=0.593 the curve plateaus at 0.30 > 0.5·p0=0.296, so it NEVER crosses
+   that threshold; τ=2.686 in hotpotqa_sweep/verdicts.json is the
+   piecewise/logistic FIT breakpoint (same fit_piecewise used everywhere). The
+   number is right, the method attribution was wrong. Fixed to "fitted cliff
+   position (piecewise/logistic breakpoint)".
+
+4. scaling_auc (MINOR): caption said "Family-c shows three near-overlapping
+   lines" but the figure is bar panels (the three Family-C AUC bars are
+   near-equal). Changed to "near-equal AUC across all three planner sizes".
+
+5. privacy_quality caption (latent R1-class, found while doing R2): caption
+   described a "(compressor,ratio) operating-point landscape" with
+   coordination on an axis, but the figure is a grouped BAR chart of
+   protected-fact recovery rates. Rewrote to match (already logged under §86's
+   R2 fix).
+
+NUMBERS SPOT-CHECKED, ALL CONSISTENT (no change):
+- abstract "median ≈35% relative error" + §cem_match "median 35.3%, IQR
+  [19.2,45.0], max 57.4%": recomputed from theorem_validation_ctr.json 10
+  finite cells → median (33.49+37.21)/2 = 35.3%, max 57.42% (lingua2/c). OK.
+- privacy_quality vs tab:h4: v2 means priors 0.50 / baseline 0.78 / compressed
+  {trunc .536, filter .579, lingua2 .593, phi3 .779} → reductions 24.6/20.3/
+  18.9/0.3 pp. Matches table + figure exactly.
+- θ_info: canonical 0.967 (C1-a), 0.484 (MHR), 0.373 (HotpotQA, =verdicts.json
+  theta_estimate). summary.tex:418's 0.881 is an HONEST estimator-iteration
+  note, not stale.
+
+Compile: latexmk exit 0, 104 pages, no undefined refs/citations. thesis.pdf
+synced.
+
+## 88. CAPTION/TABLE NUMBER CROSS-CHECK vs CANONICAL DATA (2026-06-01)
+
+Third pass: re-derived every numeric table + load-bearing caption number from
+the canonical CSV/JSON. Found ONE new numeric error; everything else exact.
+
+NEW ERROR FIXED — predicted_vs_empirical caption: claimed family-c × LLMLingua-2
+"the model is conservative by Δτ*≈+0.64". The bootstrap JSON that owns the
+figure (theorem_validation_bootstrap.json) gives predicted τ* median 2.84
+(CI [2.68,2.87]) vs empirical 6.70 → conservative gap Δτ*≈3.85, the LARGEST of
+any cell (CTR point 3.85, generic 3.00, bootstrap 3.86 — all agree). 0.64 was
+simply wrong. Rewrote to "predicts τ*≈2.8 (bootstrap median) vs empirical
+τ*≈6.7 — conservative by Δτ*≈3.8, the largest gap of any cell". Companion
+numbers in same caption verified CORRECT: family-c θ_info≈0.62 (I recompute
+0.617 via 1−normalized_AUC on the family-c×lingua2 curve), θ_q^(c)=0.590 (CTR
+theta 0.5896), so the "coincidental proximity" note stands.
+
+EVERYTHING ELSE RE-DERIVED AND EXACT (no change):
+- tab:h1_rho workload column (−0.818/+0.026/+0.315/+0.051) AND pooled
+  (−0.593/+0.381/+0.193/+0.384): reproduced from sweep_results.csv by the
+  documented method (mean Δ per workload across ratios → Spearman over 150).
+- tab:h1_perfamily: all 12 cells exact (filter/a −0.13 p.35, lingua2/c −0.46
+  p7e-4, phi3/a +0.16, phi3/b +0.24 p.09, trunc/c −0.05 p.72, 7 degenerate).
+- tab:h2_tau: all 12 cells exact vs verdicts.json (τ* uses logistic_tau when
+  model_selected=logistic; slope-drop=drop_rel; observed-drop bounded).
+- tab:h3: F1 (0.396/0.364/0.820 storage, 0.648/0.628/0.895 acc) from h3_final;
+  EUR (2.72/2.82/3.07e-5, 3.29/3.00/3.10e-5) from h3_final (NOT h3_eprice —
+  h3_eprice is a different price config at ~1.7e-4); achieved ratios 7.49/2.11
+  from h3_eprice. Caption attribution correct. "4.1–4.9% EUR spread" =
+  (max−min)/min per regime on h3_eprice (storage 4.1%, accuracy 4.9%). exact.
+- tab:h4: priors .50/baseline .78/compressed {trunc .54 red .246, filter .58
+  red .204, lingua2 .59 red .189, phi3 .78 red .004 p .91}: exact vs
+  h4_unbiased_v2/verdicts.json.
+- tab:corollary2: θ_info 0.967/0.484/0.373, τ 2.5/11.339/2.686: exact vs
+  corollary2_theta_info.json.
+- tab:bus_bench: every Host-A and Host-B med/p95/throughput + verify µs/row +
+  5500 rows: exact vs bench.json/bench_gpu.json.
+- tab:tau_register: deterministic 1.1 (fine-grid), LLM 2.48–2.79 (Qwen-72B
+  frontier_tau 2.677, local Llama-8B 2.48), aux 2.6997 (=synth_tau), coarse
+  2.5: all consistent.
+- abstract "median ≈35%": median of 10 CTR rel-errors = 35.3% (logged §87).
+
+Compile: latexmk exit 0, 104 pages, no undefined refs/citations. thesis.pdf
+synced.
+
+## 89. LAYOUT / TERMINOLOGY / ABBREVIATION PASS (LaTeX, 2026-06-01)
+
+Fourth pass — print-quality + consistency defects (none flagged by reviewers):
+
+1. Three Overfull \hbox defects fixed:
+   - tab:h2_tau verdict row (414pt): \multicolumn{4}{l}{long text} & SUPP. ->
+     \multicolumn{5}{p{0.95\linewidth}}{... SUPPORTED.} (wraps now).
+   - tab:h4 (127pt): the "signal Δ" column was IDENTICAL across all 4 rows
+     (+0.286, p_Holm=8e-4 — signal is baseline-vs-priors, compressor-independent),
+     causing the overflow. Removed the redundant column ({lccc|cc}->{lccc|c}),
+     moved the signal value into the caption, updated the Result sentence
+     ("reports the per-compressor reduction; signal in caption") and the verdict
+     multicolumn (6->5). Cleaner AND fits.
+   - tab:repro_tiers (47pt): \texttt{results/frontier\_\{qwen72b,deepseekv4\}/}
+     (one ~40-char unbreakable token > 6cm column) -> two separate \texttt paths
+     with \newline.
+   Result: 0 Overfull >25pt (was 3).
+
+2. Terminology: "MultiHopRAG" (14x prose) vs official "MultiHop-RAG" (1x +
+   bib title). Standardized all prose to the hyphenated official name
+   (now 15x, 0 bare). Bib title already correct. (Phi3 at
+   implementation.tex:376 left as-is — it is the real Python class name
+   Phi3ExtractiveCompressor in \texttt.)
+
+3. Abbreviations: TOST used 10x (load-bearing for Corollary 1) including at
+   experiments.tex:57/99/337 BEFORE its only inline definition at 1498, and
+   absent from the abbreviations list -> added "TOST = two one-sided tests".
+   Also added LOO (leave-one-(family-)out; used across experiments + summary,
+   spelled out at first use 1133 but now listed for cross-chapter readers).
+   BAAI left alone (always \texttt{BAAI/bge-...} model identifier, not a prose
+   acronym).
+
+Also checked, clean: no doubled-word typos; benchmark sizes all 150;
+H4 28.6pp = baseline 0.78 - priors 0.50 = 0.286 OK.
+
+Compile: latexmk exit 0, 104 pages, 0 overfull >25pt, 0 undefined refs/cites.
+thesis.pdf synced.
