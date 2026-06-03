@@ -10,17 +10,14 @@ the design choices explicit so that the experimental results in
 \charef{experiments} can be read against the constraints
 those choices imposed.
 
-A scope reminder, stated once explicitly so that every claim in this
-chapter and the next is bounded by it: the \emph{multi-fragment LLM
-workflows} that this thesis evaluates are not multi-agent simulations.
-The planner is a deterministic regex-based information-extraction
-solver for the cliff sweep (Hypotheses~H1 and H2) and a single LLM
-call with all (compressed) fragments visible for the model-scaling
-sweep (Corollary~1, frontier validation, real-data transfer). The
-memory bus is \emph{designed for} a future multi-agent integration
-with an AutoGen back-end available in the source tree, but its
-multi-agent operation is outside the empirical scope of this thesis.
-This boundary is documented in the project repository.
+A scope reminder bounding every claim that follows: the planner is a
+deterministic regex information-extraction solver for the cliff sweep
+(H1, H2) and a single LLM call with all compressed fragments visible
+for the model-scaling sweep (Corollary~1, frontier, real-data
+transfer). The memory bus is \emph{designed for} multi-agent
+integration via the AutoGen back-end in the source tree, but
+multi-agent operation is outside the empirical scope
+(Section~\ref{sec:scope}).
 
 \section{The Memory-Bus Reference Implementation}
 \label{sec:architecture}
@@ -281,17 +278,6 @@ training-free}, which is a deliberate design choice: the thesis
 isolates the compression mechanism from any training-data effect
 and lets the cross-compressor comparison turn on the algorithm
 rather than on training-budget asymmetry.
-
-To fix the counting once: there are \textbf{six} \texttt{Compressor}
-implementations in total (identity $+$ five active); the
-\textbf{five} active ones are all training-free; and \textbf{four}
-of them (LLMLingua-2, the instruction-aware filter, Phi-3-Mini
-extractive, and truncation) are the compressors \emph{swept} in
-the H1/H2 cliff experiments, since CAAC is a wrapper around an inner
-compressor and is evaluated separately (Chapter~5).
-Wherever this manuscript says ``four compressors'' it means the
-swept four; ``five'' means the active five; ``six'' includes the
-identity control.
 
 \subsection{LLMLingua-2 (token-level classifier)}
 
