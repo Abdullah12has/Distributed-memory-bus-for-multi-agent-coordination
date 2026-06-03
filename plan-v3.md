@@ -1,8 +1,8 @@
 # MASTER THESIS M6 — PLAN v3 (FINAL)
 
-# Memory Bus for Multi-Fragment LLM Workflows
+# The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows
 
-*Context Compression, the Coordination Cliff, and Privacy*
+*Context compression, coordination quality, and policy-aware sharing*
 
 **Syed Abdullah Hassan**
 University of Oulu · Faculty of ITEE · CSE Research Unit · Future Computing Group

@@ -56,8 +56,8 @@
 %%%%%%%%%%%%%%%%%%%%% SET YOUR INFORMATION HERE %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Both English and Finnish title are needed
-\title{Memory Bus for Multi-Fragment LLM Workflows: Context Compression, the Coordination Cliff, and Privacy}
-\otsikko{Muistiv\"ayl\"a monifragmenttisille kielimallity\"onkuluille: kontekstin tiivist\"aminen, koordinaation jyrk\"anne ja yksityisyys}
+\title{The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows}
+\otsikko{Koordinaation jyrk\"anne: kuinka kontekstin tiivist\"aminen rikkoo monifragmenttisia kielimallity\"onkulkuja}
 
 \firstname{Syed Abdullah}
 \lastname{Hassan}
@@ -76,35 +76,36 @@
 % If the abstract contains multiple paragraphs or special characters,
 % provide the full text in abstract.tex and tiivistelma.tex.
 % This version should otherwise remain identical to it
-\abstract{Large language models running in multi-step workflows pay
-  for every token they read. Context compression is the natural lever,
-  yet the single-agent prompt-compression literature does not measure
-  whether the compression that preserves question-answering accuracy
-  also preserves the harder property a planner needs: combining
-  information distributed across several fragments into a correct
-  answer. This thesis studies that question on multi-fragment LLM
-  workflows. The evaluation uses either a deterministic regex parser
-  or a single LLM call with all (compressed) fragments visible as the
-  planner; multi-round agent simulation is outside the empirical
-  scope. Four contributions are delivered. A reproducible
-  coordination benchmark of 150 instances across three workload
-  families. An empirical characterisation of the coordination cliff
-  with a compounding-error model that explains its threshold
-  structure and recovers the empirical position only to first order
-  from per-round token recall. Within a calibrated regime the cliff
-  shows no detected shift between a local Llama-3.1-8B and a frontier
-  Qwen-2.5-72B planner, with DeepSeek V4 Pro corroborating weakly. A catalogue of
-  three RAG pipelines showing compress-first is consistently but
-  modestly preferred (2 to 3 pp F1) over retrieve-first on the single
-  embedding-and-index stack evaluated. A memory-bus
-  reference implementation and a summary-level inference-disclosure
-  metric. Headline verdicts: single-fragment information preservation
-  does not positively predict coordination success for any compressor tested; a sharp cliff exists; planner capacity
-  sets the success ceiling, not the cliff position, within the
-  calibrated regime; information density scales the cliff across
-  datasets; and compression measurably reduces protected-fact
-  disclosure. A cliff-aware adaptive wrapper, CAAC, operationalises
-  the compounding-error bound as a runtime back-off.}
+\abstract{Every token a multi-step LLM workflow reads costs energy,
+  latency, and money, so context compression is the obvious lever.
+  The prompt-compression literature is mature, but it is measured on
+  single-fragment question-answering, whereas production workflows
+  must combine information across several independently compressed
+  fragments, and whether preserving single-fragment quality also
+  preserves that harder property had never been tested. It does not:
+  on a new 150-instance benchmark spanning cross-document fact
+  aggregation, constraint-satisfaction planning, and multi-step
+  retrieval, four training-free compressors swept over ten ratios show
+  no positive workload-level correlation between source-retention F1
+  (token overlap between each compressed fragment and its source) and
+  multi-fragment coordination success (Spearman in [-0.82, +0.32], all
+  95 percent bootstrap intervals excluding 0.6), so the single-agent
+  benchmarks that dominate the field mis-rank compressors for
+  multi-fragment deployment. The breakdown is abrupt: a sharp
+  coordination cliff, present on 11 of 12 (compressor, family) cells,
+  at which success collapses once compression strips the task-critical
+  tokens a planner must combine; a compounding-error model explains
+  the sharp transition and recovers its position to first order. The
+  cliff is a property of the compressor and the task, not the planner:
+  within a calibrated regime it shows no detected shift from a local
+  Llama-3.1-8B to a frontier Qwen-2.5-72B across a 9x scale-up and a
+  change of architecture family, and only extended-reasoning planners
+  fall outside this regime. Beyond this negative result, the thesis
+  delivers the benchmark, the coordination-cliff characterisation and
+  its predictive model, evidence that compression also lowers
+  protected-fact disclosure in proportion to how much text it destroys
+  rather than through privacy-specific filtering, and a reproducible,
+  policy-enforcing memory-bus reference implementation.}
 
 \tiivistelma{Suuria kielimalleja k\"aytt\"av\"at monivaiheiset
   ty\"onkulut maksavat jokaisesta lukemastaan tokenista, ja

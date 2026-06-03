@@ -5056,3 +5056,111 @@ cosmetic). implementation.tex returned zero defects. thesis.pdf re-synced
 (102pp). The English text is now at the "impeccable + clear" item-9 level; the
 only remaining item-9/10 surface is the Finnish title + Tiivistelma (author's
 native-speaker review, route to a peer).
+
+
+## 97. THESIS RETITLED AROUND THE COORDINATION CLIFF (2026-06-03)
+
+Manuscript title changed from the 2026-05-30 form "Memory Bus for Multi-Fragment
+LLM Workflows: Context Compression, the Coordination Cliff, and Privacy" to:
+
+  The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows
+
+Why (full record in ADR-009 addendum 2026-06-03). The old title led with the
+memory bus (C4), which the introduction's own contribution hierarchy marks
+"deliberately secondary," and buried the actual headline (H1: single-fragment
+information preservation does not predict multi-fragment coordination success)
+together with the load-bearing coinage. The old subtitle over-billed Privacy
+(H4 is destruction-driven, not privacy-specific) and re-invited the multi-agent
+misread that intro §1.2 works to dispel. The new title leads with the coinage and
+states the finding ("breaks"), keeping "multi-fragment" as the scope
+disambiguator. It is a refined Option C from the original ADR-009 deliberation:
+cliff-led, but *promoting* (not discarding) the coordination-cliff coinage that
+the 2026-05-29 Option-C rejection worried about losing — and it needs no
+chapter-level rework because the cliff already organises Ch5 + the corollaries.
+
+Mechanics. Rebuilt with pdflatex + biber (latexmk -cd), 102pp, no errors;
+verified the new title in the PDF metadata (pdfinfo) and on the rendered title
+page; re-synced root thesis.pdf. The title is now a single colon-phrase (no
+three-theme subtitle). Living refs synced: main.tex (\title + Finnish \otsikko),
+main.xmpdata (\Title), CLAUDE.md (header + status note), plan-v3.md,
+thesis_PLAN.md title line, citations.bib comment, REPRODUCIBILITY.md,
+CANONICAL_NUMBERS.md, docs/DATA_CARDS.md, docs/MODEL_CARDS.md, ADR-009 (new
+addendum). Historical artefacts preserved unchanged: draft1.md-draft3.1.md, the
+review/feedback files, prior insights/plan/ADR text. xmpdata keywords left intact
+(still accurate as topic tags). out/ is a stale prior build dir; it regenerates
+on the next -outdir build. OUTSTANDING (user-side): native-Finnish check of the
+new \otsikko string — "Koordinaation jyrkanne: kuinka kontekstin tiivistaminen
+rikkoo monifragmenttisia kielimallityonkulkuja" — folds into the §96 review item.
+
+## 98. EM-DASH REMOVAL PASS — ALL `---` ELIMINATED (5 parallel rewriters + verified apply, 2026-06-03)
+
+Per author request ("remove all em dashes, keep sentences sensible"), removed
+every em dash (`---`) from the manuscript body. Scope: 257 `---` tokens
+(experiments 131, summary 39, intro 31, implementation 30, relatedwork 14,
+abstract 2, foreword 4, abbreviations 2, appendices 2; main.tex's 2 sit in a
+commented-out template line and were left; tiivistelma.tex had 0 already).
+
+Method: 5 parallel sub-agents (one per big chapter) each WROTE a JSON edit-list
+of {old,new} PUNCTUATION-ONLY replacements to /tmp/emdash_edits/; an apply
+script (/tmp/apply_emdash.py) applied them with count==1 + per-edit
+alphanumeric-identity asserts; the small front/back-matter files were
+hand-edited. 223 scripted + 14 hand edits.
+
+SAFETY GUARANTEE: every processed file is ALPHANUMERICALLY BYTE-IDENTICAL to a
+pre-pass baseline (/tmp/emdash_before/*.alnum), proving no word, number,
+citation, or capitalization changed -- only punctuation and spacing. Verified
+end state: pdftotext shows 0 em-dash glyphs (U+2014) in the rendered PDF; 75
+en-dashes remain (legitimate ranges 2--3, ADR-006--008, and table nil-markers).
+Build clean: latexmk exit 0, 102pp, 0 undefined refs, 0 errors, 7 overfull
+(pre-existing \texttt code identifiers).
+
+Replacement rules: parenthetical pair -> commas if the aside is comma/paren-free,
+else parentheses; single dash -> colon (explanation/list), comma (appositive),
+or SEMICOLON (two independent clauses -- period avoided so as not to force a
+capital, which would have broken the alnum-identity guarantee). Artifact
+cleanups after the bulk pass: the 4 RQ-list "?:" sequences -> "? (...)"
+parentheticals (intro); 2 nested "))" un-nested to colon+comma (relatedwork gap
+statement) and appositive commas (summary CAAC line); 4 table nil-marker `---`
+-> `--` en-dashes (relatedwork comparison tables + experiments tab:h2_tau
+Filter x c). Backups in /tmp/emdash_backup/; thesis.pdf re-synced.
+
+Note: em dashes were grammatically correct; this is purely the author's
+stylistic preference. The colon/semicolon/parenthesis substitutions are all
+standard and every sentence still reads correctly (spot-checked in the PDF).
+The Finnish \otsikko + Tiivistelma were unaffected (no em dashes) and still
+await the native-speaker review noted in §96/§97.
+
+## 99. ABSTRACT REWRITTEN (shorter, cliff-forward) + DECIMAL-COMMA FINDING (2026-06-03)
+
+Author judged the English abstract too dense/list-like. Rewrote
+Chapters/abstract.tex into a tighter, more coherent arc matching the new title:
+cost -> gap (single-fragment QA is what the literature measures; multi-fragment
+untested) -> headline "It does not" (H1, with the [-0.82,+0.32] range and
+CIs-exclude-0.6) -> the coordination cliff + compounding-error model +
+compressor/task-not-planner invariance (Corollary 1) -> deliverables (benchmark,
+model, disclosure finding, memory bus). Cut the entire hypothesis-bookkeeping
+paragraph ("H1/H2/H4 supported, H5/H6 sharpened, H3 narrowed") that made it read
+as a list; dropped the bare tau* symbol and the median-35% aside for brevity.
+~195 readable words in 4 paragraphs (was ~250, listy). No em dashes (consistent
+with §98); all numbers preserved and accurate. The PDF-metadata abstract in
+main.tex (\abstract{}) was synced to a single-paragraph plain-text version of
+the same (no $, %, or em dash; XMP-safe). Rebuilt clean: latexmk exit 0, 102pp,
+0 undefined refs, 0 errors, 0 em-dash glyphs; thesis.pdf re-synced.
+
+FINDING (pre-existing, NOT introduced by this pass; flagged for author decision):
+math-mode decimals render and copy as COMMAS, not periods. Confirmed visually at
+300 DPI on the abstract page ("Spearman [-0,82, +0,32]", "0,6") and in the PDF
+text layer (pdftotext: 522 comma-decimals vs 787 period-decimals across the doc;
+e.g. tau* appears as both "2,5" x50 and "2.5" x39). The .tex source uses periods
+throughout, so the conversion is global and template-induced -- babel is loaded
+[english,finnish] and no icomma/siunitx/DeclareMathSymbol/mathcode appears in
+dithesis.sty, so the likely origin is the babel-finnish language definition.
+Text-mode numbers (model names Llama-3.1 / Qwen-2.5, version v0.1, section
+5.5.1) keep periods, so the document is internally INCONSISTENT: statistical
+decimals in Finnish convention, identifiers in English. For an English-language
+thesis, period-decimals (rho = -0.82, p < 0.05, tau* = 2.5) are the expected
+convention. NOT fixed here: it is a global change (~520 math decimals), may be
+intentional under Oulu/Finnish norms, and is outside the "rewrite the abstract"
+request. Fix-if-wanted: pin the math decimal separator to a period once the exact
+babel hook is confirmed (a one-preamble-line change). Author to decide the
+convention.

@@ -227,9 +227,9 @@ the canonical CSVs. Pure-Python; runs in under a minute.
 \end{description}
 
 The \texttt{make repro-all} target chains the six laptop-runnable
-steps above --- \texttt{repro-cliff}, \texttt{repro-scaling},
+steps above (\texttt{repro-cliff}, \texttt{repro-scaling},
 \texttt{repro-rag}, \texttt{repro-disclosure},
-\texttt{repro-transfer}, and \texttt{repro-figs} --- in dependency
+\texttt{repro-transfer}, and \texttt{repro-figs}) in dependency
 order, excluding the two that need special resources:
 \texttt{repro-cache} (GPU host) and \texttt{repro-frontier} (a
 Featherless API key), which must be run explicitly; the whole

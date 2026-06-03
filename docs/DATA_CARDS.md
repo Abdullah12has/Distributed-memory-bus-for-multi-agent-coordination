@@ -1,7 +1,7 @@
 # Data Cards
 
 **Provenance.** Every count, seed, and θ_info value in this file was read directly
-off the on-disk artifacts of *Memory Bus for Multi-Fragment LLM Workflows* on
+off the on-disk artifacts of *The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows* on
 2026-06-01, against files produced on each run's completion date. C1 instance
 counts were obtained by counting non-empty lines of
 `data/processed/c1-v0.1/family-{a,b,c}.jsonl` (50 each, 150 total) and

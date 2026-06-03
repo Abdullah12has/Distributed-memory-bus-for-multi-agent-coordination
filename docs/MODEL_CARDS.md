@@ -1,7 +1,7 @@
 # Model Cards
 
 **Provenance.** Every identifier and parameter in this file was read directly off
-the on-disk artifacts of *Memory Bus for Multi-Fragment LLM Workflows* (Syed
+the on-disk artifacts of *The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows* (Syed
 Abdullah Hassan, University of Oulu) on 2026-06-01, against result files produced
 on the dates each run was completed (H5 2026-05-27, H4-unbiased-v2 2026-05-29,
 frontier runs 2026-05-28). Local-planner IDs came from

@@ -1,6 +1,6 @@
-# M6 Thesis — Memory Bus for Multi-Fragment LLM Workflows
+# M6 Thesis — The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows
 
-(Project directory and codebase identifiers still contain the legacy "Distributed-memory-bus-for-multi-agent-coordination" path for back-compat; the manuscript title is *Memory Bus for Multi-Fragment LLM Workflows* per ADR-009 addendum 2026-05-30.)
+(Project directory and codebase identifiers still contain the legacy "Distributed-memory-bus-for-multi-agent-coordination" path for back-compat; the manuscript title is *The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows* per ADR-009 addendum 2026-06-03.)
 
 Master's thesis by Syed Abdullah Hassan, University of Oulu.
 Context compression + coordination quality + policy-aware sharing.
@@ -282,10 +282,10 @@ First full draft compiled in `thesis_latex/` from the Oulu ITEE
 template (`dithesis.cls`), revised through insights §§84–94. Output
 is now **102 pages A4, ~1.18 MB** (72 at first draft), copied
 to `thesis.pdf` in the project root. Manuscript title per ADR-009
-is *Memory Bus for Multi-Fragment LLM Workflows:
-Context Compression, the Coordination Cliff, and Privacy*; the
-codebase project name remains *Multi-Agent Coordination* (this
-file's header) for back-compat with existing artefacts.
+(addendum 2026-06-03) is *The Coordination Cliff: How Context
+Compression Breaks Multi-Fragment LLM Workflows*; the codebase
+project name remains *Multi-Agent Coordination* (the legacy repo
+path) for back-compat with existing artefacts.
 
 All verdict-table numbers refreshed against the canonical results
 JSON on disk (`h1_h2_v2`, `h4_unbiased`, `h5_final`, `h3_final`,

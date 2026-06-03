@@ -47,9 +47,9 @@ literature has matured rapidly over the past three years
 \cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2,
 mu2023gist, chevalier2023autocompressor, ge2024icae}. What has not
 yet been measured, and what this thesis sets out to measure, is
-whether the compression that preserves single-fragment quality ---
+whether the compression that preserves single-fragment quality,
 the single-agent question-answering metric the prompt-compression
-literature optimises --- also preserves the harder structural
+literature optimises, also preserves the harder structural
 property a planner needs: combining information distributed across
 multiple fragments into a correct answer.
 
@@ -69,9 +69,9 @@ specifications spread across fragments), and multi-step retrieval
 answer is reached) are three representative examples; the C1
 benchmark of \charef{implementation} constructs $50$
 instances of each. The setting is not a corner case. The FCG group
-at the University of Oulu's flagship use case ---
-\emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026}
---- gathers reporting data across eight university systems via
+at the University of Oulu's flagship use case,
+\emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026},
+gathers reporting data across eight university systems via
 roughly eight specialised agents; the internal FCG analysis
 estimates an $80\%$ cloud-payload reduction and a per-report cost of
 approximately EUR~$2.15$. TalentAdore, the industry partner of
@@ -99,7 +99,7 @@ in any reported result. The reason is that round-to-round LLM
 variance dominates the compression signal at the C1 ratios swept, so
 cleanly attributing coordination drops to compression rather than to
 agent variance requires isolating the compressor on the critical
-path --- which a single-LLM-call or deterministic planner does. The
+path, which a single-LLM-call or deterministic planner does. The
 memory bus is \emph{designed for} multi-agent integration; the
 experimental scope is multi-fragment task solvability, restated and
 calibrated against in \charef{implementation}~Section~\ref{sec:scope}.
@@ -113,7 +113,7 @@ here and used uniformly throughout the rest of the manuscript.
 planner recovers the correct answer to a multi-fragment task whose
 answer cannot be read out of any single fragment alone.} It is
 therefore a measurement of \emph{multi-fragment solvability under
-compression} --- i.e., whether enough task-critical tokens survive
+compression}: i.e., whether enough task-critical tokens survive
 compression for a planner to recover the answer when the planner
 must combine information distributed across two or more
 independently compressed fragments. It is \emph{not} a measurement
@@ -129,12 +129,12 @@ here; the scope reminder is not repeated.
 
 \emph{How does context compression affect multi-fragment
 coordination quality across compressors, task structures, and
-planner scales --- and when and how can a memory-bus service
+planner scales, and when and how can a memory-bus service
 exploit that understanding to compress safely, predictably, and
 privately?}
 
-The question subdivides into four sub-questions --- one per
-contribution (C1--C4) --- each answered end-to-end by an artefact
+The question subdivides into four sub-questions, one per
+contribution (C1--C4), each answered end-to-end by an artefact
 and operationalised by one or more of the falsifiable hypotheses
 (H1--H6) that structure \charef{experiments}.
 
@@ -146,20 +146,20 @@ The four research questions and their hypothesis mappings are:
 \begin{description}\setlength\itemsep{2pt}
 \item[RQ1 (metric).] Does a coordination-quality metric on a
 multi-fragment workflow behave differently from single-agent
-question-answering accuracy? --- operationalised by \textbf{H1}.
+question-answering accuracy? (operationalised by \textbf{H1}).
 \item[RQ2 (characterisation).] Does compression induce a
-coordination cliff, and what determines its position? ---
-operationalised by \textbf{H2} (existence and sharpness),
+coordination cliff, and what determines its position?
+(operationalised by \textbf{H2} (existence and sharpness),
 \textbf{H5}/\textbf{Corollary~1} (invariance to planner scale),
 and \textbf{H6}/\textbf{Corollary~2} (scaling with task
-information density).
+information density)).
 \item[RQ3 (deployment).] How should compression be combined with
 retrieval, and what is the cost trade-off across pipeline
-architectures? --- operationalised by \textbf{H3}.
+architectures? (operationalised by \textbf{H3}).
 \item[RQ4 (governance).] Can compression be measured as a privacy
 lever and exposed as a deployment-time enforcement mechanism by a
-memory-bus service? --- operationalised by \textbf{H4} and the
-memory-bus integration of \charef{experiments}.
+memory-bus service? (operationalised by \textbf{H4} and the
+memory-bus integration of \charef{experiments}).
 \end{description}
 
 \section{Contributions}
@@ -180,7 +180,7 @@ characterisation it sits inside, C3 is a deployment-oriented
 catalogue, and C4 is the engineering artefact that operationalises
 the disclosure-side findings.
 
-\paragraph{C1 --- A reproducible multi-fragment coordination
+\paragraph{C1: A reproducible multi-fragment coordination
 benchmark.}
 \emph{The C1 benchmark} ships $150$ instances across three
 workload families (cross-document fact aggregation,
@@ -195,16 +195,16 @@ disclosure measurement all run; releasing it as part of the
 thesis lets other groups extend the characterisation to new
 compressors and new planner regimes.
 
-\paragraph{C2 --- Empirical characterisation of the coordination
+\paragraph{C2: Empirical characterisation of the coordination
 cliff, a compounding-error model that explains it, and two
 structural corollaries.}
 \emph{The cliff exists and is sharp; its position shows no
 detectable shift across the heterogeneous planners we could test
 within a defined calibrated regime; and its shape varies
 systematically with task information density.} The empirical work
-covers four training-free compressors --- LLMLingua-2~\cite{pan2024llmlingua2},
+covers four training-free compressors (LLMLingua-2~\cite{pan2024llmlingua2},
 a Phi-3-Mini extractive span selector, an instruction-aware filter,
-and a truncation baseline --- at ten compression ratios across three
+and a truncation baseline) at ten compression ratios across three
 families and three local planners from \textbf{three different
 architecture families} (Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
 Llama-3.1-8B), with a frontier consistency arm (Qwen-2.5-72B
@@ -215,20 +215,20 @@ artefact (Section~\ref{sec:h2}), the load-bearing comparison is
 LLM-vs-LLM: local and frontier planners cliff together across a
 $9\times$ scale-up and a change of architecture family. The
 compounding-error model derives the cliff's \emph{threshold
-structure} --- why a sharp transition exists at all --- from
+structure} (why a sharp transition exists at all) from
 per-round \textbf{critical-token-recall} against a per-family
 threshold $\theta_q$, recovering the position only to first order;
 its contribution is the mechanism, not a tight predictor.
 \textbf{Corollary~1 (Ceiling--Cliff Separation)} and
-\textbf{Corollary~2 (Information-Density Scaling)} --- sharpened from
-H5 and H6 (Section~\ref{sec:prereg_refinement}) --- capture the
+\textbf{Corollary~2 (Information-Density Scaling)}, sharpened from
+H5 and H6 (Section~\ref{sec:prereg_refinement}), capture the
 no-shift and shape-scaling results, the latter via an AUC-based
 per-task $\theta_\text{info}$ (distinct from $\theta_q$) validated on
 HotpotQA and MultiHop-RAG. An out-of-regime GPT-oss~120B diagnostic
 identifies extended-reasoning planners as a structurally distinct
 case that prior compression work treats implicitly.
 
-\paragraph{C3 --- A catalogue of three retrieval-augmented-%
+\paragraph{C3: A catalogue of three retrieval-augmented-%
 generation pipelines with a EUR-per-workflow cost model.}
 Three pipeline architectures (compress-first, retrieve-first,
 joint relevance-conditional routing) are implemented end-to-end on
@@ -243,7 +243,7 @@ scores higher F1 still ($0.905$ in both regimes). The
 compress-first-over-retrieve-first finding \emph{does not
 reproduce}, on this stack, the post-retrieval-compression
 preference of the LongLLMLingua~\cite{jiang2024longllmlingua} line
-of work --- this is a single-stack result, not a general
+of work; this is a single-stack result, not a general
 falsification. The P3 F1 advantage must be read with an important
 caveat: a cost-instrumented re-run
 shows that P3 (and P2) route retrieved fragments \emph{verbatim}
@@ -256,7 +256,7 @@ honest C3 contribution is the compress-first-over-retrieve-first
 ordering on the tested stack plus the catalogue itself; the P3
 result is reported as verbatim-routing-preserves-F1-at-uncharged-cost.
 
-\paragraph{C4 --- A memory-bus reference implementation and a
+\paragraph{C4: A memory-bus reference implementation and a
 summary-level inference-disclosure metric.}
 The memory bus is a FastAPI service with a tamper-evident SQLite
 audit log, a policy middleware that enforces a five-tier
@@ -281,8 +281,8 @@ artefact that operationalises it. The bus is benchmarked for
 single-host throughput and latency (policy check, end-to-end
 write/read, and audit hash-chain verification;
 Section~\ref{sec:bus_bench}), but its \emph{distributed} and
-multi-tenant scaling --- contention under concurrent writers,
-policy-lattice scaling, and cross-host replication --- is not
+multi-tenant scaling (contention under concurrent writers,
+policy-lattice scaling, and cross-host replication) is not
 measured here and is named as follow-on work.
 
 The thesis also presents \textbf{CAAC} (Cliff-Aware Adaptive
@@ -331,7 +331,7 @@ RQ4\newline C4 & Can compression be a measurable privacy lever, enforced by a me
 The four contributions are not equally weighted. \textbf{H1
 (Section~\ref{sec:h1}) is the central, load-bearing result}: under
 compression, single-fragment information preservation does not
-transferably predict multi-fragment coordination success ---
+transferably predict multi-fragment coordination success;
 everything else exists to establish, explain, or exploit it.
 \textbf{The coordination cliff and its compounding-error model (C2)}
 are the mechanism behind H1 (why coordination breaks sharply rather
@@ -359,7 +359,7 @@ multi-fragment deployment because the single-agent metric they
 measure does not predict coordination success. The closest industry
 analogue to C2 is Anthropic's report that token usage explains
 $\approx 80\%$ of performance variance in their multi-agent
-workflow~\cite{anthropic2025multiagent} --- an observation on one
+workflow~\cite{anthropic2025multiagent}, an observation on one
 workflow, against which C2 contributes the controlled
 cross-compressor, cross-architecture sweep with a quantitative
 model, an empirical match-rate, and a frontier validation. The
@@ -408,7 +408,7 @@ structure and gives a first-order position estimate (with a
 predicted-versus-empirical match-rate band); Corollary~1 (no
 cliff-position shift detected across planner parameter count and
 architecture family within a defined calibrated regime, on the
-cells where the cliff is resolvable --- carried by one
+cells where the cliff is resolvable: carried by one
 well-identified frontier cell, Qwen-2.5-72B, with DeepSeek V4 Pro
 weakly corroborating and GPT-oss~120B reported as an out-of-regime
 diagnostic at the regime boundary); H3 (the RAG pipeline catalogue
@@ -424,10 +424,10 @@ field-level significance, compares the findings to industry
 observations, and names the future-work directions in order of
 expected impact.
 
-All artefacts --- the manuscript source, the code, the
+All artefacts (the manuscript source, the code, the
 configuration files, the results CSVs, and the
 \texttt{docker-compose.yml} that brings the memory-bus reference
-service up locally --- are available in the reference repository
+service up locally) are available in the reference repository
 released to examiners and collaborators. Appendix~\ref{appendix} describes
 the reproducibility package and the one-command reproduction
 recipe for every headline figure.

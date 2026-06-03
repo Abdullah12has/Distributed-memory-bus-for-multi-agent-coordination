@@ -43,13 +43,13 @@ an \emph{identity} no-compression control, the
 \emph{instruction-aware filter} based on TF--IDF pruning plus a
 cross-encoder re-ranker, a \emph{Phi-3-Mini extractive} span selector
 implemented over a local Ollama endpoint, a \emph{truncation}
-prefix-keep baseline, and \emph{CAAC} --- a cliff-aware adaptive
+prefix-keep baseline, and \emph{CAAC}, a cliff-aware adaptive
 wrapper that backs off compression when per-fragment recall would
 violate the compounding-error model's safety threshold
 (Section~\ref{sec:compressors_caac}, full discussion in
 \charef{summary}).
-\item A \textbf{storage layer}, providing three protocols ---
-\texttt{AuditLog}, \texttt{Scratchpad}, and \texttt{VectorStore} ---
+\item A \textbf{storage layer}, providing three protocols
+(\texttt{AuditLog}, \texttt{Scratchpad}, and \texttt{VectorStore})
 implemented for the evaluation by SQLite in WAL mode with an
 append-only audit table, an in-memory time-to-live dictionary, and
 FAISS-CPU with an HNSW index.
@@ -138,8 +138,8 @@ that the principal's classification is at least the fragment's. If
 the check passes, it calls the active compressor's
 \texttt{compress(fragment, target\_ratio)} method to produce a
 \texttt{CompressedSlot}, places that slot in the in-memory
-scratchpad keyed on the slot identifier, and --- if the compressor
-exposes an embedding --- adds it to the FAISS index. Finally it
+scratchpad keyed on the slot identifier, and, if the compressor
+exposes an embedding, adds it to the FAISS index. Finally it
 appends a row to the audit log whose \texttt{event\_type} is
 \texttt{WRITE}, \texttt{result} is \texttt{OK}, \texttt{prev\_hash}
 is the previous row's chain hash, and \texttt{chain\_hash} is
@@ -225,9 +225,9 @@ Column & Type & Notes \\
 A second SQLite table records every paid model call: provider,
 model, input tokens, output tokens, EUR cost, and wallclock. The
 cost ledger shares the audit-log database for transactional
-consistency but is queried separately. Pricing constants follow public frontier-cloud API rates --- USD~$3$
+consistency but is queried separately. Pricing constants follow public frontier-cloud API rates (USD~$3$
 per million input tokens and USD~$15$ per million output tokens for a
-Sonnet-class model at the time of writing --- which convert to
+Sonnet-class model at the time of writing) which convert to
 approximately EUR~$2.76$ and EUR~$13.80$ at a USD-to-EUR rate of
 $0.92$ (the rate at the time of writing); the on-premises amortised
 marginal cost, approximately EUR~$0.05$ per million tokens once
@@ -295,7 +295,7 @@ $\le 0.85$).
 \label{sec:compressors}
 
 Every compressor variant conforms to a single Python \texttt{Protocol}
-with four methods --- \texttt{compress(fragment, target\_ratio)}
+with four methods: \texttt{compress(fragment, target\_ratio)}
 returning a \texttt{CompressedSlot}; \texttt{decompress(slot)}
 returning a best-effort text reconstruction; \texttt{embed(slot)}
 returning an optional embedding for vector-store indexing; and
@@ -319,8 +319,8 @@ rather than on training-budget asymmetry.
 To fix the counting once: there are \textbf{six} \texttt{Compressor}
 implementations in total (identity $+$ five active); the
 \textbf{five} active ones are all training-free; and \textbf{four}
-of them --- LLMLingua-2, the instruction-aware filter, Phi-3-Mini
-extractive, and truncation --- are the compressors \emph{swept} in
+of them (LLMLingua-2, the instruction-aware filter, Phi-3-Mini
+extractive, and truncation) are the compressors \emph{swept} in
 the H1/H2 cliff experiments, since CAAC is a wrapper around an inner
 compressor and is evaluated separately (Chapter~5).
 Wherever this manuscript says ``four compressors'' it means the
@@ -358,7 +358,7 @@ token-level trim that drops English stop-words and short tokens
 ($\le 2$ characters) until the target compression ratio is reached.
 The stop-word list is encoded explicitly so that the trim is
 deterministic given the task hint, the fragment, and the target
-ratio --- a subtle bug found during the development of this thesis
+ratio; a subtle bug found during the development of this thesis
 showed that dropping stop-words by Python set iteration order
 introduced run-to-run variance, which is why the list is explicit.
 
@@ -440,8 +440,8 @@ straightforward.
 
 \subsection{Why a synthetic benchmark}
 
-The empirical centrepiece of this thesis --- the
-\emph{coordination cliff}~$\tau^{*}$ --- is a position on a curve.
+The empirical centrepiece of this thesis, the
+\emph{coordination cliff}~$\tau^{*}$, is a position on a curve.
 Detecting and characterising a cliff requires sweeping compression
 ratios densely from $1\times$ to $16\times$, holding everything else
 constant, and reading off where coordination success crosses a
@@ -466,7 +466,7 @@ traced back to the exact generator inputs that produced it.
 
 \begin{description}\setlength\itemsep{2pt}
 
-\item[Family-a --- cross-document fact aggregation.] Each instance
+\item[Family-a: cross-document fact aggregation.] Each instance
 provides eight source documents, one per system from the
 Vignette~3.7 institutional inventory (eight anonymised institutional
 systems, denoted System~1 through System~8~\cite{fcgusecase2026}). Each document carries one
@@ -481,7 +481,7 @@ $\theta_\text{info}\approx 0.97$ (Section~\ref{sec:theta_info_def}).
 The family-a cliff is sharp; it is the family on which the
 compounding-error model is most directly testable.
 
-\item[Family-b --- constraint-satisfaction planning.] Each instance
+\item[Family-b: constraint-satisfaction planning.] Each instance
 specifies $N$ sub-tasks with per-task loads and $K$ workers with
 per-worker capacities. The planner must produce an assignment of
 sub-tasks to workers that respects per-worker capacity and assigns
@@ -495,11 +495,11 @@ constraints scores~$1$, so the planner is rewarded for finding
 property of small LLM planners that is independent of compression:
 constraint tracking is hard for $\le 8$B-parameter models even
 without compression, so the family-b baseline success $p_0$ is low
-for small planners and the cliff is not detectable in that regime ---
+for small planners and the cliff is not detectable in that regime,
 a \emph{floor effect} that \charef{experiments} treats
 explicitly.
 
-\item[Family-c --- multi-step retrieval.] Each instance presents a
+\item[Family-c: multi-step retrieval.] Each instance presents a
 linear chain of fragments where each fragment carries either a
 pointer to the next (\emph{entry~X}) or, at the leaf,
 the answer (\emph{FINAL-XXXX}). Chain lengths range from $2$ to $4$;
@@ -512,9 +512,9 @@ canonical AUC-based estimator on the family-c $\times$ LLMLingua-2
 sweep; not to be confused with the recall-threshold parameter
 $\theta_q^{\,(c)} = 0.590$ reported in
 \charef{experiments}~Section~\ref{sec:cem_match}, which is
-a different quantity computed by a different method --- see
+a different quantity computed by a different method: see
 CONTEXT.md and Section~\ref{sec:theta_info_def}), and the cliff
-is gradual --- it is the family on which the
+is gradual; it is the family on which the
 instruction-aware filter's reranker, which preserves
 chain-reference keywords, can avoid a detectable cliff entirely.
 \end{description}
@@ -528,8 +528,8 @@ formalises as Corollary~2.
 
 \subsection{Tag distributions for the privacy axis}
 
-The C1 generator supports three synthetic tag distributions ---
-\emph{uniform}, \emph{skewed}, and \emph{hierarchical} --- used by
+The C1 generator supports three synthetic tag distributions
+(\emph{uniform}, \emph{skewed}, and \emph{hierarchical}) used by
 H4 (inference disclosure) to probe the governance-stringency
 dimension. The hierarchical distribution sets higher classification
 levels to imply strict supersets of the bits at lower levels, which
@@ -544,7 +544,7 @@ classification level from access-control mask.
 
 The coordination scorer is a pure function of the workload and the
 planner's output; it does not call any LLM. It returns one primary
-metric --- a per-instance binary \emph{coordination success} --- and
+metric (a per-instance binary \emph{coordination success}) and
 four supporting metrics: the F1 over extracted answer tokens versus
 ground truth, the achieved compression ratio
 ($|\text{source}|/|\text{compressed}|$), generic token-recall (the
@@ -607,8 +607,8 @@ single ratio over $150$ workloads takes minutes; Phi-3-Mini
 extractive over the same range takes hours because each fragment is
 a $\sim 11$~second Ollama call including verification and possible
 retry. The cliff sweep requires every (compressor, ratio, workload,
-task-hint) cell --- approximately $30{,}000$ cells in the canonical
-H1/H2 protocol --- and a naive nested-loop implementation that
+task-hint) cell (approximately $30{,}000$ cells in the canonical
+H1/H2 protocol) and a naive nested-loop implementation that
 recompresses on every evaluation pass would dominate the wallclock.
 
 The thesis ships a precomputed compression cache,
@@ -683,7 +683,7 @@ sub-millisecond search at the C1 vector counts ($150$--$10{,}000$)
 without sharding; and (iii) FAISS is the most-audited open-source
 indexer. The CPU restriction is deliberate: a GPU-resident index
 would dominate the cost ledger and misrepresent the deployment
-regime --- a memory bus that needs a GPU for retrieval is not one a
+regime: a memory bus that needs a GPU for retrieval is not one a
 small institutional deployment can run.
 
 \paragraph{\texttt{BAAI/bge-large-en-v1.5} for embedding and
@@ -761,7 +761,7 @@ methodology on learned compressors is named as a follow-on study
 (\charef{summary}~Section~\ref{sec:future}).
 
 \paragraph{Single-token compression (xRAG~\cite{cheng2024xrag}).}
-xRAG represents an entire document as a single token --- a
+xRAG represents an entire document as a single token, a
 $> 100\times$ compression regime. It was not included because the
 C1 ratio grid already brackets the operating regime where the
 coordination cliff sits ($1\times$ to $16\times$); xRAG's regime
@@ -781,9 +781,9 @@ cheapest base that satisfies the verifier rule.
 \subsection{Threshold and sweep-grid parameters}
 \label{sec:design_thresholds}
 
-The cliff measurement turns on a few numerical parameters --- the
+The cliff measurement turns on a few numerical parameters (the
 ratio grid, per-family sample size, $\theta_q$ rule, bootstrap
-configuration, and P3 routing thresholds --- each a defensible but
+configuration, and P3 routing thresholds) each a defensible but
 not unique choice, catalogued here so the sweep design is auditable.
 
 \paragraph{Ratio grid
@@ -822,7 +822,7 @@ The cliff-recall threshold $\theta_q$ is estimated as the
 critical-token-recall at which coordination success first drops
 below half of the cell's baseline $p_0$. The
 ``half-of-baseline'' choice operationalises ``coordination has
-collapsed'' without requiring a separate calibration sweep --- it
+collapsed'' without requiring a separate calibration sweep; it
 sits below the H2 $30\%$-drop bar (so a cell that has cliffed is
 comfortably past the half-of-baseline point) and above the noise
 floor on the family-a and family-c CTR curves. The CAAC ablation

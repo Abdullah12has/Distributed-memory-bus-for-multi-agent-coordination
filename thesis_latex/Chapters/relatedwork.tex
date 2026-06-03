@@ -128,8 +128,8 @@ effectively use are pure cost.
 question that Corollary~1 of \charef{experiments}
 answers: does the cliff position depend on which point on the
 model-scale curve the planner is at? The frontier validation on
-Qwen-72B and DeepSeek~V4~Pro is the cross-architecture answer ---
-no, within the calibrated regime --- that the scaling-era trend
+Qwen-72B and DeepSeek~V4~Pro is the cross-architecture answer
+(no, within the calibrated regime) that the scaling-era trend
 makes interesting in the first place.
 
 \section{The Cost of Running LLMs at Scale}
@@ -171,7 +171,7 @@ million input tokens and USD~15 per million output tokens for the
 frontier base tiers, higher for reasoning tiers. At one million
 calls per day and a $10{,}000$-token average prompt, that is
 USD~$30{,}000$/day of input cost alone; halving the prompt saves
-USD~$15{,}000$/day --- enough to fund a compression-engineering
+USD~$15{,}000$/day, enough to fund a compression-engineering
 team. The on-premises amortised marginal cost is two orders of
 magnitude lower per token, but the absolute hardware and operations
 cost makes the same lever operationally valuable. The TalentAdore
@@ -180,9 +180,9 @@ confirm this pricing.
 
 \paragraph{Politeness as waste.}
 The peer-reviewed per-token cost results above already establish
-the substantive point: every token processed --- including
+the substantive point: every token processed (including
 ``Hello'', ``Thanks'', restated history, and repeated system
-prompts that do not change the answer --- is converted directly
+prompts that do not change the answer) is converted directly
 into kilowatt-hours and dollars~\cite{luccioni2024powerhungry,
 samsi2023words}. As a widely-circulated industry anecdote in the
 same direction, Sam Altman estimated in 2025 that the compute cost
@@ -213,7 +213,7 @@ missing is the structural answer to \emph{how aggressively
 compression can be applied before coordination breaks}. The cliff
 characterisation of \charef{experiments} is that answer.
 
-\section{Context Compression --- the Breakthrough Works}
+\section{Context Compression: the Breakthrough Works}
 \label{sec:rw_compression}
 
 The training-free context-compression literature has matured in
@@ -356,8 +356,8 @@ multi-fragment coordination sweep before this thesis.}
 Family & Training\hspace*{0pt}-free? & Task\hspace*{0pt}-aware? & Eval'd on multi\hspace*{0pt}-fragment? & Deployed in this thesis? \\
 \hline
 LLMLingua family~\cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2} & yes (inference-only) & question-conditioned & no & LLMLingua-2 \\
-Selective Context, RECOMP & yes & yes & no & --- \\
-Gist Tokens / AutoCompressor / ICAE~\cite{mu2023gist, chevalier2023autocompressor, ge2024icae} & no (training required) & varies & no & --- \\
+Selective Context, RECOMP & yes & yes & no & -- \\
+Gist Tokens / AutoCompressor / ICAE~\cite{mu2023gist, chevalier2023autocompressor, ge2024icae} & no (training required) & varies & no & -- \\
 Extractive small-LLM (Phi-3 family)~\cite{phi3} & yes (inference-only) & yes & no & Phi-3-Mini ext. \\
 Instruction-aware filter & yes & yes & no & yes (this thesis) \\
 Truncation (prefix-keep) & yes & no & no & yes (baseline) \\
@@ -518,7 +518,7 @@ The closest published prior work that connects compression
 directly to privacy is
 SecurityLingua~\cite{li2025securitylingua} (CoLM 2025), from the
 LLMLingua group, which uses prompt compression as a
-\emph{defense} against jailbreak attacks --- the compressor is
+\emph{defense} against jailbreak attacks: the compressor is
 trained to strip adversarial structure from inputs before they
 reach the model. SecurityLingua's framing is the dual of
 C4's: SecurityLingua applies compression as an input-side
@@ -526,10 +526,10 @@ filter against the \emph{adversary's} prompt, whereas C4 measures
 compression as an unintended leakage channel for protected facts
 in the \emph{defender's} stored content, with a per-question
 disclosure rate against a fixed downstream reader. The two
-contributions are complementary rather than overlapping --- a
+contributions are complementary rather than overlapping (a
 deployed memory bus could in principle combine
 SecurityLingua-style input filtering with C4-style summary-level
-disclosure auditing --- but they measure different sides of the
+disclosure auditing) but they measure different sides of the
 compression-versus-privacy interaction.
 
 \emph{What is missing in prior work.} No published academic
@@ -571,11 +571,11 @@ disclosure through the compressor at the summary level. The H4
 measurement, integrated with the memory bus's policy layer, is
 the measurement.
 
-The thesis sits at the intersection of three threads --- the
+The thesis sits at the intersection of three threads: the
 long-context benchmark suite and the LLMLingua line of work (which
 measure orthogonal single-agent properties) and Anthropic's
 multi-agent report~\cite{anthropic2025multiagent} (an industry
-observation, not a controlled measurement) --- and contributes the
+observation, not a controlled measurement), and contributes the
 controlled cross-compressor multi-fragment evaluation none of them
 provides. Table~\ref{tab:sota_positioning} positions it against the
 nearest prior systems on the discriminating axis: whether the work
@@ -601,7 +601,7 @@ LongLLMLingua~\cite{jiang2024longllmlingua} & Post-retrieval compression for lon
 RECOMP~\cite{xu2024recomp} & Trained extractive/abstractive compression for RAG QA & Training-free cross-compressor comparison; coordination cliff \\
 MemIndex~\cite{saleh2025memindex} & Distributed agent-memory storage and retrieval & Information loss introduced when shared context is compressed \\
 Anthropic multi-agent report~\cite{anthropic2025multiagent} & Token usage vs.\ performance variance on one production workflow & Controlled, cross-compressor, cross-architecture characterisation \\
-\textbf{This thesis} & \textbf{Compression vs.\ multi-fragment coordination success across 4 compressors, 3 families, 3+ planners} & --- \\
+\textbf{This thesis} & \textbf{Compression vs.\ multi-fragment coordination success across 4 compressors, 3 families, 3+ planners} & -- \\
 \hline
 \end{tabular}
 \end{table}

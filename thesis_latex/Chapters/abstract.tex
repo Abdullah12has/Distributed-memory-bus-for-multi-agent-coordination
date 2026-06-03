@@ -1,46 +1,39 @@
 \begin{thesisabstract}{english}
 
-Multi-step LLM workflows pay for every token they read, and context
-compression is the obvious lever. The single-agent
-prompt-compression literature is mature, but it measures
-single-fragment question-answering, while production workloads
-combine information across multiple compressed fragments. Whether
-single-fragment information preservation predicts that harder
-property has not previously been tested.
+Every token a multi-step LLM workflow reads costs energy, latency,
+and money, so context compression is the obvious lever. The
+prompt-compression literature is mature, but it is measured on
+single-fragment question-answering, whereas production workflows
+must combine information across several independently compressed
+fragments. Whether preserving single-fragment quality also
+preserves that harder property had never been tested.
 
-It does not. On a new $150$-instance multi-fragment benchmark
-spanning cross-document fact aggregation, constraint-satisfaction
-planning, and multi-step retrieval, four training-free compressors
-at ten compression ratios yield workload-level Spearman correlations
-between source-retention F1 --- token overlap between each compressed
-fragment and its original source text --- and coordination success in
-$[-0.82, +0.32]$, with all $95\%$ bootstrap CIs excluding $0.6$. The single-agent benchmarks
-that dominate the compression literature therefore systematically
-mis-rank compressors for multi-fragment deployment.
+It does not. On a new $150$-instance benchmark spanning
+cross-document fact aggregation, constraint-satisfaction planning,
+and multi-step retrieval, four training-free compressors swept over
+ten ratios show no positive workload-level correlation between
+source-retention F1 (token overlap with each fragment's source) and
+multi-fragment coordination success (Spearman $[-0.82, +0.32]$, all
+$95\%$ bootstrap CIs excluding $0.6$). The single-agent benchmarks
+that dominate the field therefore mis-rank compressors for
+multi-fragment deployment.
 
-The mechanism is a sharp \emph{coordination cliff} $\tau^{*}$,
-present on $11$ of $12$ (compressor, family) cells. A
-compounding-error model derives the threshold structure from a
-per-family recall constraint on critical tokens and recovers the
-empirical position to first order (median $\approx 35\%$ relative
-error). Within a calibrated regime the cliff shows no detected
-shift between a local Llama-3.1-8B planner and a frontier
-Qwen-2.5-72B planner across a $9\times$ scale-up and a change of
-architecture family; extended-reasoning planners sit outside this
-regime. Compression also reduces inference disclosure of protected
-facts, but in proportion to how aggressively each compressor
-destroys source tokens rather than through privacy-specific
-filtering.
+The breakdown is abrupt: a sharp \emph{coordination cliff}, present
+on $11$ of $12$ (compressor, family) cells, at which success
+collapses once compression strips the task-critical tokens a planner
+must combine. A compounding-error model explains why the transition
+is sharp and recovers its position to first order. The cliff is a
+property of the compressor and the task, not the planner: within a
+calibrated regime it shows no detected shift from a local
+Llama-3.1-8B to a frontier Qwen-2.5-72B across a $9\times$ scale-up
+and a change of architecture family, and only extended-reasoning
+planners fall outside this regime.
 
-Three pre-specified hypotheses (H1, H2, H4) are supported as
-stated. Two (H5, H6) sharpened during analysis into
-\emph{Corollary~1 (Ceiling--Cliff Separation)} and
-\emph{Corollary~2 (Information-Density Scaling)}, both supported on
-their refined criteria. H3 narrowed from a regime sign-flip
-prediction to a single-stack compress-first ordering. The
-deliverable is the manuscript and a reference implementation of a
-policy-enforcing memory bus, released to examiners and collaborators
-and reproducible from a single command given a precomputed
-compression cache.
+Beyond this negative result, the thesis delivers the benchmark, the
+coordination-cliff characterisation and its predictive model,
+evidence that compression also lowers protected-fact disclosure (in
+proportion to how much text it destroys, not through
+privacy-specific filtering), and a reproducible, policy-enforcing
+memory-bus reference implementation.
 
 \end{thesisabstract}

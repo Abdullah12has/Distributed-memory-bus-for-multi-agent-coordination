@@ -1,8 +1,8 @@
 # Reproducibility — Master's thesis evidence base
 
 This document is the canonical reproducibility scaffold for the manuscript
-*Distributed Memory Bus for Multi-Fragment LLM Workflows: Context
-Compression, the Coordination Cliff, and Privacy* (see `draft1.md` for the
+*The Coordination Cliff: How Context Compression Breaks
+Multi-Fragment LLM Workflows* (see `draft1.md` for the
 draft). Every claim in the manuscript traces to a named `results/*/`
 directory; every figure regenerates from a single command.
 

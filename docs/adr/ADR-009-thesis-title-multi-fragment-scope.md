@@ -152,3 +152,25 @@ A subsequent audit pass on 2026-05-30 flagged that the title's leading word "Dis
 **Why not keep it and justify.** The trade-off was: drop (clean), justify in §3.1 (defensive), or punt to Lauri post-submission. The drop option avoids carrying a defensive paragraph into Ch 3 that doesn't serve the chapter's argument. Future distribution work belongs in §5.6 future-work if and when it becomes load-bearing.
 
 **Revisit when.** A future deployment ships horizontal scaling (slot replication, consensus across nodes, cross-region access). At that point "Distributed" earns its way back into the title.
+
+---
+
+## Addendum (2026-06-03): Retitled around the coordination cliff (supersedes the title clause of Option B)
+
+The 2026-05-30 title — *Memory Bus for Multi-Fragment LLM Workflows: Context Compression, the Coordination Cliff, and Privacy* — led with the **memory bus** (contribution C4) and listed three themes as a subtitle. A re-reading against the finalised manuscript (insights §§84–96) found three problems:
+
+1. **It foregrounded the most-secondary contribution.** The introduction's own contribution hierarchy (§Contributions "Headline" + §Reading guide) makes **H1** — single-fragment information preservation does not predict multi-fragment coordination success — the load-bearing result, with the memory bus, the disclosure metric, and CAAC "deliberately secondary." A memory-bus-led title advertised a systems thesis over the empirical-measurement thesis this is.
+2. **It re-introduced the multi-agent misread this very ADR exists to prevent.** §1.2 spends a paragraph disambiguating "coordination" from multi-round agent negotiation; a "Memory Bus … coordination" title pulls the reader back toward the agent reading.
+3. **"and Privacy" over-billed H4**, whose result is destruction-driven (disclosure falls in proportion to how aggressively a compressor destroys tokens, not through privacy-specific filtering).
+
+**Decision (2026-06-03).** Retitle around the headline finding and the coinage. New title:
+
+> *The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows*
+
+**Relationship to the original A/B/C deliberation.** This is a refined **Option C** ("retitle around the cliff"), which 2026-05-29 rejected because it "discards the coordination-cliff coinage." The new title does the opposite — it *promotes* the coinage to the lead — so that con no longer applies. Option C's other con (reframing every chapter title and figure caption) also does not apply: the cliff is already the organising concept of Ch 5 and the two corollaries, so no chapter-level rework is required. "Multi-fragment LLM workflows" is retained verbatim, preserving the scope honesty that was the entire point of this ADR.
+
+**Scope of the change.** Title-page and Finnish `\otsikko` (`thesis_latex/main.tex`), PDF metadata (`thesis_latex/main.xmpdata`), rebuilt `main.pdf` + root `thesis.pdf` (102 pp, pdflatex + biber, verified in PDF metadata and on the title page), `CLAUDE.md` header + status note, `plan-v3.md`, `thesis_PLAN.md` title line, `thesis_latex/citations.bib` comment, `REPRODUCIBILITY.md`, `CANONICAL_NUMBERS.md`, `docs/DATA_CARDS.md`, `docs/MODEL_CARDS.md`, this addendum, and `insights.txt` §97. Dated historical artefacts (`draft1.md`–`draft3.1.md`, the review/feedback reports, prior `insights.txt` entries, prior plan decision-tables) are preserved unchanged as records of the title at the time they were written. The codebase repository path and ssh aliases are unchanged, exactly as the 2026-05-30 addendum left them. Keywords in `main.xmpdata` (incl. "memory bus", "inference disclosure") are left intact — accurate as topic tags regardless of title.
+
+**Finnish title.** Updated in lockstep to *Koordinaation jyrkänne: kuinka kontekstin tiivistäminen rikkoo monifragmenttisia kielimallityönkulkuja*; the existing native-Finnish review item (insights §96) now covers this string as well as the Tiivistelmä.
+
+**Revisit when.** The work is re-scoped to a venue whose norms favour a system-named title, or the AutoGen multi-round backend is brought online (per the 2026-05-29 "Revisit when"), at which point a memory-bus-led or multi-agent title may again be appropriate.

@@ -1,7 +1,7 @@
 # Canonical Numbers Registry
 
 **Provenance.** Every number below was read directly off the on-disk result
-JSON/CSV of *Memory Bus for Multi-Fragment LLM Workflows* on 2026-06-01, against
+JSON/CSV of *The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows* on 2026-06-01, against
 files produced on each run's completion date (H1/H2-v2 2026-05-27,
 H4-unbiased-v2 2026-05-29, H5 2026-05-27, frontier 2026-05-28, CAAC 2026-05-29,
 A3/bus/finegrid 2026-05-31). Host facts confirmed: the Ollama binary is at

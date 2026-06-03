@@ -1,5 +1,5 @@
 # Master's Thesis Writing Plan
-**Title:** *Memory Bus for Multi-Fragment LLM Workflows: Context Compression, the Coordination Cliff, and Privacy* (was *Distributed Memory Bus …* before 2026-05-30; "Distributed" dropped per audit — see ADR-009 addendum)
+**Title:** *The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows* (retitled 2026-06-03 from *Memory Bus for Multi-Fragment LLM Workflows: …*, itself the "Distributed"-dropped 2026-05-30 form — see ADR-009 addenda)
 **Author:** Syed Abdullah Hassan, University of Oulu
 **Deliverable:** Single Master's thesis manuscript. No external publication scaffolding (NeurIPS / ICLR scope dropped per ADR-008 and grilling session §55). Target: top score across all 10 evaluation criteria (max 42 / 42).
 **Format:** Oulu ITEE LaTeX thesis template (bibliography style dictated by template).
