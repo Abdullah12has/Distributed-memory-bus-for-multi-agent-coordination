@@ -1,108 +1,100 @@
 \section{Motivation: Every Token Has a Cost}
 \label{sec:motivation}
 
-Large language models pay for every token they read. The cost is
-measurable at three layers: the energy and water needed to power a
-prefill and a decoding pass; the latency the user pays to wait for
-that pass to complete; and the dollar amount the operator pays per
-million tokens through an API or amortises through on-premises
-hardware. Peer-reviewed measurements of inference-side cost are
-recent but consistent. Luccioni \emph{et~al.}'s 2024 \emph{Power
-Hungry Processing} study reports per-inference Watt-hour numbers
-for a broad set of open models, measuring a text-generation energy
-on the order of $0.1$~Watt-hours per inference for a 6--7B-class
-open model~\cite{luccioni2024powerhungry}; Samsi
-\emph{et~al.}~\cite{samsi2023words} benchmark the energy cost of
-LLM inference directly and show it scales with the number of tokens
-processed, and Pope \emph{et~al.}~\cite{pope2023efficiently}
-quantify how serving cost grows with sequence length once the
-prefill dominates. The training-time carbon-and-cost accounting of
-Patterson \emph{et~al.}~\cite{patterson2021carbon} established the
-methodology that these inference-time studies extend. When the
-workload is a multi-step agentic system that issues thousands of
-internal inference calls to answer a single user request, those
-per-token costs compound.
+Large language models pay for every token they read. The cost shows
+up in three places: the energy and water to read the prompt and
+generate the reply (the prefill and decoding passes); the latency the
+user waits through; and the dollars the operator pays per million
+tokens, through an API or amortised over on-premises hardware.
+Peer-reviewed measurements of this inference-side cost are recent but
+consistent. Luccioni \emph{et~al.}'s 2024 \emph{Power Hungry
+Processing} study reports per-inference Watt-hour numbers for a broad
+set of open models, about $0.1$~Watt-hours per inference for a
+6--7B-class open model~\cite{luccioni2024powerhungry}; Samsi
+\emph{et~al.}~\cite{samsi2023words} show the energy of LLM inference
+scales with the number of tokens processed; and Pope
+\emph{et~al.}~\cite{pope2023efficiently} quantify how serving cost
+grows with sequence length once the prefill dominates. Patterson
+\emph{et~al.}~\cite{patterson2021carbon} established the training-time
+carbon-and-cost accounting that these inference-time studies extend.
+When the workload is a multi-step agentic system that issues
+thousands of internal inference calls to answer one user request,
+those per-token costs compound.
 
-A growing fraction of the tokens a deployed LLM reads do not
-change the answer. They are conversational filler (``Hello'',
-``Thanks''), repeated system prompts that scaffold every call,
-restated history that re-anchors a long conversation, boilerplate
-disclaimers, and structural framing that an attentive reader could
-elide without loss. Because the peer-reviewed measurements above
-tie cost directly to the number of tokens
+A growing fraction of the tokens a deployed LLM reads do not change
+the answer. They are conversational filler (``Hello'', ``Thanks''),
+repeated system prompts that scaffold every call, restated history
+that re-anchors a long conversation, boilerplate disclaimers, and
+framing an attentive reader could skip. Because the measurements
+above tie cost directly to the number of tokens
 processed~\cite{luccioni2024powerhungry, samsi2023words,
-pope2023efficiently}, every such token is converted directly into
-energy, latency, and operating expense regardless of whether it
-changes the answer. As an industry anecdote consistent with this,
-the OpenAI compute bill for processing user politeness alone was
-informally estimated at ``tens of millions of dollars'' annually in
-2025~\cite{altman2025pleasethankyou}; we cite it only as
-corroborating colour, not as evidence.
+pope2023efficiently}, each such token still turns into energy,
+latency, and operating expense whether or not it changes the answer.
+As a consistent industry anecdote, OpenAI's compute bill for
+processing user politeness alone was informally estimated at ``tens
+of millions of dollars'' a year in
+2025~\cite{altman2025pleasethankyou}; it is corroborating colour, not
+evidence.
 
-Context compression is the natural lever. Per-token compute and
-per-token cost scale roughly linearly in sequence length once
-the prefill is past the GPU memory-bound regime; halving the input
-context halves the cost. The single-agent prompt-compression
-literature has matured rapidly over the past three years
-\cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2,
-mu2023gist, chevalier2023autocompressor, ge2024icae}. What has not
-yet been measured, and what this thesis sets out to measure, is
-whether the compression that preserves single-fragment quality,
-the single-agent question-answering metric the prompt-compression
-literature optimises, also preserves the harder structural
-property a planner needs: combining information distributed across
-multiple fragments into a correct answer.
+Context compression is the natural lever. Per-token compute and cost
+scale roughly linearly in sequence length once the prefill is past
+the GPU memory-bound regime, so halving the input context roughly
+halves the cost. The single-agent prompt-compression literature has
+matured fast over the past three
+years~\cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2,
+mu2023gist, chevalier2023autocompressor, ge2024icae}. This thesis
+measures what that literature has left untested: whether compression
+that preserves single-fragment quality (the single-agent
+question-answering metric it optimises) also preserves the harder
+property a planner needs, combining information spread across several
+fragments into one correct answer.
 
 \section{The Multi-Fragment Workflow}
 \label{sec:multi_fragment}
 
-The setting this thesis studies is the \emph{multi-fragment LLM
-workflow}: a task in which the answer cannot be read out of any
-single fragment in isolation and requires combining information
-across two or more fragments, each of which may be compressed
-independently before the planner sees it. Cross-document fact
-aggregation (sum eight numbers reported by eight different
-institutional systems), constraint-satisfaction planning
-(assign $N$ sub-tasks to $K$ capacity-bounded workers given
+This thesis studies the \emph{multi-fragment LLM workflow}: a task
+whose answer cannot be read out of any single fragment and instead
+requires combining information across two or more fragments, each of
+which may be compressed on its own before the planner sees it. Three
+examples recur: cross-document fact aggregation (sum eight numbers
+reported by eight institutional systems), constraint-satisfaction
+planning (assign $N$ sub-tasks to $K$ capacity-bounded workers from
 specifications spread across fragments), and multi-step retrieval
-(chain references through a sequence of documents until a leaf
-answer is reached) are three representative examples; the C1
-benchmark of \charef{implementation} constructs $50$
-instances of each. The setting is not a corner case. The FCG group
-at the University of Oulu's flagship use case,
+(chain references through a sequence of documents to a leaf answer);
+the C1 benchmark of \charef{implementation} builds $50$ instances of
+each. This setting is not a corner case. The FCG group at the
+University of Oulu's flagship use case,
 \emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026},
-gathers reporting data across eight university systems via
-roughly eight specialised agents; the internal FCG analysis
-estimates an $80\%$ cloud-payload reduction and a per-report cost of
-approximately EUR~$2.15$. TalentAdore, the industry partner of
-this thesis, runs production workloads whose operating expenses
-are dominated by token cost. Anthropic's own published report on
-their multi-agent research system notes that token usage explains
-approximately $80\%$ of the performance variance they
-observe~\cite{anthropic2025multiagent}; the corresponding
-context-management report describes an
-$84\%$ token reduction on a 100-turn web-search
-evaluation~\cite{anthropic2025contextediting}. These are industry observations
-on industry workflows; the master's-scale problem is the
-controlled cross-compressor, cross-task, cross-architecture
-measurement that turns the industry urgency into a technical
-question.
+gathers reporting data across eight university systems via roughly
+eight specialised agents; the internal FCG analysis estimates an
+$80\%$ cloud-payload reduction at about EUR~$2.15$ per report.
+TalentAdore, the industry partner of this thesis, runs production
+workloads whose operating expense is dominated by token cost.
+Anthropic's report on their multi-agent research system finds token
+usage explains about $80\%$ of the performance variance they
+observe~\cite{anthropic2025multiagent}, and the companion
+context-management report describes an $84\%$ token reduction on a
+100-turn web-search evaluation~\cite{anthropic2025contextediting}.
+These are industry observations on industry workflows; the
+master's-scale problem is the controlled cross-compressor,
+cross-task, cross-architecture measurement that turns that urgency
+into a technical question.
 
-The technical question does not include the multi-round
-agent negotiation that the ``multi-agent'' framing of the FCG and
-Anthropic systems would imply. The empirical evaluation uses either
-a deterministic regex information-extraction solver or a single LLM
-call with all (compressed) fragments visible as the planner; an
-AutoGen v0.4 multi-round backend is shipped in the source tree
+The technical question deliberately excludes the multi-round agent
+negotiation that the ``multi-agent'' framing of the FCG and Anthropic
+systems implies. The empirical evaluation uses one of two planners: a
+deterministic regex information-extraction solver, or a single LLM
+call with all (compressed) fragments visible. An AutoGen v0.4
+multi-round backend ships in the source tree
 (\texttt{src/m6/orchestrator/}~\cite{wu2023autogen}) but is not used
-in any reported result. The reason is that round-to-round LLM
+in any reported result. The reason is attribution: round-to-round LLM
 variance dominates the compression signal at the C1 ratios swept, so
-cleanly attributing coordination drops to compression rather than to
+cleanly attributing a coordination drop to compression rather than to
 agent variance requires isolating the compressor on the critical
 path, which a single-LLM-call or deterministic planner does. The
 memory bus is \emph{designed for} multi-agent integration; the
 experimental scope is multi-fragment task solvability, restated and
-calibrated against in \charef{implementation}~Section~\ref{sec:scope}.
+calibrated in \charef{implementation}~Section~\ref{sec:scope}.
 
 \paragraph{Operational definition of ``coordination success.''}
 Because the title and the coinage \emph{coordination cliff} invite a
@@ -290,11 +282,11 @@ Section~\ref{sec:corollary1} as the core.
 \label{sec:outline}
 
 \charef{relatedwork} surveys the prior work the four contributions
-build on---the transformer cost of context, the scaling era, the
+build on: the transformer cost of context, the scaling era, the
 economics of inference, the training-free compression literature,
 multi-agent systems and agentic memory, retrieval-augmented
 generation and long-context benchmarks, and privacy in compressed
-retrieval---closing with the gap this thesis fills.
+retrieval, closing with the gap this thesis fills.
 
 \charef{implementation} presents the artefacts the evaluation runs
 on: the three-layer memory-bus architecture, the compressor
@@ -313,8 +305,8 @@ and Corollary~2 (the cliff shape scales with information density).
 constructive realisation of the model, and gives the limitations,
 significance, and future work.
 
-All artefacts---manuscript source, code, configuration files,
+All artefacts (manuscript source, code, configuration files,
 results CSVs, and the \texttt{docker-compose.yml} that brings the
-memory-bus service up locally---are in the reference repository
+memory-bus service up locally) are in the reference repository
 released to examiners. Appendix~\ref{appendix} describes the
 reproducibility package and the one-command reproduction recipe.

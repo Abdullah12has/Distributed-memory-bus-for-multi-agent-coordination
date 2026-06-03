@@ -3,12 +3,11 @@ the reference memory bus, the compressor framework, the multi-fragment
 \emph{C1} coordination benchmark, the coordination-success and
 critical-token-recall metrics that the cliff analysis turns on, the
 precomputed compression cache that decouples compression from
-evaluation, and the single-command reproducibility envelope. The
-intent is to give a reader enough detail to reproduce the system from
-the reference repository without consulting the code, and to make
-the design choices explicit so that the experimental results in
-\charef{experiments} can be read against the constraints
-those choices imposed.
+evaluation, and the single-command reproducibility envelope. It gives
+a reader enough detail to reproduce the system from the reference
+repository without reading the code, and makes the design choices
+explicit so the results of \charef{experiments} can be read against
+the constraints those choices imposed.
 
 A scope reminder bounding every claim that follows: the planner is a
 deterministic regex information-extraction solver for the cliff sweep
@@ -194,7 +193,7 @@ The H3 analysis (Appendix~\ref{appendix:rag}) compares three
 pipeline placements over the shared FAISS-CPU + HNSW +
 \texttt{bge-large-en-v1.5} stack: \textbf{P1} compress-first
 (compress the corpus, then index it), \textbf{P2} retrieve-first
-(index the full corpus, then compress the top-$k$---the classical
+(index the full corpus, then compress the top-$k$, the classical
 LongLLMLingua~\cite{jiang2024longllmlingua} configuration), and
 \textbf{P3} a joint relevance router (pass high-scoring fragments
 verbatim, compress mid-scoring, discard low-scoring; after
@@ -213,9 +212,8 @@ returning an optional embedding for vector-store indexing; and
 \texttt{model\_card()} returning a structured card containing the
 compressor identifier, family, base model, default target ratio, and
 provenance hashes. The thesis ships six concrete implementations.
-The identity compressor is the no-compression control condition
-required by every experiment as a mitigation against runtime-bug
-confounds.
+The identity compressor is the no-compression control that every
+experiment needs to guard against runtime-bug confounds.
 
 The remaining five compressors fall into four families: a
 token-level hard-prompt filter (LLMLingua-2); an instruction-aware
@@ -236,10 +234,10 @@ $1/r$ of the tokens, scored by a small XLM-RoBERTa classifier
 distilled from a more capable teacher. The force-tokens list
 (sentence boundary marks) is validated against the wrapped
 tokenizer's vocabulary at initialisation and unknown tokens are
-dropped with an explicit log line. The wrapped XLM-RoBERTa model
-is supported by PyTorch on both CPU and Apple's Metal Performance
-Shaders backend, so the compressor runs natively on Apple Silicon
-without modification.
+dropped with an explicit log line. PyTorch runs the wrapped
+XLM-RoBERTa model on both CPU and Apple's Metal Performance Shaders
+backend, so the compressor runs natively on Apple Silicon without
+modification.
 
 The empirical token-recall curve $q(r)$ produced by LLMLingua-2
 under critical-token-recall measurement (Section~\ref{sec:ctr})
@@ -258,9 +256,8 @@ token-level trim that drops English stop-words and short tokens
 ($\le 2$ characters) until the target compression ratio is reached.
 The stop-word list is encoded explicitly so that the trim is
 deterministic given the task hint, the fragment, and the target
-ratio; a subtle bug found during the development of this thesis
-showed that dropping stop-words by Python set iteration order
-introduced run-to-run variance, which is why the list is explicit.
+ratio: a subtle bug showed that dropping stop-words in Python
+set-iteration order introduced run-to-run variance.
 
 The filter's reranker preserves task-keyword tokens that simpler
 token-level methods drop, which is why its $q(r)$ curve on the
@@ -288,10 +285,9 @@ tokens in the final output even if the model produced some during
 generation. Outputs that fail even after stripping fall back to
 LLMLingua-2 at the same target ratio.
 
-A practically important property of Phi-3-Mini extractive is its
-\emph{compression ceiling}. Span-level selection plus the stripping
-pass plus the LLMLingua-2 fallback combine to bound the achievable
-compression ratio at approximately $2.5\times$, regardless of the
+Phi-3-Mini extractive has a \emph{compression ceiling}: span-level
+selection, the stripping pass, and the LLMLingua-2 fallback together
+bound the achievable ratio at about $2.5\times$, regardless of the
 requested target. This is documented as a limitation in
 \charef{summary} and is the reason all evaluation reports
 \emph{achieved} compression ratio (the ratio actually delivered)
@@ -345,8 +341,8 @@ detecting it requires sweeping ratios densely from $1\times$ to
 $16\times$ with everything else held constant. Real benchmarks
 (HotpotQA, MultiHop-RAG) confound the cliff with task difficulty,
 retrieval distribution, and per-instance variance, so the thesis
-characterises the cliff on a synthetic generator first---where
-information density is placed by construction---and validates the
+characterises the cliff on a synthetic generator first (where
+information density is placed by construction) and validates the
 transfer on real benchmarks (Corollary~2). The C1 generator produces
 $150$ instances across three families from a single seed, with the
 config hash recorded in the manifest so any output CSV traces back to
@@ -371,7 +367,7 @@ compounding-error model is most directly testable.
 with per-task loads and $K$ capacity-bounded workers; the planner
 must assign every sub-task within capacity. The generator guarantees
 at least one feasible assignment (capacity-respecting greedy), and
-the scorer is a \emph{feasibility checker}---any valid assignment
+the scorer is a \emph{feasibility checker}: any valid assignment
 scores~$1$. Constraint tracking is hard for $\le8$B planners even
 without compression, so the family-b baseline $p_0$ is low for small
 planners and the cliff is undetectable there: a \emph{floor effect}
@@ -434,12 +430,11 @@ favour of clean attribution rather than ecological validity, and
 
 A standard token-recall measurement
 $q_\text{token}(r) = |T_\text{compressed} \cap T_\text{source}| /
-|T_\text{source}|$ counts every preserved token equally. This
-turned out, during the development of this thesis, to be a poor
-proxy for task-relevant information preservation: the Phi-3-Mini
-extractive compressor at low ratios preserves common function
-words like ``the'' and ``and'' but drops some critical numeric
-tokens. Its token-recall is high; its coordination success is low.
+|T_\text{source}|$ counts every preserved token equally. This proved
+a poor proxy for task-relevant information preservation: the
+Phi-3-Mini extractive compressor at low ratios preserves common
+function words like ``the'' and ``and'' but drops some critical
+numeric tokens. Its token-recall is high; its coordination success is low.
 
 The critical-token-recall (CTR) metric is the family-specific
 restriction:
@@ -468,8 +463,8 @@ analyses but is not used in the verdict pipeline.
 \section{Compression Cache}
 \label{sec:cache}
 
-Compression is the slowest evaluation step---Phi-3-Mini extractive
-is a $\sim11$~second Ollama call per fragment---and the cliff sweep
+Compression is the slowest evaluation step (Phi-3-Mini extractive
+is a $\sim11$~second Ollama call per fragment), and the cliff sweep
 touches $\approx30{,}000$ (compressor, ratio, workload, task-hint)
 cells, so a precomputed cache (\texttt{CompressionCache} /
 \texttt{CachedCompressor} in \texttt{src/m6/compressors/cache.py},
@@ -478,7 +473,7 @@ $(\text{compressor}, r, \text{fragment\_id}, \text{hash}(\text{task\_hint}))$)
 is populated once on the GPU and consumed as JSON thereafter. This
 decouples compression from evaluation, letting H1, H2, the frontier
 sweep, and the CAAC ablation run on a laptop, and guarantees every
-run sees identical compressed text for a cell---so run-to-run
+run sees identical compressed text for a cell, so run-to-run
 differences are protocol, not compressor stochasticity (cache hit
 rate $100\%$ by construction).
 
@@ -538,8 +533,8 @@ Three compressor families from the survey were considered and
 excluded, recorded so the omissions are deliberate.
 \textbf{Selective Context}~\cite{li2023selective} requires a scoring
 forward pass at compression time (asymmetric compute with the swept
-four) and its design point---task-aware lexical pruning with no
-end-to-end LM---is already covered by the instruction-aware filter.
+four) and its design point (task-aware lexical pruning with no
+end-to-end LM) is already covered by the instruction-aware filter.
 \textbf{RECOMP}~\cite{xu2024recomp} and \textbf{learned compression}
 (gist tokens~\cite{mu2023gist},
 AutoCompressor~\cite{chevalier2023autocompressor},
@@ -596,7 +591,7 @@ backend demonstrates that the bus is multi-agent-ready rather than
 serving as the measured planner. Coordination success
 (Section~\ref{sec:c1}) is therefore the structural property that the
 planner must combine information across fragments, not multi-round
-communication quality---which \charef{summary} names as future work.
+communication quality, which \charef{summary} names as future work.
 
 \section{Compute Envelope and Reproducibility}
 \label{sec:envelope}
@@ -608,7 +603,7 @@ the compression cache is in place) and an RTX~5090 32~GB host
 API sweep, and the HotpotQA / MultiHop-RAG transfer). Total wallclock
 for the canonical pipeline is $\sim 30$~GPU-hours plus $\sim 12$~hours
 of laptop time. The reproducibility package is the complete
-repository---a \texttt{docker-compose.yml} for the memory-bus
+repository: a \texttt{docker-compose.yml} for the memory-bus
 service, a release tag, model and data cards, and one-command
 \texttt{make} targets for every headline figure; one CSV per
 hypothesis run plus a \texttt{manifest.yaml} recording the resolved

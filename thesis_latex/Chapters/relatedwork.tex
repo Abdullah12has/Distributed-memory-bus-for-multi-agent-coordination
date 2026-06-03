@@ -13,10 +13,10 @@ consolidated gap statement is Section~\ref{sec:rw_gap}.
 \section{The Transformer Architecture and the Cost of Context}
 \label{sec:rw_transformer}
 
-The artefacts of this thesis are built around large language models
-whose architectural foundation is the
-transformer~\cite{vaswani2017attention}. Its defining mechanism,
-\emph{self-attention}, computes $N^2$ pairwise compatibility scores
+The large language models this thesis builds on are all
+transformers~\cite{vaswani2017attention}. The transformer's defining
+mechanism, \emph{self-attention}, computes $N^2$ pairwise
+compatibility scores
 for a sequence of length $N$, so prefill compute scales as
 $L\cdot(N^2 d + N d^2)$ over $L$ blocks of hidden size $d$, and the
 key-value cache that decoding reads back grows linearly in $N$. The
@@ -45,8 +45,8 @@ reads. The two-to-three-order gap between frontier-cloud and
 on-premises per-token cost is what makes compression an operational
 concern. Context windows grew in parallel (2K to multi-million
 tokens), but a model's effective use of them lags the nominal
-size---the ``lost in the middle'' effect~\cite{liu2024lostinmiddle,
-hsieh2024ruler}---so tokens the model will not use well are pure
+size (the ``lost in the middle'' effect~\cite{liu2024lostinmiddle,
+hsieh2024ruler}), so tokens the model will not use well are pure
 cost. The model-scale trend is exactly what Corollary~1 of
 \charef{experiments} tests: whether the cliff position depends on
 where on the scale curve the planner sits.
@@ -54,8 +54,8 @@ where on the scale curve the planner sits.
 \section{The Cost of Running LLMs at Scale}
 \label{sec:rw_cost}
 
-The motivation chapter frames the work in terms of per-token cost;
-this section anchors that framing in published measurements.
+The motivation chapter frames the work around per-token cost; this
+section anchors that framing in published measurements.
 
 \paragraph{Energy.}
 Luccioni \emph{et~al.}'s \emph{Power Hungry
@@ -66,7 +66,7 @@ separates a per-request fixed cost from a per-token cost that
 dominates for long prompts. Samsi \emph{et~al.}~\cite{samsi2023words}
 and Pope \emph{et~al.}~\cite{pope2023efficiently} corroborate that
 energy and serving cost grow with the number of tokens processed
-once the prefill dominates---the long-prompt regime compression cuts.
+once the prefill dominates: the long-prompt regime compression cuts.
 
 \paragraph{Token economics.}
 At $\approx$~USD~3 / 15 per million input / output tokens on the
@@ -108,11 +108,10 @@ thesis addresses.
 
 \subsection{Token-level pruning (the LLMLingua family)}
 
-The first practical context-compression technique to see broad
-adoption was LLMLingua~\cite{jiang2023llmlingua}, which uses a
-small autoregressive language model to score tokens by their
-per-step perplexity contribution and drop those whose removal
-least disturbs the conditional distribution. LongLLMLingua
+The first context-compression technique to be widely adopted was
+LLMLingua~\cite{jiang2023llmlingua}: a small autoregressive language
+model scores tokens by their per-step perplexity contribution and
+drops those whose removal least disturbs the conditional distribution. LongLLMLingua
 \cite{jiang2024longllmlingua} extends the coarse-to-fine ranking
 with a question-aware step to handle long retrieval-augmented
 contexts. LLMLingua-2~\cite{pan2024llmlingua2} trains an
@@ -142,17 +141,16 @@ require running a scoring forward-pass at compression time. Xu
 with a small task-aware extractor trained to summarise the
 retrieved passages for the downstream question. The
 instruction-aware filter of this thesis sits in the same family
-but takes the deliberate simplification of using a TF-IDF
-pruning step followed by a cross-encoder re-ranker
-(\texttt{BAAI/bge-reranker-base}) and a stop-word/short-token
-trim, with no LM in the loop. The simplification gives a
+but is deliberately simpler: a TF-IDF pruning step, then a
+cross-encoder re-ranker (\texttt{BAAI/bge-reranker-base}), then a
+stop-word and short-token trim, with no LM in the loop. This gives a
 deterministic, training-free, low-cost baseline that the more
 sophisticated compressors must beat.
 
 \emph{What is missing.} This literature's task-awareness is
 question-conditioned, but in a multi-fragment workflow the
 fragment-level task is to preserve information a yet-unknown planner
-will combine with other fragments---the gap the instruction-aware
+will combine with other fragments, the gap the instruction-aware
 filter and the multi-fragment evaluation address.
 
 \subsection{Learned compression (parameter-cost compressors)}
@@ -240,11 +238,9 @@ Reflexion~\cite{shinn2023reflexion} (NeurIPS 2023),
 MemGPT~\cite{packer2023memgpt} (preprint, not yet
 peer-reviewed at the time of writing of this thesis), and
 Collaborative Memory~\cite{rezazadeh2025collaborative} (Rezazadeh et al., 2025 preprint). Each
-framework has its own implicit answer to the question of how
-shared context flows between agents and what an individual agent
-needs to see. None of the frameworks formally bounds the
-information loss introduced when that shared context is
-compressed.
+framework implicitly answers how shared context flows between agents
+and what an individual agent needs to see. None of them formally
+bounds the information lost when that shared context is compressed.
 
 The agentic-memory line of work
 \cite{packer2023memgpt, xu2025amem, chhikara2025mem0,
@@ -414,11 +410,11 @@ disclosure through the compressor at the summary level. The H4
 measurement, integrated with the memory bus's policy layer, is
 the measurement.
 
-The thesis sits at the intersection of three threads---the
+The thesis sits at the intersection of three threads: the
 long-context benchmark suite and the LLMLingua line of work (which
 measure orthogonal single-agent properties) and Anthropic's
 multi-agent report~\cite{anthropic2025multiagent} (an industry
-observation, not a controlled measurement)---and contributes the
+observation, not a controlled measurement), and contributes the
 controlled cross-compressor multi-fragment evaluation none of them
 provides: it measures compression's effect on \emph{multi-fragment}
 task success, where LLMLingua-2~\cite{pan2024llmlingua2} measures

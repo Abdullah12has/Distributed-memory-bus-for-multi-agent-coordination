@@ -42,9 +42,9 @@ sections of this chapter unpack each of these statements; the
 single-paragraph reading is that this thesis's contribution is
 methodological and structural rather than predictive.
 
-The five quantitative results---H1, the cliff and its model,
+The five quantitative results (H1, the cliff and its model,
 Corollary~1's no-shift, H4's destruction-driven disclosure
-reduction, and Corollary~2's density scaling---are detailed in
+reduction, and Corollary~2's density scaling) are detailed in
 \charef{experiments} and summarised above; the synthesis that
 matters for a practitioner is the following.
 
@@ -127,7 +127,7 @@ off to $\sim3\times$ while the fixed compressor delivers $\sim12\times$
 at zero coordination, so the $0/7$ strict-Pareto rate is exactly what
 the trade implies. The substantive framing is the operating-point
 one: CAAC's ratio is \emph{determined by the compounding-error
-bound}, not by tuning---$\theta_q$ is a measurement and the binary
+bound}, not by tuning: $\theta_q$ is a measurement and the binary
 search makes the operating ratio a predictable function of the inner
 $q(r)$ curve, producing one safe-side operating point per family. The
 two compressors thus populate complementary regions of the
@@ -267,7 +267,7 @@ by deleting a controlled fraction of task-critical tokens
 \emph{without} a compressor: it confirms a threshold on dense
 aggregation ($k\approx15$) and a graded curve on distributed
 retrieval ($k\approx5.9$), so A3 is a threshold model for dense tasks
-and first-order for distributed ones---the same axis Corollary~2
+and first-order for distributed ones, the same axis Corollary~2
 measures.
 
 \paragraph{A1 within-pass independence is approximate.}
@@ -306,7 +306,7 @@ $>20\%$ difference, so the claim is ``no shift detected,'' not
 The Llama-3.1-8B reader under-predicts YES, so the pooled rates are
 balanced by ground-truth class rather than reader accuracy; the
 metric measures ``compression preserves enough to flip a no-biased
-reader to confident YES''---an asymmetric but valid leakage signal an
+reader to confident YES'', an asymmetric but valid leakage signal an
 unbiased reader (future work) would disentangle.
 
 \section{Significance}
@@ -318,10 +318,10 @@ unbiased reader (future work) would disentangle.
 The work was scoped against two industrial settings, each with an
 actionable takeaway. \textbf{TalentAdore}, whose token-dominated
 pricing calibrates the EUR cost model, gains four things: (1) a
-procurement guardrail---compressors must \emph{not} be chosen on the
+procurement guardrail: compressors must \emph{not} be chosen on the
 single-agent QA-F1 numbers the literature reports, which do not
 predict multi-fragment coordination success; (2) a cheap measurement
-loop---measure $\theta_q$ once on a small calibration set and read a
+loop: measure $\theta_q$ once on a small calibration set and read a
 safe ratio off the model, avoiding a full sweep; (3) compress-first
 (P1) as the safe default retrieval pipeline; and (4) the disclosure
 metric plus policy layer as a deployment-time governance budget for
@@ -345,7 +345,7 @@ Four implications follow. First, single-agent QA benchmarks
 (LongBench, RULER, the LLMLingua QA evaluations)
 \emph{systematically over-report} compressor utility for
 multi-fragment deployments, so a multi-fragment evaluation is
-necessary---this thesis ships one (C1) and a methodology (the cliff
+necessary; this thesis ships one (C1) and a methodology (the cliff
 sweep). Second, the cliff position can be predicted from per-round
 recall plus a one-shot $\theta_q$ measurement within a known
 first-order tolerance, so a practitioner can pick a safe ratio from a
@@ -355,7 +355,7 @@ router P3 wins F1 only by routing verbatim;
 Appendix~\ref{appendix:rag}). Fourth, compression is a \emph{blunt}
 privacy lever: the disclosure metric ranks compressors by leakage at
 iso-ratio, but the gain is \emph{destruction-driven}
-(Section~\ref{sec:h4_disclosure})---the same lever, reversed, that
+(Section~\ref{sec:h4_disclosure}), the same lever, reversed, that
 the cliff warns against. For a fragment that is both
 privacy-sensitive and coordination-critical, ``compress more to leak
 less'' and ``compress less to stay above $\tau^{*}$'' are directly
@@ -370,8 +370,8 @@ property of the (compressor, task) pair and the planner \emph{class},
 not scale or architecture within a class, so future compressor
 evaluations should characterise the calibrated regime they apply in.
 Second, extended-reasoning planners are a regime the compression
-literature has not characterised---the GPT-oss diagnostic locates
-where the threshold assumption breaks---so ratios calibrated on a
+literature has not characterised (the GPT-oss diagnostic locates
+where the threshold assumption breaks), so ratios calibrated on a
 non-reasoning planner cannot transfer to a reasoning one without
 revalidation. Third, information density $\theta_\text{info}$ scales
 the cliff across benchmarks, so a multi-benchmark comparison that

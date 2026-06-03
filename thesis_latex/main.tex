@@ -78,11 +78,12 @@
 % This version should otherwise remain identical to it
 \abstract{Every token a multi-step LLM workflow reads costs energy,
   latency, and money, so context compression is the obvious lever.
-  The prompt-compression literature is mature, but it is measured on
-  single-fragment question-answering, whereas production workflows
-  must combine information across several independently compressed
-  fragments, and whether preserving single-fragment quality also
-  preserves that harder property had never been tested. It does not:
+  The prompt-compression literature is mature, but it measures
+  compressors on single-fragment question-answering, whereas
+  production workflows must combine information across several
+  fragments each compressed on its own, and whether preserving
+  single-fragment quality also preserves that harder property had
+  never been tested. It does not:
   on a new 150-instance benchmark spanning cross-document fact
   aggregation, constraint-satisfaction planning, and multi-step
   retrieval, four training-free compressors swept over ten ratios show

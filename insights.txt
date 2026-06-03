@@ -5293,3 +5293,50 @@ appendices 5 (+10 front matter, 5 refs). This is the substance-complete floor:
 every result, table-of-record, figure-of-record, and honest caveat retained;
 reaching exactly 50 pp would require cutting a contribution's worth of material
 (option C), which the user declined.
+
+## 103. LANGUAGE SIMPLIFICATION PASS (2026-06-03)
+
+User asked for a plain-language style pass: simplify wording, keep all content,
+academic register, NO added fluff/definitions/why-it-matters, no gimmicky
+inversions (explicitly rejected "Measurements, not guesswork, govern its
+compression layer" as a non-simplification). Standard: passive->active only
+where genuinely clearer, de-nominalize, plainer word for a jargon one, lead with
+the point, cut redundant words; keep every number/citation/caveat. Page count
+held at 68, clean build, thesis.pdf synced.
+
+Edits made: abstract (active "it measures compressors on", "each compressed on
+its own"); intro 1.1-1.2 (de-nominalized "is measurable at three layers" ->
+"shows up in three places", glossed prefill/decoding in plain words, "does not
+include" -> "deliberately excludes", "uses either X or Y" -> "uses one of two
+planners", dropped a stray "we"); Ch2 x5 ("whose architectural foundation is the
+transformer" -> "are all transformers", "takes the deliberate simplification of
+using" -> "is deliberately simpler", "in terms of" removed, "has its own implicit
+answer to the question of" -> "implicitly answers", "the information loss
+introduced when" -> "the information lost when"); Ch3 x6 ("as a mitigation
+against" -> "to guard against", PyTorch passive->active, "A practically important
+property of X is its ceiling" -> "X has a ceiling", "turned out... to be a poor
+proxy" -> "proved a poor proxy", cut "found during the development of this
+thesis"); Ch4 x1 (comma-splice -> em-dash parenthetical).
+
+KEY FINDING: the thesis was already written in clean, plain academic prose. A
+grep for clunky constructions (the existence of / serves to / it is worth noting
+/ the fact that / for the purpose of, etc.) across Ch4/Ch5/appendices returned
+ZERO hits; reading the model derivation, H1/H2 interpretation, limitations, and
+CAAC sections confirmed they already define terms in plain language and lead with
+the claim. So Ch4/Ch5/appendices got only the one comma-splice fix -- manufacturing
+more edits there would be over-editing, which the user explicitly cautioned
+against. The real simplification value was concentrated in the abstract and
+introduction (the original dense motivation/setting prose) plus a handful in
+Ch2/Ch3. Removed or relocated: nothing.
+
+EM-DASH REMOVAL (same session): user asked to remove em dashes (LaTeX "---").
+Found 79 across the manuscript (author uses them heavily): experiments 42,
+implementation 11, summary 11, introduction 7, relatedwork 6, main.tex 2. Left
+the 2 in main.tex (inside a %%-comment, not rendered). Replaced the other 77
+per grammatical role, NOT a blanket find-replace (a comma-everywhere swap would
+have reintroduced comma splices): parentheses for parenthetical asides, colon
+for definitions/lists/amplification, comma for appositives and relative ("which")
+clauses, semicolon where two independent clauses met. En dashes "--" (numeric
+ranges like 2--4, reader--writer) left intact. Build clean (latexmk exit 0, 68
+pages held, 0 undefined refs, 0 punctuation glitches), thesis.pdf synced; spot-
+checked rendered pages read naturally. No content changed.
