@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber main"] 1780347088.60359 "main.bcf" "main.bbl" "main" 1780437168.02462 0
+["biber main"] 1780470921.85477 "main.bcf" "main.bbl" "main" 1780484107.26777 0
   "citations.bib" 1780346885.3623 38758 56c93fdbb26ef4f8dfa96025ec1593ad ""
-  "main.bcf" 1780437167.80883 119244 bde2cd456f78adba2846d2f6d9357ccd "pdflatex"
+  "main.bcf" 1780484107.06525 119243 31e7410ffa407836c5a28135e59dfc1f "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1780437158.84285 "main.tex" "main.pdf" "main" 1780437168.02484 0
+["pdflatex"] 1780484098.94426 "main.tex" "main.pdf" "main" 1780484107.26798 0
   "../figures/caac_pareto.pdf" 1780332771.313 23374 2e9a759a531f851f98aca6d769b225bb ""
   "../figures/cliff_families.pdf" 1780100348.50268 21567 6055424b670a9afeaf52a47546fc6f44 ""
   "../figures/cliff_hero.pdf" 1780332770.81895 19750 7bd61d7bced0f3c1f9270f52c23e7348 ""
@@ -364,13 +364,13 @@
   "/usr/local/texlive/2026basic/texmf.cnf" 1772405582 628 bbc09d6d38872d53c11bb48dc9b14e88 ""
   "Chapters/abbreviations.tex" 1780437093.966 3575 5f31cb688d9ec1e35928a0746503e273 ""
   "Chapters/abstract.tex" 1780392428.37611 2406 c390cd1338340ee2c8d27fb4875bfda1 ""
-  "Chapters/appendices.tex" 1780436903.95449 15148 31ca7c665647ff0a19dd131a6c0cd4d7 ""
-  "Chapters/experiments.tex" 1780437138.19381 131718 0acefba2372a042cd0704378e2162831 ""
+  "Chapters/appendices.tex" 1780474269.84364 14636 297a208be679f5540f5e240285262c9d ""
+  "Chapters/experiments.tex" 1780484020.03026 129421 a9b1ffda2955b48231885953ce01efd7 ""
   "Chapters/foreword.tex" 1780346745.37736 2208 aba5cecda066782a80c54c9cfe6dccb9 ""
-  "Chapters/implementation.tex" 1780436906.82377 48037 7f950f3d97c95222e4be46414b64a90b ""
-  "Chapters/introduction.tex" 1780436902.58487 25602 89b606c7548a1b6916ac90ca7329f8db ""
-  "Chapters/relatedwork.tex" 1780332230.08947 32360 bf4a97f87d463c800b65028597e19da5 ""
-  "Chapters/summary.tex" 1780436905.60313 50638 1e2865890964425fef52d7745ee388df ""
+  "Chapters/implementation.tex" 1780482437.46295 47374 117ab04d83bb417e47db17461c156fea ""
+  "Chapters/introduction.tex" 1780482439.7454 21960 7babe89d688a6ddebc21742e55eb0324 ""
+  "Chapters/relatedwork.tex" 1780470039.74186 31336 e27afe4587b8a410c4a37340ded933e0 ""
+  "Chapters/summary.tex" 1780484063.32525 45242 69bed163a0ae427a3a1bf66751758bdf ""
   "Chapters/tiivistelma.tex" 1780346618.73484 2835 58ff08e59315a7cc1b7d1c672619bafe ""
   "Figures/logo-en.png" 1775401630 117664 e59298c0f5b7dbe6437ed4f0378c79f4 ""
   "copyright-ccby40.tex" 1780266549.25648 1185 44a1d643b8f78b10cee6b57878fedec3 ""
@@ -379,14 +379,14 @@
   "doclicense-di.sty" 1775401630 291 1a967432eaf1a043613658f51c6ec3c4 ""
   "doclicense-images/doclicense-CC-by-88x31.pdf" 1775401630 7621 627eb093207754076655f8835de6a472 ""
   "ieee.bbx" 1775401630 20560 847adb42c2bcc8ace00d6a9c595c22e4 ""
-  "main.aux" 1780437167.7849 92702 eaf792bc0cbd0094672ab32bfc4ac72f "pdflatex"
-  "main.bbl" 1780347090.27116 142093 9a1f45feae5ec61abe17f7854f3b61f9 "biber main"
-  "main.out" 1780437167.80628 11440 a836a465c77b10b93f3b2c6b55e6577f "pdflatex"
-  "main.run.xml" 1780437167.80947 2404 d750b17a656eb0fc6146b7922f3e5863 "pdflatex"
-  "main.tex" 1780325930.91151 10301 a961f82da3d7ff8baa596cc14a338a8d ""
-  "main.toc" 1780437167.80954 21073 c8244a8519b7528ead95621b4bc787a8 "pdflatex"
-  "main.xmpdata" 1780437162.96699 2737 65fc57eee4e7cb19715f9a0ed7bf76b3 "pdflatex"
-  "pdfa.xmpi" 1780437159.64869 8728 72d139b34190f45e2c9761eb6d221083 "pdflatex"
+  "main.aux" 1780484107.04244 92541 a7290efbe50976124f7698ac6c8b3e78 "pdflatex"
+  "main.bbl" 1780470923.50806 142093 78e543d6ce901987b49731efcd46512e "biber main"
+  "main.out" 1780484107.06311 11346 9377e6bc47a7a6e286a192218abae06e "pdflatex"
+  "main.run.xml" 1780484107.06579 2404 d750b17a656eb0fc6146b7922f3e5863 "pdflatex"
+  "main.tex" 1780484061.21482 10326 40221360815e74fea1f6392bd8d7cf22 ""
+  "main.toc" 1780484107.06583 20953 16baec2e8a283b6a1b491a0d80652215 "pdflatex"
+  "main.xmpdata" 1780484102.64977 2750 f9d1c2d861b392570d2dcea3cf7aa89f "pdflatex"
+  "pdfa.xmpi" 1780484099.66539 8741 532963639418998a4c8ced142516efce "pdflatex"
   (generated)
   "main.aux"
   "main.bcf"

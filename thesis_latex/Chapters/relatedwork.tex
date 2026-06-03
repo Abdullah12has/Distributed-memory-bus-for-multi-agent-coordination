@@ -100,25 +100,17 @@ single answer out of a single fragment. The cliff measurement of
 \section{The Scaling Era of LLMs}
 \label{sec:rw_scaling}
 
-The trajectory from GPT-2 (1.5B parameters, 2019) to GPT-3
-(175B, 2020) to GPT-4 (undisclosed, 2023) to the frontier of
-2025--2026 (Llama-3, Qwen-2.5, DeepSeek V3 and V4, Claude
-Sonnet 4.x, GPT-oss) marks a four-order-of-magnitude growth in
-deployed model size. Each step was accompanied by a near-
-linear increase in the cost per query and a corresponding
-increase in the demand for context-engineering techniques that
-control how much input the model reads at inference. As of the
-writing of this thesis, the frontier API price for a
-high-end model is approximately USD~3 per million input tokens
-and USD~15 per million output tokens, which corresponds to
-approximately EUR~$2.76$ and EUR~$13.80$ at the time of
-writing. The on-premises amortised marginal cost on a typical
-mid-range GPU deployment is roughly EUR~$0.05$ per million
-tokens once hardware is paid for. The two- to three-orders-of-
-magnitude gap between frontier-cloud and on-premises cost is what
-makes context compression an operational concern: cutting
-context length by half on a frontier-cloud workload saves real
-money per query.
+The trajectory from GPT-2 (1.5B, 2019) to GPT-3 (175B, 2020) to
+GPT-4 (2023) to the 2025--2026 frontier (Llama-3, Qwen-2.5,
+DeepSeek V3 and V4, Claude Sonnet 4.x, GPT-oss) marks a
+four-order-of-magnitude growth in deployed model size, each step
+accompanied by a near-linear increase in per-query cost and in
+demand for context-engineering techniques that control how much
+input the model reads at inference. The two- to
+three-orders-of-magnitude gap between frontier-cloud and
+on-premises per-token cost (Section~\ref{sec:rw_cost}) is what makes
+context compression an operational concern: cutting context length
+by half on a frontier-cloud workload saves real money per query.
 
 The model-side trends are accompanied by a context-window
 trend. The 2K-context GPT-2 era gave way to 4K, 8K, 32K, 128K,
@@ -174,21 +166,17 @@ context-compression operates in is the long-prompt regime, where
 the per-token cost is what compression directly cuts.
 
 \paragraph{Token economics.}
-Industry pricing as of the writing of this thesis sits at
-approximately USD~3 per million input tokens for the frontier
-``base'' tier and USD~15 per million for the frontier ``output''
-tier, with reasoning-augmented tiers priced higher. At a steady
-state of one million calls per day and an average prompt of
-$10{,}000$ tokens, that is USD~$30{,}000$ per day of input cost
-alone for a frontier model. Halving the prompt length saves
-USD~$15{,}000$ per day --- the kind of magnitude that funds an
-entire compression-engineering team. The on-premises amortised
-marginal cost is two orders of magnitude lower per token, but
-the absolute hardware and operations cost of running on-
-premises is high enough that the same compression lever is
-operationally valuable. The TalentAdore production accounts that
-this thesis's cost model is calibrated against confirm the
-pricing as of the writing of the manuscript.
+Industry pricing at the time of writing is $\approx$~USD~3 per
+million input tokens and USD~15 per million output tokens for the
+frontier base tiers, higher for reasoning tiers. At one million
+calls per day and a $10{,}000$-token average prompt, that is
+USD~$30{,}000$/day of input cost alone; halving the prompt saves
+USD~$15{,}000$/day --- enough to fund a compression-engineering
+team. The on-premises amortised marginal cost is two orders of
+magnitude lower per token, but the absolute hardware and operations
+cost makes the same lever operationally valuable. The TalentAdore
+production accounts the cost model is calibrated against confirm
+this pricing.
 
 \paragraph{Politeness as waste.}
 The peer-reviewed per-token cost results above already establish
@@ -207,20 +195,16 @@ question of how aggressively the wasted tokens can be removed
 without losing the answer is what the rest of the thesis measures.
 
 \paragraph{Multi-agent multiplier.}
-Anthropic's report on their multi-agent research
-system~\cite{anthropic2025multiagent} observes that token usage
-explains approximately $80\%$ of the performance variance they
-see, and that a substantial fraction of that token cost is the
-shared context that flows between agents in each round. The
-follow-on report on context engineering for AI
-agents~\cite{anthropic2025contextengineering} develops the
-context-management framing, and the report on context editing and
-memory tools~\cite{anthropic2025contextediting} describes an
-$84\%$ token reduction on a 100-turn web-search
-evaluation. These are industry observations rather than
-controlled measurements; what they do is establish that the
-cost-of-context question is operationally pressing for production
-multi-agent deployments.
+Anthropic's multi-agent-system report~\cite{anthropic2025multiagent}
+observes that token usage explains $\approx 80\%$ of the performance
+variance they see, much of it the shared context flowing between
+agents each round; the follow-on context-engineering and
+context-editing reports~\cite{anthropic2025contextengineering,
+anthropic2025contextediting} develop the context-management framing
+(the latter reporting an $84\%$ token reduction on a 100-turn
+web-search evaluation). These industry observations establish that
+the cost-of-context question is operationally pressing for
+production multi-agent deployments.
 
 \emph{What this thesis adds.} Prior work establishes that
 inference cost is real, that compression cuts it, and that
@@ -587,21 +571,17 @@ disclosure through the compressor at the summary level. The H4
 measurement, integrated with the memory bus's policy layer, is
 the measurement.
 
-The closest published industry analogue to C2 is Anthropic's
-multi-agent system report~\cite{anthropic2025multiagent},
-labelled honestly as industry observation rather than
-controlled measurement. The closest published academic analogues
-are the long-context benchmark suite and the LLMLingua line of
-work, which measure orthogonal properties on the single-agent
-axis. The thesis sits at the intersection of these three
-threads, and contributes the controlled cross-compressor
-multi-fragment evaluation that the prior work does not provide.
-
-Table~\ref{tab:sota_positioning} positions this thesis against the
-nearest prior systems on the single axis that separates it from
-them: whether the work measures the effect of compression on
-\emph{multi-fragment} task success, as opposed to single-fragment
-question-answering, retrieval quality, or aggregate token economics.
+The thesis sits at the intersection of three threads --- the
+long-context benchmark suite and the LLMLingua line of work (which
+measure orthogonal single-agent properties) and Anthropic's
+multi-agent report~\cite{anthropic2025multiagent} (an industry
+observation, not a controlled measurement) --- and contributes the
+controlled cross-compressor multi-fragment evaluation none of them
+provides. Table~\ref{tab:sota_positioning} positions it against the
+nearest prior systems on the discriminating axis: whether the work
+measures compression's effect on \emph{multi-fragment} task success,
+as opposed to single-fragment question-answering, retrieval quality,
+or aggregate token economics.
 
 \begin{table}[h]
 \centering

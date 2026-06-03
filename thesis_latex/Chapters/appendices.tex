@@ -175,18 +175,14 @@ released to examiners and collaborators.
 Historical planning documents in the repository reflect earlier
 protocol designs; the canonical experiment protocol for the submitted
 thesis is the final set of experiment runners and result artefacts
-listed in this appendix.
-The compute envelope is a single Apple~M4~Pro 48~GB workstation, with
-an optional RTX~5090 32~GB workstation (Tailscale-accessible WSL2
-host) for the GPU-bound compression precomputation, the
-model-scaling sweep at $8$B, the frontier-API sweep, and the
-HotpotQA / MultiHop-RAG transfer arm. Total wallclock end-to-end is
-approximately $30$~hours of GPU time and $\sim 12$~hours of laptop
-time. The package contains a \texttt{docker-compose.yml} that
+listed here.
+The package contains a \texttt{docker-compose.yml} that
 brings the memory-bus reference service up locally, a GitHub
 release tag matched to the manuscript, model and data cards under
 \texttt{docs/}, and a \texttt{README.md} that exposes
-one-command reproduction targets for every headline figure:
+one-command reproduction targets for every headline figure (the
+compute envelope and software stack are detailed in
+Section~D.3):
 
 \begin{description}\setlength\itemsep{1pt}
 \item[\texttt{make repro-bench}]
@@ -206,7 +202,7 @@ $\sim 3$~hours on the M4~Pro.
 \item[\texttt{make repro-scaling}]
 runs the model-scaling sweep at $1.5$B, $3.8$B, and $8$B with the
 local Ollama backend, producing Corollary~1's figures. Wallclock
-$\sim 4$~hours on the GPU host.
+$\sim 90$~minutes.
 \item[\texttt{make repro-frontier}]
 runs the cliff sweep against the Featherless API for
 Qwen-2.5-72B-Instruct and DeepSeek~V4~Pro, the two
@@ -234,19 +230,17 @@ The \texttt{make repro-all} target chains the six laptop-runnable
 steps above --- \texttt{repro-cliff}, \texttt{repro-scaling},
 \texttt{repro-rag}, \texttt{repro-disclosure},
 \texttt{repro-transfer}, and \texttt{repro-figs} --- in dependency
-order. It deliberately excludes the two steps that need special
-resources: \texttt{repro-cache} (GPU host) and
-\texttt{repro-frontier} (a Featherless API key), which must be run
-explicitly. Running the entire package including those two steps is
-approximately $30$~hours of GPU time and $\sim 12$~hours of laptop
-time end-to-end. Which of these targets is byte-deterministic,
-which reproduces only in distribution, and which is not
-byte-reproducible is set out in the three-tier guarantee of
-Section~\ref{sec:repro} (\charef{experiments}); the
-\texttt{repro-cache}, \texttt{repro-cliff}, \texttt{repro-rag},
-\texttt{repro-disclosure}, and \texttt{repro-figs} targets are
-Tier~1 (byte-identical CSVs), \texttt{repro-scaling} is Tier~2, and
-\texttt{repro-frontier} is Tier~3.
+order, excluding the two that need special resources:
+\texttt{repro-cache} (GPU host) and \texttt{repro-frontier} (a
+Featherless API key), which must be run explicitly; the whole
+package is $\sim 30$~hours of GPU time and $\sim 12$~hours of laptop
+time end-to-end. The byte-deterministic / in-distribution /
+not-reproducible status of each target follows the three-tier
+guarantee of Section~\ref{sec:repro} (\charef{experiments}):
+\texttt{repro-cache}, \texttt{-cliff}, \texttt{-rag},
+\texttt{-disclosure}, and \texttt{-figs} are Tier~1,
+\texttt{repro-scaling} is Tier~2, and \texttt{repro-frontier} is
+Tier~3.
 
 \subsection{D.2 Memory-bus end-to-end trace}
 

@@ -4747,3 +4747,181 @@ H4 28.6pp = baseline 0.78 - priors 0.50 = 0.286 OK.
 
 Compile: latexmk exit 0, 104 pages, 0 overfull >25pt, 0 undefined refs/cites.
 thesis.pdf synced.
+
+## 90. LENGTH COMPRESSION PASS — REDUNDANCY/YAP REMOVAL (LaTeX, 2026-06-01)
+
+Goal: reduce page count with zero loss of numbers, verdicts, caveats, insights.
+Author writes tightly (almost no stock filler), so the length was real density;
+compression came from REDUNDANCY (same result re-reported across
+verdict-box/result/interpretation/synthesis/contributions) and verbose
+constructions, not deleting filler.
+
+Result: 104 -> 101 pages (-3). ~1650 words cut. Chapter starts all shifted up
+(Ch2 18->17, Ch4 41->40, Ch5 80->78, Refs 94->91, Appx 99->96). Clean build,
+0 overfull>25pt, 0 undefined refs. All enumerated content preserved: 12
+future-work items, 16 limitations, 8 design-iteration items, C1-C4, 10 figures,
+every verdict number (verified by grep + paragraph counts).
+
+What was cut (prose tightened, content kept):
+- Ch5 synthesis: 6 per-result paragraphs re-reported every Ch4 number; trimmed
+  to headline + one key number + cross-ref (Corollary-1 para 31->19 lines).
+- Ch5 future-work (4 bloated items), limitations (6 verbose items), significance
+  "for the field", industry comparison: trimmed re-reported numbers (kept claims).
+- Ch4: removed redundant "Why this measurement matters" H4 subsection (dup of
+  threat-model bullet); tightened A1/A3/assumptions intro, calibrated-regime
+  "unit reading", H2 phi3 caveat, frontier "Significance" (dup of Ch5).
+- Ch3 §3.7 design-choices: tightened FAISS/BAAI/SQLite/Selective-Context/intros.
+- Ch1: C2 contribution (54->28 lines, was a mini-results-dump), reading-guide
+  and "What Is Novel" (de-duplicated the Anthropic-80% restatement that recurs
+  in 4 places).
+- Ch2: token-economics + multi-agent-multiplier paragraphs.
+- Figure widths reduced modestly (0.95->0.82, 0.85->0.74, 0.8->0.72, 0.75->0.68)
+  to convert banked prose savings into actual page drops (float-anchored breaks).
+
+Correctness fixes found while compressing:
+- A3 limitation + A3 assumption referenced sec:future for the A3 probe, but the
+  probe is DONE in results (sec:a3_probe). Fixed both stale refs.
+- Aligned 3 more "single-agent QA accuracy" -> "single-fragment information
+  preservation" spots (Ch5 synthesis, reading guide) with the H1 metric rename.
+
+Note: PDF page count is float/section-break dominated, so distributed prose cuts
+bank as whitespace until a boundary moves; ~1650 words netted -3 pages. Further
+large reduction would need either cutting substantive content (forbidden here)
+or global layout/spacing changes.
+
+## 91. SECOND FLUFF PASS — abstract/intro/related-work/appendices (LaTeX, 2026-06-01)
+
+Targeted review of front-matter + survey + appendices for residual yap/redundancy
+(no content/layout trade-offs).
+
+APPENDICES — verdict: KEEP ALL FOUR. A (HTTP contract) and D.2 (curl trace) are
+the running-system evidence for C4; B (results schema) and C (example workload)
+ground C1 + reproducibility. None is fluff. Trimmed internal redundancy in
+Appendix D: the compute envelope + "~30h GPU/12h laptop" wallclock appeared in
+BOTH D.1 and D.3 (kept in D.3; D.1 now cross-refs); D.1's three-tier
+re-explanation collapsed to a cross-ref to sec:repro.
+
+INTRO — biggest wins:
+- Fixed a third instance of the H1 metric mislabel: motivation said compression
+  "preserves ... token-overlap F1 against a ground-truth answer" -> reworded to
+  "single-fragment quality / the single-agent QA metric the literature
+  optimises" (consistent with source-retention F1 rename). Also aligned the
+  Headline contribution ("single-agent QA F1" -> "single-fragment source-
+  retention F1").
+- Removed a full duplication: the four sub-questions were stated as prose
+  (136-150) AND again as the RQ1-RQ4 mapping list. Deleted the prose copy, kept
+  the RQ mapping (which states questions + maps to H1-H6).
+- Compressed the multi-round scope paragraph (said "scope is multi-fragment not
+  multi-round" 3x + duplicated sec:scope) ~22->12 lines.
+- Net intro 3248 -> 2724 words (-16% over both passes).
+
+RELATED WORK:
+- Scaling-era section repeated the USD/EUR pricing already in sec:rw_cost AND
+  implementation (cost model); trimmed the digression to a cross-ref (figures
+  stay where load-bearing).
+- Gap section's Anthropic-analogue prose duplicated the SOTA-positioning table
+  directly below it + the intro's What-Is-Novel; merged into a tighter lead-in.
+
+ABSTRACT: re-read; already tight (4 paragraphs, no filler) — no change.
+
+Cumulative over §90+§91: 104 -> 101 pages, ~2000 words removed, every verdict
+number / limitation / future-work item / figure / appendix preserved. Clean
+build, 0 overfull>25pt, 0 undefined refs. Manuscript is materially more compact
+and the H1-metric wording is now consistent end-to-end.
+
+## 92. FULL FRESH-EYES REVIEW PASS (3 parallel reviewers + verification, 2026-06-01)
+
+Dispatched 3 parallel subagent reviewers (Ch1+2+abstract / Ch4 / Ch3+5+appendix)
+to read for concrete defects only. Verified every flagged item against the
+data/Makefile before fixing. Found 11 real defects (almost all PRE-EXISTING, not
+from the compression passes) — fixed all:
+
+1. intro:358 "five strands" vs relatedwork:2 "seven strands" — intro outline
+   omitted scaling-era + cost-at-scale. Fixed intro to seven, listed all.
+2. experiments H1 verdict box (414): opened "Single-agent question-answering
+   accuracy..." while the section TITLE says "information preservation" — aligned
+   to "Single-fragment information preservation". Also fixed intro outline (373)
+   and summary future-work (816) H1-result statements to match. (intro:149 RQ1
+   left as-is: it legitimately contrasts the new metric with the literature's QA
+   metric.)
+3. experiments:1050 predicted_vs_empirical caption said empirical falls outside
+   band on "0/11 cells" — contradicted body (1013 "11/11") and was self-
+   contradictory (then cites "systematic misses"). Fixed 0/11 -> 11/11.
+4. experiments:549-551 prose "eight degenerate / four variance / three n.s."
+   disagreed with tab:h1_perfamily (verified: 7 degenerate, 5 variance, 4 n.s.,
+   1 sig). Fixed to seven/five/four.
+5. experiments:765 finegrid "adding {1.25,1.5,1.75,2.5} below r=2" — 2.5 is not
+   below 2. Fixed to {1.25,1.5,1.75} (verified vs finegrid CSV).
+6. experiments:768 "Filter x a runs 1.0,0.92,0.46,0.02 at r=1.5,1.75,2.0" — 4
+   values vs 3 ratios. finegrid CSV: those are r=1.25,1.5,1.75,2.0. Fixed ratios.
+7. experiments:1501 GPT-oss "145% above the synthetic reference" — 145% is vs the
+   LLM reference 2.70 (6.62/2.70-1); vs synthetic 2.5 it is 165%. Fixed label to
+   "LLM-planner reference 2.70".
+8. experiments:73 "The verdict-rest on the workload-level CI" — malformed
+   compound. Fixed to "The verdict's reliance on...".
+9. implementation:186 tag-vector four-field list broke: fields 3-4 ("A tuple of
+   source identifiers..., and a tuple of parent-slot identifiers...") were
+   orphaned as a verbless fragment after a long NIST parenthetical. Fixed to
+   "The remaining two fields are ...".
+10. summary:258 "(Sections~\ref{sec:caac}~caac\_theta and ...)" — stray
+    non-macro token. Fixed to "(Section~\ref{sec:caac}; \texttt{results/caac\_theta\_*}
+    and \texttt{results/caac\_N\_*})".
+11. appendices repro-scaling "Wallclock ~4 hours on the GPU host" contradicted
+    "with the local Ollama backend" (same item), the repro-all "six laptop-
+    runnable steps", and the Makefile ([Ollama] ~90m). Fixed to "~90 minutes".
+
+LEFT AS-IS (verified NOT a defect): experiments:1486 Qwen "0.8% from the
+reference" — consistent against the section's stated LLM reference 2.70
+(Qwen n=10 point estimate 2.677). Note for author: the frontier TOST section
+uses the n=10 Qwen run (2.677, 0.8% from 2.70) while the synthesis/abstract use
+the n=30 e2 run (2.79, ~12% spread) — both defensible but two different Qwen
+runs; worth a one-line footnote if a reader might conflate them.
+
+Mechanical checks all clean: 0 undefined refs/citations, 0 multiply-defined
+labels, 0 overfull>20pt, no doubled words, no malformed markup, all changed
+cross-refs (sec:a3_probe, sec:scope, sec:rw_cost, sec:repro, D.3) verified to
+sit on the correct content. Final: 101 pages, clean build, thesis.pdf synced.
+
+## 93. FINAL PRE-GRADING REVIEW (3 parallel reviewers + metadata, 2026-06-01)
+
+Last pass before submission. 3 subagent reviewers (Ch1+2+abstract / Ch4 /
+Ch3+5+appendix) + a PDF-metadata check. Found and fixed 9 issues (all verified
+against data first); build clean (101pp, 0 undefined refs, 0 overfull>20pt).
+
+1. main.tex PDF-metadata abstract (\abstract + \tiivistelma, EN+FI) still used
+   the OLD "question-answering accuracy does not predict coordination" headline
+   while the visible abstract uses "source-retention F1 / single-fragment
+   information preservation". Invisible in the body but embedded in PDF
+   properties / harvestable for a repo record. Synced EN + FI headline verdicts.
+2. tab:h3 EUR cells typeset as $2.72\mathrm{e}^{\text{-}5}$ -> renders as
+   "2.72 e^{-5}" (Euler's e to a power), ambiguous/wrong. Replaced all 6 with
+   $\times 10^{-5}$.
+3. H1 verdict box claimed "all four look moderately correlated (rho~+-0.4-0.6)
+   when pooled" -- false: phi3 pooled is +0.193. Fixed to "the filter,
+   LLMLingua-2, and truncation look more correlated (|rho|~0.38-0.59)".
+4. summary Closing said the deliverable sentence is "the one the abstract opens
+   with" -- the abstract opens differently and the phrase appears nowhere else.
+   Fixed to "the thesis's refrain".
+5. H3 cost caveat "differ by only 4.1-4.9%" (h3_eprice spread, verified correct)
+   sat next to tab:h3 whose displayed EUR (h3_final) span ~13%. Pinned the
+   number to "on this re-run" to stop a reader conflating the two cost runs.
+6. tab:corollary2 showed theta_info at 2dp (0.97/0.48/0.37) but the Gap row
+   (0.48/0.59) is computed from unrounded values; a reader subtracting the
+   printed 2dp got 0.49/0.60. Bumped table to 3dp (0.967/0.484/0.373) so the
+   gaps reconcile.
+7. Qwen n=10 deviation stated as "7.3%" in one place and "~7%" in another for
+   the SAME comparison (2.677 vs coarse-grid 2.5 = 7.1%). Aligned to "about 7%".
+8. family-c under-prediction stated as "58%" while the same cell is the chapter
+   max relative error reported as "57.4%" elsewhere. Aligned to 57.4%.
+9. (verified clean, no change) many cross-checks held: all refs/citations,
+   multicolumn counts, the 11 fixes from the prior pass (11/11, seven strands,
+   7/5/4, finegrid, GPT-oss 145%/2.70), bus-bench numbers, cost anchoring.
+
+REDUNDANCY flagged by reviewers (NOT cut -- already compressed once in 90-91,
+further trimming is higher-risk at submission): the Corollary-1/Frontier arc
+restates the Llama-8B/Qwen-72B "~12% spread, 9x scale" headline and the "24%
+family-c spread" across ~5 subsections each (verdict box / re-anchoring para /
+per-model subsection / significance / figure caption); the H3 corpus-dominated
+caveat and the frontier "no-shift-detected" caveat each appear in Ch5
+limitations + significance + future-work. This is conventional
+section-by-section restatement, not verbatim duplication; left as-is.

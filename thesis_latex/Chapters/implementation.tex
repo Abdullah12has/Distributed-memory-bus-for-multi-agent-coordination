@@ -183,9 +183,10 @@ the NIST AI Risk Management
 Framework~\cite{nistairmf}, but the five-tier lattice itself is
 enterprise convention and not prescribed by NIST AI RMF (which
 defines Govern/Map/Measure/Manage functions rather than a
-labelled classification lattice). A tuple of source identifiers recording
-provenance, and a tuple of parent-slot identifiers recording which
-previously-compressed slots this slot inherits from. When slots are
+labelled classification lattice). The remaining two fields are a
+tuple of source identifiers recording provenance and a tuple of
+parent-slot identifiers recording which previously-compressed slots
+this slot inherits from. When slots are
 merged, the union's access-control mask is the bitwise OR of the
 parents' masks and the union's classification is the maximum; the
 policy predicate is symmetric for reads and writes.
@@ -224,14 +225,16 @@ Column & Type & Notes \\
 A second SQLite table records every paid model call: provider,
 model, input tokens, output tokens, EUR cost, and wallclock. The
 cost ledger shares the audit-log database for transactional
-consistency but is queried separately. Pricing constants are drawn
-from the financial-analysis document~\cite{fcgfinancial2026}: the
-frontier-cloud reference is approximately EUR~$2.76$ per million
-input tokens and EUR~$13.80$ per million output tokens, and the
-on-premises amortised marginal cost is EUR~$0.05$ per million
-tokens. The ledger feeds the EUR-per-workflow cost model that
-parameterises the RAG pipeline catalogue
-(Section~\ref{sec:rag_pipelines}).
+consistency but is queried separately. Pricing constants follow public frontier-cloud API rates --- USD~$3$
+per million input tokens and USD~$15$ per million output tokens for a
+Sonnet-class model at the time of writing --- which convert to
+approximately EUR~$2.76$ and EUR~$13.80$ at a USD-to-EUR rate of
+$0.92$ (the rate at the time of writing); the on-premises amortised
+marginal cost, approximately EUR~$0.05$ per million tokens once
+hardware is paid for, is the FCG financial-analysis
+estimate~\cite{fcgfinancial2026}. The ledger feeds the
+EUR-per-workflow cost model that parameterises the RAG pipeline
+catalogue (Section~\ref{sec:rag_pipelines}).
 
 \section{Retrieval-Augmented Generation Pipeline Catalogue}
 \label{sec:rag_pipelines}
@@ -672,31 +675,25 @@ discussed at the point of pre-specification in
 \label{sec:design_tooling}
 
 \paragraph{FAISS-CPU with HNSW indexing.}
-The retrieval index uses FAISS-CPU with a hierarchical
-navigable-small-world (HNSW) graph. The two principal alternatives
-were the purpose-built vector databases Qdrant and Chroma, and the
-Postgres extension pgvector. FAISS-CPU was chosen because (i) it
-runs in-process inside the FastAPI service, so the reference
-deployment ships as a single Docker image with no external
-database dependency; (ii) HNSW gives sub-millisecond search at the
-C1 vector counts ($150$--$10{,}000$) without sharding; and
-(iii) FAISS is the most-audited indexer in the open-source
-benchmark community. The deliberate restriction to CPU is itself a
-choice: a GPU-resident index would dominate the cost ledger and
-would misrepresent the deployment regime --- a memory bus that
-needs a GPU for retrieval is not one a small institutional
-deployment can run.
+The retrieval index uses FAISS-CPU with an HNSW graph, over Qdrant,
+Chroma, or pgvector, because (i) it runs in-process inside the
+FastAPI service, so the reference deployment ships as a single
+Docker image with no external database; (ii) HNSW gives
+sub-millisecond search at the C1 vector counts ($150$--$10{,}000$)
+without sharding; and (iii) FAISS is the most-audited open-source
+indexer. The CPU restriction is deliberate: a GPU-resident index
+would dominate the cost ledger and misrepresent the deployment
+regime --- a memory bus that needs a GPU for retrieval is not one a
+small institutional deployment can run.
 
 \paragraph{\texttt{BAAI/bge-large-en-v1.5} for embedding and
 \texttt{BAAI/bge-reranker-base} for re-ranking.}
 The embedding model was chosen over OpenAI's
 \texttt{text-embedding-3-large} (vendor lock-in and a paid call
-inside the cost ledger that would make per-pipeline cost
-non-comparable across reruns) and over the \texttt{gte-large}
-family (lower MTEB score at the model-card pinning date). The
-paired reranker \texttt{bge-reranker-base} is from the same family,
-which keeps the embedding-and-rerank stage internally consistent.
-Both models are open-weight with reproducible digests recorded in
+that would make per-pipeline cost non-comparable across reruns) and
+\texttt{gte-large} (lower MTEB score at the pinning date); the
+paired \texttt{bge-reranker-base} keeps the stage internally
+consistent. Both are open-weight with digests in
 \texttt{docs/MODEL\_CARDS.md}.
 
 \paragraph{FastAPI and Starlette.}
@@ -707,14 +704,12 @@ principal, and the OpenAPI schema is auto-generated and shipped as
 the wire contract for the access layer.
 
 \paragraph{SQLite in WAL mode for the audit log.}
-The audit log uses SQLite-WAL rather than Postgres for two
-reasons. First, the hash-chain integrity test is a self-contained
-property and SQLite's one-file footprint makes the reproducibility
-envelope a single archive. Second, WAL mode supports the concurrent
-reader-writer pattern that the single-host deployment regime this
-thesis evaluates requires; a multi-host Postgres deployment would
-shift the integrity story from a single chain to a replicated
-chain and is named as future work
+The audit log uses SQLite-WAL rather than Postgres because (i)
+SQLite's one-file footprint makes the reproducibility envelope a
+single archive, and (ii) WAL mode supports the concurrent
+reader-writer pattern the single-host deployment regime requires; a
+multi-host Postgres deployment would shift the integrity story from
+a single to a replicated chain and is named as future work
 (\charef{summary}~Section~\ref{sec:future}).
 
 \paragraph{Ollama for local LLM serving.}
@@ -740,25 +735,19 @@ is not hosted on Featherless at the time of writing.
 \subsection{Compressors considered but not swept}
 \label{sec:design_compressors_declined}
 
-The compressor framework (Section~\ref{sec:compressors}) ships six
-implementations and the cliff sweep uses four of them. Three
-families of compressors that appear in the related-work survey
-were considered and not included in the cliff comparison; the
-reasons are recorded here so that a reader who knows the
-prior-work landscape can verify the omissions are deliberate.
+The framework (Section~\ref{sec:compressors}) ships six
+implementations; the cliff sweep uses four. Three compressor
+families from the related-work survey were considered and excluded,
+recorded here so the omissions are verifiably deliberate.
 
 \paragraph{Selective Context~\cite{li2023selective}.}
-Selective Context prunes tokens by their self-information under
-the compressing model's conditional distribution. It was not
-included because (i) it requires a scoring forward pass on the
-compressing model at compression time, making its compute profile
-asymmetric with the rest of the swept four (LLMLingua-2 uses a
-small XLM-RoBERTa classifier, the filter is pure CPU, truncation
-is free); and (ii) the instruction-aware filter already covers
-the design point of ``task-aware lexical pruning with no
-end-to-end LM in the loop'', so adding Selective Context would
-add compute cost without adding a structurally distinct
-mechanism.
+Prunes tokens by self-information under the compressing model's
+conditional distribution. Excluded because (i) it requires a
+scoring forward pass at compression time, making its compute
+profile asymmetric with the swept four; and (ii) the
+instruction-aware filter already covers the ``task-aware lexical
+pruning, no end-to-end LM in the loop'' design point, so it would
+add cost without a structurally distinct mechanism.
 
 \paragraph{RECOMP~\cite{xu2024recomp} and learned compression
 (gist tokens~\cite{mu2023gist},
@@ -792,12 +781,10 @@ cheapest base that satisfies the verifier rule.
 \subsection{Threshold and sweep-grid parameters}
 \label{sec:design_thresholds}
 
-The cliff measurement turns on a small number of numerical
-parameters --- the ratio grid, the per-family sample size, the
-$\theta_q$ derivation rule, the bootstrap configuration, and the
-P3 routing thresholds. Each is a defensible choice but not the
-only choice, and the alternatives are catalogued here so the
-sweep-design discussion is auditable.
+The cliff measurement turns on a few numerical parameters --- the
+ratio grid, per-family sample size, $\theta_q$ rule, bootstrap
+configuration, and P3 routing thresholds --- each a defensible but
+not unique choice, catalogued here so the sweep design is auditable.
 
 \paragraph{Ratio grid
 $\{1, 2, 3, 4, 5, 6, 8, 10, 12, 16\}\times$.}
