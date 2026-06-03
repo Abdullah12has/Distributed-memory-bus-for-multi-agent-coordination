@@ -951,11 +951,6 @@ INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/jknappen/ec/tcrm1200.tfm
 INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-BoldItalic-tlf-t1.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-BoldItalic-tlf-t1.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntx-Regular-tlf-ot1.vf
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txmiaX.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-ot1r.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmia.vf
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txmiaSTbb.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
 INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm
 INPUT ../figures/hotpotqa_cliff.pdf
@@ -963,6 +958,11 @@ INPUT ../figures/hotpotqa_cliff.pdf
 INPUT ../figures/hotpotqa_cliff.pdf
 INPUT ../figures/hotpotqa_cliff.pdf
 INPUT ../figures/hotpotqa_cliff.pdf
+INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntx-Regular-tlf-ot1.vf
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txmiaX.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-ot1r.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmia.vf
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txmiaSTbb.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmi.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/NewTXMI.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/stxscr.tfm
