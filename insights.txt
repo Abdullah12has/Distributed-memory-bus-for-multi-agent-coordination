@@ -5234,3 +5234,62 @@ one-paragraph experiments stub, brief intro/summary pointers, and Appendix E.
 Cumulative scope-reduction this session: 102 -> 96 pages, H3 and Corollary 2
 demoted, with the compression-aware memory bus elevated to the principal
 engineering contribution.
+
+## 102. MANUSCRIPT LENGTH REDUCTION PASS (2026-06-03)
+
+Goal (user): cut the manuscript from 96 pp toward ~50 pp excluding references,
+keeping all substance. Strategy agreed with the user: "keep substance, cut
+repetition" for rigor passages; delete the §5.3 Design-Iteration narrative;
+merge 4 overlapping figures -> 2; slim future-work to top 6. Guardrail: protect
+everything the Oulu rubric scores (results, author's evaluation/comparison,
+significance to partners, limitations, SOTA depth) -- cut only repetition,
+textbook background, tooling justification, and defensive meta-commentary.
+
+Result: 96 -> 73 pages (68 excluding the 5-pp reference list), clean build
+(latexmk exit 0, 0 undefined refs, 0 errors); thesis.pdf synced. Per-chapter:
+Ch1 7->5, Ch2 9->6, Ch3 13->10, Ch4 33->23, Ch5 12->8, appendices 7->6.
+Chapter line counts: intro 419->320, relatedwork 607->428, implementation
+885->659, experiments 2071->1432, summary 835->490, appendices 405->346
+(~1550 lines cut). NO results, tables, or verdicts were removed; every number
+and honest caveat is retained, stated once.
+
+Main cuts: (1) intro stated contributions 3-4x -> once; deleted §1.5 "What Is
+Novel" (dup of §2.4/2.7/2.8). (2) Ch2 transformer-FLOP tutorial -> 1 para;
+§2.3 cost de-duped vs intro; per-section "what this thesis adds" blocks folded
+into §2.8; cut the 2nd positioning table. (3) Ch3 §3.7 tooling/declined-
+compressor justifications gutted (~3 pp); scope reminder stated once;
+compressor-counting pedantry deleted; reproducibility consolidated to Appendix
+D. (4) Ch4 frontier/Corollary-1 "no-shift / TOST-fails / tau*=2.5-artefact"
+story (told ~5x) consolidated; bootstrap-band-vs-spec-error (4x) -> once;
+H4 verdict box + threat-model list compressed; merged scaling_auc+h5_overlay
+and frontier_multi+frontier_validation (dropped scaling_auc, frontier_multi).
+(5) Ch5 stopped re-deriving Ch4 findings; 16 limitation paras -> tight 1-2
+sentence entries (all kept); future-work 12->6.
+
+HONEST STATUS: 50 pp excluding references is NOT reachable without removing
+genuine content -- the substance-complete floor is ~62-65 pp. The remaining
+gap (68 -> 50) requires content decisions the author must approve: e.g. drop
+the bus-operation microbenchmark (§4.10.8 + table, ~1.5pp), the example-workload
+JSON (Appendix C, ~1.5pp), the cliff_hero figure (a single-cell duplicate of
+cliff_families) and privacy_quality figure (overlaps the H4 table), the
+metric-choices and repro-tier tables (prose covers them), and bullet-density
+results prose -- together ~58-60 pp; going to 50 would mean cutting a
+contribution's worth of material (e.g. the whole disclosure construct-validity
+analysis or the frontier arm), costing rubric items 5/6. Recommendation flagged
+to user: target ~60 pp keeping all substance, or approve a specific content-cut
+list to push lower.
+
+UPDATE (same session): user approved the "low-risk content cuts" option, which
+were then executed: removed the cliff_hero figure (single-cell duplicate of
+cliff_families) and privacy_quality figure (overlaps the H4 table); removed 6
+tables (sota_positioning, metric_choices, repro_tiers, bus_bench, audit_columns,
+longdf) -- each replaced by the prose / numbers it summarised, all cross-refs
+fixed, 0 dangling; replaced the ~50-line example-workload JSON (Appendix C) with
+a prose description; plus a third prose-tightening pass (H2 table caption,
+fine-grid para, C1 family descriptions, partner significance). FINAL: 96 -> 68
+pages (63 excluding the 5-pp reference list), clean build, 0 undefined refs;
+thesis.pdf synced. Per-chapter now: Ch1 5, Ch2 6, Ch3 9, Ch4 19, Ch5 8,
+appendices 5 (+10 front matter, 5 refs). This is the substance-complete floor:
+every result, table-of-record, figure-of-record, and honest caveat retained;
+reaching exactly 50 pp would require cutting a contribution's worth of material
+(option C), which the user declined.

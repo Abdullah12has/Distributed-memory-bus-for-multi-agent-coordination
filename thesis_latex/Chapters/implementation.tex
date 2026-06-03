@@ -123,49 +123,29 @@ data model rather than out-of-band metadata.
 
 \subsection{Data flow for a write}
 
-A single write request flows through the bus in the following order.
-The client sends \texttt{POST /v1/write} with a JSON body containing
-the fragment text, its tag vector, and an optional task hint. The
-policy middleware parses the requester principal from the
-\texttt{X-M6-Principal} header and writes it to
-\texttt{request.state.principal} as a Starlette \texttt{State()}
-attribute. The service first checks that the principal's
-access-control mask is a superset of the fragment tag's mask and
-that the principal's classification is at least the fragment's. If
-the check passes, it calls the active compressor's
-\texttt{compress(fragment, target\_ratio)} method to produce a
-\texttt{CompressedSlot}, places that slot in the in-memory
-scratchpad keyed on the slot identifier, and, if the compressor
-exposes an embedding, adds it to the FAISS index. Finally it
-appends a row to the audit log whose \texttt{event\_type} is
-\texttt{WRITE}, \texttt{result} is \texttt{OK}, \texttt{prev\_hash}
-is the previous row's chain hash, and \texttt{chain\_hash} is
-$\textsc{SHA-256}(\texttt{prev\_hash} \mathbin\Vert
-\texttt{payload\_hash})$. The response carries the slot identifier,
-the chain hash hex-encoded, and the audit row identifier.
-
-If the policy check fails, the bus appends a \texttt{DENY} row with
-the synthesised slot identifier \texttt{deny-<uuid8>}, with a
-$60$-second per-\textit{(subject, fragment-id)} deduplication so
-that an adversarial client hammering denied writes cannot inflate
-the audit log.
+A \texttt{POST /v1/write} carries the fragment text, its tag vector,
+and an optional task hint. The policy middleware parses the principal
+from the \texttt{X-M6-Principal} header and checks that its
+access-control mask is a superset of the fragment tag's and its
+classification at least the fragment's. On success the service
+compresses the fragment to a \texttt{CompressedSlot}, stores it in
+the scratchpad, adds any embedding to the FAISS index, and appends a
+\texttt{WRITE}/\texttt{OK} audit row whose
+$\texttt{chain\_hash}=\textsc{SHA-256}(\texttt{prev\_hash}\mathbin\Vert\texttt{payload\_hash})$;
+the response returns the slot id, hex chain hash, and audit row id. A
+failed check appends a \texttt{DENY} row (slot \texttt{deny-<uuid8>})
+with a $60$-second per-(subject, fragment-id) deduplication so a
+client hammering denied writes cannot inflate the log.
 
 \subsection{Data flow for a read}
 
-A read request flows symmetrically. The client sends \texttt{GET
-/v1/read/\{slot\_id\}}, the policy middleware attaches the principal,
-the service looks up the slot in the scratchpad, checks the
-principal--tag relationship, and either returns the slot together
-with the audit row identifier or raises a policy-denied or
-slot-not-found error. The slot-not-found path is itself audited with
-a 60-second per-\textit{(subject, slot-id)} deduplication: the first
-read miss for a given subject and slot is appended to the audit log
-as a \texttt{READ}/\texttt{ERROR} row, and subsequent misses within
-the window short-circuit silently so that an adversarial reader
-cannot inflate the audit log either. Appendix~\ref{appendix}
-contains an illustrative \texttt{curl} trace (with timestamps and
-chain hashes elided for legibility) exercising the write, read,
-and audit endpoints end-to-end against the reference service.
+A \texttt{GET /v1/read/\{slot\_id\}} flows symmetrically: the
+middleware attaches the principal, the service looks up the slot,
+checks the principal--tag relationship, and either returns the slot
+with its audit row id or raises a policy-denied / slot-not-found
+error. Read misses are audited as \texttt{READ}/\texttt{ERROR} rows
+with the same $60$-second per-(subject, slot-id) deduplication.
+Appendix~\ref{appendix} gives an end-to-end \texttt{curl} trace.
 
 \subsection{Tags, classifications, and the audit log}
 
@@ -188,71 +168,39 @@ merged, the union's access-control mask is the bitwise OR of the
 parents' masks and the union's classification is the maximum; the
 policy predicate is symmetric for reads and writes.
 
-The audit log is an append-only SQLite table whose columns are
-listed in Table~\ref{tab:audit_columns}. An \texttt{INSTEAD OF
-UPDATE} and an \texttt{INSTEAD OF DELETE} trigger refuse any mutation
-of an existing row, and a unit test drops the trigger, edits a
-\texttt{payload\_hash} at the byte level, and confirms that the
-\texttt{verify()} chain-walker reports failure.
+The audit log is an append-only SQLite table; each row records the
+\texttt{event\_type} (WRITE/READ/SUBSCRIBE/DENY/COMPRESS/EVICT),
+\texttt{slot\_id}, requester ACL mask and classification, result, and
+a tamper-evident hash chain
+($\texttt{chain\_hash}=\textsc{SHA-256}(\texttt{prev\_hash}\mathbin\Vert\texttt{payload\_hash})$).
+An \texttt{INSTEAD OF UPDATE} and an \texttt{INSTEAD OF DELETE}
+trigger refuse any mutation of an existing row, and a unit test drops
+the trigger, edits a \texttt{payload\_hash} at the byte level, and
+confirms that the \texttt{verify()} chain-walker reports failure.
 
-\begin{table}[h]
-\centering
-\caption{Schema of the SQLite \texttt{audit\_log} table. Triggers
-prevent UPDATE and DELETE on this table at the database level.}
-\label{tab:audit_columns}
-\small
-\begin{tabular}{p{2.6cm}p{3.1cm}p{8cm}}
-\hline
-Column & Type & Notes \\
-\hline
-\texttt{rowid} & INTEGER PK & monotonic, auto-increment \\
-\texttt{slot\_id} & TEXT NOT NULL & matches the slot identifier \\
-\texttt{event\_type} & TEXT CHECK & one of WRITE / READ / SUBSCRIBE / DENY / COMPRESS / EVICT \\
-\texttt{requester\_acl} & INTEGER & 64-bit ACL mask, stored signed \\
-\texttt{requester\_class} & INTEGER & classification level $0$--$4$ \\
-\texttt{result} & TEXT CHECK & OK / DENIED / ERROR \\
-\texttt{prev\_hash} & BLOB(32) & SHA-256 of the previous row's chain\_hash \\
-\texttt{payload\_hash} & BLOB(32) & SHA-256 of the event's payload bytes \\
-\texttt{chain\_hash} & BLOB(32) & SHA-256(prev\_hash $\Vert$ payload\_hash) \\
-\texttt{created\_at} & TEXT NOT NULL & ISO-8601 UTC timestamp \\
-\hline
-\end{tabular}
-\end{table}
-
-A second SQLite table records every paid model call: provider,
-model, input tokens, output tokens, EUR cost, and wallclock. The
-cost ledger shares the audit-log database for transactional
-consistency but is queried separately. Pricing constants follow public frontier-cloud API rates (USD~$3$
-per million input tokens and USD~$15$ per million output tokens for a
-Sonnet-class model at the time of writing) which convert to
-approximately EUR~$2.76$ and EUR~$13.80$ at a USD-to-EUR rate of
-$0.92$ (the rate at the time of writing); the on-premises amortised
-marginal cost, approximately EUR~$0.05$ per million tokens once
-hardware is paid for, is the FCG financial-analysis
-estimate~\cite{fcgfinancial2026}. The ledger feeds the
-EUR-per-workflow cost model that parameterises the RAG pipeline
-catalogue (Section~\ref{sec:rag_pipelines}).
+A second SQLite table records every paid model call (provider,
+model, token counts, EUR cost, wallclock), sharing the audit database
+for transactional consistency. Pricing follows public frontier rates
+(USD~$3$/$15$ per million input/output tokens, $\approx$
+EUR~$2.76$/$13.80$ at $0.92$~USD/EUR) against an on-premises marginal
+$\approx$ EUR~$0.05$ per million tokens~\cite{fcgfinancial2026}; the
+ledger feeds the EUR-per-workflow cost model of the RAG catalogue
+(Section~\ref{sec:rag_pipelines}).
 
 \section{Retrieval-Augmented Generation Pipeline Catalogue}
 \label{sec:rag_pipelines}
 
 The H3 analysis (Appendix~\ref{appendix:rag}) compares three
-retrieval-augmented-generation pipeline placements that differ in
-where compression sits relative to retrieval: \textbf{P1}
-(compress-first: compress the corpus, then build the FAISS index
-over the compressed text), \textbf{P2} (retrieve-first: index the
-full corpus, then compress the top-$k$ retrieved fragments, the
-classical LongLLMLingua~\cite{jiang2024longllmlingua}
-configuration), and \textbf{P3} (a joint router that, by
-\texttt{bge-large-en-v1.5}-cosine relevance, passes high-scoring
-fragments verbatim, compresses mid-scoring ones, and discards
-low-scoring ones; in the spirit of adaptive schemes such as
-ACC-RAG~\cite{guo2025dynamic}). All three share the FAISS-CPU + HNSW
-stack with \texttt{BAAI/bge-large-en-v1.5} embeddings. Because the
-pre-registered sign-flip did not appear and the EUR cost model does
-not meter compression compute, H3 is reported as a secondary result
-in Appendix~\ref{appendix:rag} rather than in the main results
-chapter.
+pipeline placements over the shared FAISS-CPU + HNSW +
+\texttt{bge-large-en-v1.5} stack: \textbf{P1} compress-first
+(compress the corpus, then index it), \textbf{P2} retrieve-first
+(index the full corpus, then compress the top-$k$---the classical
+LongLLMLingua~\cite{jiang2024longllmlingua} configuration), and
+\textbf{P3} a joint relevance router (pass high-scoring fragments
+verbatim, compress mid-scoring, discard low-scoring; after
+ACC-RAG~\cite{guo2025dynamic}). Because the pre-registered sign-flip
+did not appear and the cost model does not meter compression compute,
+H3 is reported as a secondary result in Appendix~\ref{appendix:rag}.
 
 \section{Compressor Framework}
 \label{sec:compressors}
@@ -392,83 +340,53 @@ straightforward.
 
 \subsection{Why a synthetic benchmark}
 
-The empirical centrepiece of this thesis, the
-\emph{coordination cliff}~$\tau^{*}$, is a position on a curve.
-Detecting and characterising a cliff requires sweeping compression
-ratios densely from $1\times$ to $16\times$, holding everything else
-constant, and reading off where coordination success crosses a
-threshold. Real-world benchmarks (HotpotQA, MultiHop-RAG) confound
-the cliff with task difficulty, retrieval distribution, dataset
-bias, and per-instance variance. The thesis takes the position that
-the cliff is best characterised on a synthetic generator first,
-where information density can be placed by construction, and then
-externally validated on real benchmarks. The synthetic-first
-posture is responsible for the clean \charef{experiments}
-results on H1, H2, and Corollary~1; the real-benchmark validation
-of Corollary~2 confirms that the structure transfers.
-
-The C1 generator produces $150$ instances across three workload
-families and is reproducible from a single seed. The configuration
-hash and the resolved configuration are recorded in the manifest
-alongside the generated workloads so that any output CSV can be
-traced back to the exact generator inputs that produced it.
+The coordination cliff $\tau^{*}$ is a position on a curve, and
+detecting it requires sweeping ratios densely from $1\times$ to
+$16\times$ with everything else held constant. Real benchmarks
+(HotpotQA, MultiHop-RAG) confound the cliff with task difficulty,
+retrieval distribution, and per-instance variance, so the thesis
+characterises the cliff on a synthetic generator first---where
+information density is placed by construction---and validates the
+transfer on real benchmarks (Corollary~2). The C1 generator produces
+$150$ instances across three families from a single seed, with the
+config hash recorded in the manifest so any output CSV traces back to
+its generator inputs.
 
 \subsection{Three workload families}
 \label{sec:c1_families}
 
 \begin{description}\setlength\itemsep{2pt}
 
-\item[Family-a: cross-document fact aggregation.] Each instance
-provides eight source documents, one per system from the
-Vignette~3.7 institutional inventory (eight anonymised institutional
-systems, denoted System~1 through System~8~\cite{fcgusecase2026}). Each document carries one
-recorded-hours and one approved-budget number drawn from a
-seed-fixed distribution. The planner is asked to aggregate the two
-quantities across the eight documents. Ground truth is the
-arithmetic sum, deterministic from the seed; the scorer is a
-regex-based extraction pipeline that matches \emph{hours:\,X} and
-\emph{budget: EUR\,Y} patterns. Family-a is the densest of the
-three: every multi-digit number is task-critical, and
-$\theta_\text{info}\approx 0.97$ (Section~\ref{sec:theta_info_def}).
-The family-a cliff is sharp; it is the family on which the
+\item[Family-a: cross-document fact aggregation.] Eight source
+documents, one per Vignette~3.7 institutional
+system~\cite{fcgusecase2026}, each carrying a recorded-hours and an
+approved-budget number from a seed-fixed distribution; the planner
+aggregates both across the eight, scored by a regex extraction
+pipeline against the deterministic arithmetic sum. Family-a is the
+densest ($\theta_\text{info}\approx0.97$): every multi-digit number
+is task-critical and the cliff is sharp, so it is where the
 compounding-error model is most directly testable.
 
-\item[Family-b: constraint-satisfaction planning.] Each instance
-specifies $N$ sub-tasks with per-task loads and $K$ workers with
-per-worker capacities. The planner must produce an assignment of
-sub-tasks to workers that respects per-worker capacity and assigns
-every sub-task. The generator constructs a feasible solution by a
-capacity-respecting greedy algorithm that bumps capacities only when
-strictly necessary, guaranteeing that every workload has at least
-one feasible assignment. The scorer is a \emph{feasibility checker}
-rather than an exact-match: any assignment that satisfies the
-constraints scores~$1$, so the planner is rewarded for finding
-\emph{any} solution rather than memorising one. Family-b exposes a
-property of small LLM planners that is independent of compression:
-constraint tracking is hard for $\le 8$B-parameter models even
-without compression, so the family-b baseline success $p_0$ is low
-for small planners and the cliff is not detectable in that regime,
-a \emph{floor effect} that \charef{experiments} treats
-explicitly.
+\item[Family-b: constraint-satisfaction planning.] $N$ sub-tasks
+with per-task loads and $K$ capacity-bounded workers; the planner
+must assign every sub-task within capacity. The generator guarantees
+at least one feasible assignment (capacity-respecting greedy), and
+the scorer is a \emph{feasibility checker}---any valid assignment
+scores~$1$. Constraint tracking is hard for $\le8$B planners even
+without compression, so the family-b baseline $p_0$ is low for small
+planners and the cliff is undetectable there: a \emph{floor effect}
+\charef{experiments} treats explicitly.
 
-\item[Family-c: multi-step retrieval.] Each instance presents a
-linear chain of fragments where each fragment carries either a
-pointer to the next (\emph{entry~X}) or, at the leaf,
-the answer (\emph{FINAL-XXXX}). Chain lengths range from $2$ to $4$;
-each fragment is padded with $4$ to $8$ distractor sentences so
-that the retrieval step is non-trivial. The scorer reads the
-planner's output and matches against the leaf answer. Family-c is
-the most distributed of the three: many tokens are distractors,
-information density $\theta_\text{info}\approx 0.62$ (the
-canonical AUC-based estimator on the family-c $\times$ LLMLingua-2
-sweep; not to be confused with the recall-threshold parameter
-$\theta_q^{\,(c)} = 0.590$ reported in
-\charef{experiments}~Section~\ref{sec:cem_match}, which is
-a different quantity computed by a different method: see
-CONTEXT.md and Section~\ref{sec:theta_info_def}), and the cliff
-is gradual; it is the family on which the
-instruction-aware filter's reranker, which preserves
-chain-reference keywords, can avoid a detectable cliff entirely.
+\item[Family-c: multi-step retrieval.] A linear chain of fragments,
+each carrying a pointer to the next (\emph{entry~X}) or, at the leaf,
+the answer (\emph{FINAL-XXXX}); chain lengths $2$--$4$, padded with
+$4$--$8$ distractor sentences, scored against the leaf answer.
+Family-c is the most distributed of the three: many tokens are distractors,
+information density $\theta_\text{info}\approx 0.62$ (distinct from the recall
+threshold $\theta_q$; see Section~\ref{sec:theta_info_def}), and the
+cliff is gradual; it is the family on which the instruction-aware
+filter's reranker, which preserves chain-reference keywords, can
+avoid a detectable cliff entirely.
 \end{description}
 
 Each family contributes $50$ instances. The three families together
@@ -481,16 +399,12 @@ formalises as Corollary~2.
 \subsection{Tag distributions for the privacy axis}
 
 The C1 generator supports three synthetic tag distributions
-(\emph{uniform}, \emph{skewed}, and \emph{hierarchical}) used by
-H4 (inference disclosure) to probe the governance-stringency
-dimension. The hierarchical distribution sets higher classification
-levels to imply strict supersets of the bits at lower levels, which
-matches the real-world structure of enterprise tag
-hierarchies (e.g., ISO/IEC 27001-style schemes; the broader
-risk-management framing follows NIST AI RMF~\cite{nistairmf},
-though the five-tier lattice itself is industry convention rather
-than a NIST AI RMF artefact) and lets the H4 analysis disentangle
-classification level from access-control mask.
+(\emph{uniform}, \emph{skewed}, \emph{hierarchical}) used by H4 to
+probe the governance-stringency dimension. The hierarchical
+distribution sets higher classification levels to imply strict
+supersets of the lower-level bits, matching enterprise tag
+hierarchies and letting H4 disentangle classification level from
+access-control mask.
 
 \subsection{Coordination success and supporting metrics}
 
@@ -554,35 +468,19 @@ analyses but is not used in the verdict pipeline.
 \section{Compression Cache}
 \label{sec:cache}
 
-Compression is the slowest step in the evaluation. LLMLingua-2 at a
-single ratio over $150$ workloads takes minutes; Phi-3-Mini
-extractive over the same range takes hours because each fragment is
-a $\sim 11$~second Ollama call including verification and possible
-retry. The cliff sweep requires every (compressor, ratio, workload,
-task-hint) cell (approximately $30{,}000$ cells in the canonical
-H1/H2 protocol) and a naive nested-loop implementation that
-recompresses on every evaluation pass would dominate the wallclock.
-
-The thesis ships a precomputed compression cache,
-\texttt{CompressionCache} and \texttt{CachedCompressor} in
-\texttt{src/m6/compressors/cache.py}, with cache keys
-$(\text{compressor}, r, \text{fragment\_id}, \text{hash}(\text{task\_hint}))$.
-The cache is a JSON store for portability; the task-hint hash is
-the first twelve characters of an MD5 so that the keys are short
-enough to remain readable. The cache is populated once by the
-\texttt{precompute\_cache.py} script on the GPU server and all
-subsequent runs consume the JSON. This decoupling is what makes
-the evaluation pipeline runnable end-to-end on a laptop without
-the GPU: H1, H2, the frontier API sweep, and the CAAC ablation
-all consume the cache rather than the live compressors.
-
-The compression cache is also a methodological device. It
-guarantees that every evaluation in \charef{experiments}
-sees the exact same compressed text for a given (compressor, ratio,
-workload) cell, so that any difference between runs is attributable
-to the evaluation protocol rather than to compressor stochasticity.
-The cache hit rate over the canonical sweep is $100\%$ by
-construction.
+Compression is the slowest evaluation step---Phi-3-Mini extractive
+is a $\sim11$~second Ollama call per fragment---and the cliff sweep
+touches $\approx30{,}000$ (compressor, ratio, workload, task-hint)
+cells, so a precomputed cache (\texttt{CompressionCache} /
+\texttt{CachedCompressor} in \texttt{src/m6/compressors/cache.py},
+keyed on
+$(\text{compressor}, r, \text{fragment\_id}, \text{hash}(\text{task\_hint}))$)
+is populated once on the GPU and consumed as JSON thereafter. This
+decouples compression from evaluation, letting H1, H2, the frontier
+sweep, and the CAAC ablation run on a laptop, and guarantees every
+run sees identical compressed text for a cell---so run-to-run
+differences are protocol, not compressor stochasticity (cache hit
+rate $100\%$ by construction).
 
 \section{Inference Backends}
 \label{sec:inference}
@@ -607,265 +505,112 @@ that the EUR-per-workflow figures in
 \section{Design Choices and Alternatives Considered}
 \label{sec:design_choices}
 
-The artefacts described above are not a default stack; each tool,
-library, and parameter was a choice with at least one credible
-alternative. This section consolidates those choices into one place
-so that the empirical results of \charef{experiments} can be read
-against the explicit set of decisions that made them. The
-discussion is in three parts: the tooling and serving stack
-(Section~\ref{sec:design_tooling}), the compressors considered but
-not included in the cliff sweep
-(Section~\ref{sec:design_compressors_declined}), and the threshold
-and sweep-grid parameters that the cliff measurement turns on
-(Section~\ref{sec:design_thresholds}). The
-falsifiability-bar choices for each individual hypothesis (the
-$\rho < 0.6$ bar for H1, the $\ge 30\%$ drop for H2, etc.) are
-discussed at the point of pre-specification in
-\charef{experiments}~Section~\ref{sec:prereg_refinement}.
+The artefacts above are not a default stack; each tool and parameter
+was a choice with a credible alternative, catalogued here so the
+results of \charef{experiments} can be read against the decisions
+that made them. The per-hypothesis falsifiability bars are discussed
+at the point of pre-specification
+(\charef{experiments}~Section~\ref{sec:prereg_refinement}).
 
 \subsection{Tooling: storage, retrieval, and serving stack}
 \label{sec:design_tooling}
 
-\paragraph{FAISS-CPU with HNSW indexing.}
-The retrieval index uses FAISS-CPU with an HNSW graph, over Qdrant,
-Chroma, or pgvector, because (i) it runs in-process inside the
-FastAPI service, so the reference deployment ships as a single
-Docker image with no external database; (ii) HNSW gives
-sub-millisecond search at the C1 vector counts ($150$--$10{,}000$)
-without sharding; and (iii) FAISS is the most-audited open-source
-indexer. The CPU restriction is deliberate: a GPU-resident index
-would dominate the cost ledger and misrepresent the deployment
-regime: a memory bus that needs a GPU for retrieval is not one a
-small institutional deployment can run.
-
-\paragraph{\texttt{BAAI/bge-large-en-v1.5} for embedding and
-\texttt{BAAI/bge-reranker-base} for re-ranking.}
-The embedding model was chosen over OpenAI's
-\texttt{text-embedding-3-large} (vendor lock-in and a paid call
-that would make per-pipeline cost non-comparable across reruns) and
-\texttt{gte-large} (lower MTEB score at the pinning date); the
-paired \texttt{bge-reranker-base} keeps the stage internally
-consistent. Both are open-weight with digests in
-\texttt{docs/MODEL\_CARDS.md}.
-
-\paragraph{FastAPI and Starlette.}
-FastAPI was chosen over Flask (no native async) and Litestar
-(younger ecosystem at the time of pinning). The policy middleware
-uses Starlette's \texttt{State()} mechanism to attach the request
-principal, and the OpenAPI schema is auto-generated and shipped as
-the wire contract for the access layer.
-
-\paragraph{SQLite in WAL mode for the audit log.}
-The audit log uses SQLite-WAL rather than Postgres because (i)
-SQLite's one-file footprint makes the reproducibility envelope a
-single archive, and (ii) WAL mode supports the concurrent
-reader-writer pattern the single-host deployment regime requires; a
-multi-host Postgres deployment would shift the integrity story from
-a single to a replicated chain and is named as future work
-(\charef{summary}~Section~\ref{sec:future}).
-
-\paragraph{Ollama for local LLM serving.}
-Ollama was chosen over vLLM, TGI, and direct \texttt{llama.cpp}
-because it handles model lifecycle (pull, mount, GPU offload)
-uniformly across the M4 Pro (Apple Metal backend) and the RTX 5090
-(CUDA backend) hosts without per-platform engineering. The cliff
-sweep, the protected-fact reader, and the model-scaling planner all
-use the same Ollama call shape; the inference-backend abstraction
-(Section~\ref{sec:inference}) hides the underlying backend behind
-a single \texttt{complete()} method.
-
-\paragraph{Featherless for frontier-API calls.}
-The frontier-validation arm calls Qwen-2.5-72B-Instruct and
-DeepSeek V4 Pro through the Featherless OpenAI-compatible endpoint
-rather than OpenRouter or Together AI. The reason is the cost
-ledger: Featherless quotes a flat per-token price for both models,
-so the EUR-per-workflow figures compile correctly without
-per-provider markup tracking. The non-canonical GPT-oss-120B
-diagnostic uses the OpenAI Responses API directly because GPT-oss
-is not hosted on Featherless at the time of writing.
+The serving stack is chosen for single-host reproducibility:
+\textbf{FAISS-CPU} with an HNSW index (over Qdrant/Chroma/pgvector)
+so the reference service ships as one Docker image with no external
+database and no GPU dependency for retrieval;
+\texttt{BAAI/bge-large-en-v1.5} embeddings with a
+\texttt{bge-reranker-base} re-ranker (open-weight, digests in
+\texttt{docs/MODEL\_CARDS.md}); \textbf{FastAPI}/Starlette for the
+access layer; \textbf{SQLite-WAL} for the audit log (one-file
+footprint, concurrent reader--writer, a replicated multi-host chain
+named as future work); \textbf{Ollama} for local LLM serving
+(uniform model lifecycle across the Apple-Metal and CUDA hosts behind
+one \texttt{complete()} call, Section~\ref{sec:inference}); and the
+OpenAI-compatible \textbf{Featherless} endpoint for the frontier arm,
+chosen for its flat per-token price so the EUR cost model compiles
+without per-provider markup tracking.
 
 \subsection{Compressors considered but not swept}
 \label{sec:design_compressors_declined}
 
-The framework (Section~\ref{sec:compressors}) ships six
-implementations; the cliff sweep uses four. Three compressor
-families from the related-work survey were considered and excluded,
-recorded here so the omissions are verifiably deliberate.
-
-\paragraph{Selective Context~\cite{li2023selective}.}
-Prunes tokens by self-information under the compressing model's
-conditional distribution. Excluded because (i) it requires a
-scoring forward pass at compression time, making its compute
-profile asymmetric with the swept four; and (ii) the
-instruction-aware filter already covers the ``task-aware lexical
-pruning, no end-to-end LM in the loop'' design point, so it would
-add cost without a structurally distinct mechanism.
-
-\paragraph{RECOMP~\cite{xu2024recomp} and learned compression
+Three compressor families from the survey were considered and
+excluded, recorded so the omissions are deliberate.
+\textbf{Selective Context}~\cite{li2023selective} requires a scoring
+forward pass at compression time (asymmetric compute with the swept
+four) and its design point---task-aware lexical pruning with no
+end-to-end LM---is already covered by the instruction-aware filter.
+\textbf{RECOMP}~\cite{xu2024recomp} and \textbf{learned compression}
 (gist tokens~\cite{mu2023gist},
 AutoCompressor~\cite{chevalier2023autocompressor},
-ICAE~\cite{ge2024icae}).}
-These families require fine-tuning. They were excluded because the
-cliff comparison is deliberately training-free; including a trained
-compressor would confound the cross-compressor comparison with
-training-data and training-budget asymmetry. Re-running the cliff
-methodology on learned compressors is named as a follow-on study
-(\charef{summary}~Section~\ref{sec:future}).
-
-\paragraph{Single-token compression (xRAG~\cite{cheng2024xrag}).}
-xRAG represents an entire document as a single token, a
-$> 100\times$ compression regime. It was not included because the
-C1 ratio grid already brackets the operating regime where the
-coordination cliff sits ($1\times$ to $16\times$); xRAG's regime
-is beyond any cliff this thesis identifies, and a within-regime
-cross-compressor comparison would not capture its behaviour.
-
-\paragraph{Alternative bases for the extractive compressor.}
-The Phi-3-Mini-3.8B extractive compressor (Section~\ref{sec:phi3})
-had two credible alternatives: Llama-3.2-3B and Mistral-7B-Instruct.
-Phi-3-Mini was chosen on the basis of pilot extractive-verifier
-pass rates ($\sim 75\%$ pre-fallback for Phi-3-Mini, $\sim 62\%$
-for Llama-3.2-3B, $\sim 71\%$ for Mistral-7B) combined with the
-smallest deployment footprint at comparable pass rate. The choice
-is not a benchmark of base-model quality; it is a choice of the
-cheapest base that satisfies the verifier rule.
+ICAE~\cite{ge2024icae}) require fine-tuning, which would confound the
+deliberately training-free cliff comparison with training-budget
+asymmetry (re-evaluating them is named as follow-on work).
+\textbf{xRAG}~\cite{cheng2024xrag} represents a document as a single
+token ($>100\times$), beyond the $1$--$16\times$ regime where the
+cliff sits. For the extractive compressor's base model, Phi-3-Mini
+was chosen over Llama-3.2-3B and Mistral-7B on pilot
+extractive-verifier pass rates ($\sim 75\%$ vs
+$\sim 62\%$/$\sim 71\%$ pre-fallback) at the smallest deployment
+footprint.
 
 \subsection{Threshold and sweep-grid parameters}
 \label{sec:design_thresholds}
 
-The cliff measurement turns on a few numerical parameters (the
-ratio grid, per-family sample size, $\theta_q$ rule, and bootstrap
-configuration) each a defensible but not unique choice, catalogued
-here so the sweep design is auditable.
-
-\paragraph{Ratio grid
-$\{1, 2, 3, 4, 5, 6, 8, 10, 12, 16\}\times$.}
-The grid is geometrically denser at the low end (where the cliff
-sits on the dense family-a) and sparser at the high end (where
-every compressor has collapsed). It was chosen empirically during
-pilot sweeps that confirmed family-a cliffs by $r = 6$; doubling
-the density above $r = 6$ would consume cells without resolving
-any cliff. The fine-grid re-resolution discussed in
-\charef{experiments}~Section~\ref{sec:h2} subsequently showed that
-the $r \in \{1, 2\}$ gap is itself too coarse for the
-deterministic-solver family-a cliff (which sits near $r = 1.1$);
-the coarse grid resolves the LLM-planner cliff at
-$\approx 2.5$--$2.8$ but a finer grid below $r = 2$ is required
-for the deterministic-solver position. This is a design lesson
-surfaced in \charef{summary}.
-
-\paragraph{$r_{\max} = 16$.}
-Beyond $r = 16$ every compressor's CTR is near zero on family-a
-and the coordination-success curve has flattened to the floor.
-Extending the sweep higher would consume budget without adding
-identifying power.
-
-\paragraph{$50$ instances per family, $5$ seeds per cell.}
-The choice gives $250$ (instance, seed) pairs per
-(compressor, ratio, family) cell, which is the smallest sample at
-which the workload-level bootstrap CI consistently clears the
-H1/H2 falsifiability bands at the budgeted compute. There is no
-formal a priori power analysis; the choice was made on the basis
-of pilot bootstrap-CI widths and is named as a limitation in
-\charef{summary}~Section~\ref{sec:limitations}.
-
-\paragraph{$\theta_q$ at $0.5 \times p_0$.}
-The cliff-recall threshold $\theta_q$ is estimated as the
-critical-token-recall at which coordination success first drops
-below half of the cell's baseline $p_0$. The
-``half-of-baseline'' choice operationalises ``coordination has
-collapsed'' without requiring a separate calibration sweep; it
-sits below the H2 $30\%$-drop bar (so a cell that has cliffed is
-comfortably past the half-of-baseline point) and above the noise
-floor on the family-a and family-c CTR curves. The CAAC ablation
-(\charef{summary}~Section~\ref{sec:caac}) tests CAAC's sensitivity
-to alternative $\theta_q$ choices in $\{0.6, 0.7, 0.8\}$ and finds
-the coordination plateau invariant across this range, so the
-per-family default is robust to the choice.
-
-\paragraph{$n_\text{boot}$ values and the BCa interval.}
-The bootstrap configuration uses bias-corrected and accelerated
-intervals~\cite{efron1993bootstrap}. BCa is preferred over the
-basic percentile interval because the cliff-fit residuals near
-$\tau^{*}$ are visibly skewed (the piecewise fitter clamps at an
-interior $10\%$ margin, which biases the residual distribution
-towards the centre of the swept range). The per-pipeline resample
-budgets are not uniform: the H1/H2/H3/H4 verdict pipelines run at
-$n_\text{boot} = 10{,}000$
-(the \texttt{spearman\_with\_ci}, \texttt{paired\_bootstrap\_diff},
-and \texttt{paired\_bootstrap} defaults in
-\texttt{src/m6/evaluation/} and \texttt{src/m6/experiments/}); the
-$\theta_q$-resampling pipeline (\texttt{scripts/bootstrap\_theta\_q.py})
-and the frontier-$\tau^{*}$ bootstrap (\texttt{run\_frontier.py})
-run at $n_\text{boot} = 500$ because each iteration involves a
-piecewise curve fit whose per-iteration cost is substantially
-higher than a single-statistic resample.
+The cliff measurement turns on a few numerical parameters. The
+\textbf{ratio grid} $\{1,2,3,4,5,6,8,10,12,16\}\times$ is denser at
+the low end where the dense-family cliff sits; a fine-grid
+re-resolution (\charef{experiments}~Section~\ref{sec:h2}) later
+showed the $r\in\{1,2\}$ gap is itself too coarse for the
+deterministic-solver family-a cliff near $r=1.1$, with
+$\mathbf{r_{\max}=16}$ because beyond it every compressor's CTR is
+near zero on family-a. \textbf{$50$ instances per family, $5$ seeds
+per cell} ($250$ pairs per cell) is the smallest sample at which the
+workload-level bootstrap CI clears the H1/H2 bands at the budgeted
+compute; there is no formal a-priori power analysis, named as a
+limitation in \charef{summary}. \textbf{$\theta_q$ at
+$0.5\times p_0$} reads off ``coordination has collapsed'' without a
+separate calibration sweep and sits below the H2 $30\%$-drop bar; the
+CAAC ablation finds the coordination plateau invariant to
+$\theta_q\in\{0.6,0.7,0.8\}$. The \textbf{bootstrap} uses BCa
+intervals~\cite{efron1993bootstrap} at $n_\text{boot}=10{,}000$ on
+the verdict pipelines and $500$ on the $\theta_q$ and
+frontier-$\tau^{*}$ pipelines, whose per-iteration curve fit is the
+budget driver.
 
 
 \section{Scope of Evaluation: the Multi-Fragment Proxy}
 \label{sec:scope}
 
-The empirical protocol uses two planners. H1 and H2 use a
-deterministic regex-based information-extraction solver that parses
-the compressed fragments for the task-critical patterns of
-Section~\ref{sec:c1_families}; its purpose is to isolate the
-compression-quality variance from LLM run-to-run variance.
-Corollary~1 (the model-scaling sweep), the frontier validation, and
-the real-data transfer arms use a single LLM call with all
-(compressed) fragments visible in a flat prompt; their purpose is
-to demonstrate that the cliff structure measured by the
-deterministic solver appears identically when the planner is a
-non-trivial language model.
-
-An AutoGen v0.4 multi-round agent backend
-exists~\cite{wu2023autogen} in \texttt{src/m6/orchestrator/} and
-integrates with the memory bus described in
-Section~\ref{sec:architecture}. It is not used in the empirical
-evaluation. The decision is documented in the project
-repository: the run-to-run variance introduced by multi-round
-agent negotiation dominates the compression signal at the C1
-ratios this thesis sweeps, and the value of the AutoGen runner is
-to demonstrate that the memory-bus design is multi-agent-ready,
-not to be the planner whose cliff is measured. The boundary is
-that the memory bus is \emph{designed for} multi-agent
-integration; the experiments \emph{evaluate} on a multi-fragment
-proxy.
-
-Coordination success, as defined in
-Section~\ref{sec:c1}, refers to the structural task property that
-the planner must combine information drawn from multiple
-fragments. It does not refer to the multi-round communication
-quality between agents; that property is what the AutoGen backend
-would enable measuring in future work, and is named in
-\charef{summary} as part of the limitations and the
-future-work roadmap.
+The empirical protocol uses two planners, isolating the
+compression-quality signal from LLM variance: a deterministic regex
+information-extraction solver for H1/H2, and a single LLM call with
+all compressed fragments visible for Corollary~1, the frontier
+validation, and the real-data transfer (demonstrating that the cliff
+structure the solver measures appears identically under a non-trivial
+language model). The AutoGen v0.4 multi-round
+backend~\cite{wu2023autogen} in \texttt{src/m6/orchestrator/}
+integrates with the bus but is not used: multi-round negotiation
+variance dominates the compression signal at the swept ratios, so the
+backend demonstrates that the bus is multi-agent-ready rather than
+serving as the measured planner. Coordination success
+(Section~\ref{sec:c1}) is therefore the structural property that the
+planner must combine information across fragments, not multi-round
+communication quality---which \charef{summary} names as future work.
 
 \section{Compute Envelope and Reproducibility}
 \label{sec:envelope}
 
-The empirical work runs on two machines. The first is an Apple~M4
-Pro 48~GB workstation, which hosts the local Ollama planners for
-the cliff sweep development and the deterministic-solver pipeline,
-and which is sufficient for every figure and verdict in
-Chapters~\charef{experiments} and~\charef{summary} when the
-compression cache is in place. The second is an RTX~5090 32~GB
-workstation (Tailscale-accessible WSL2 host) used for the
-compression precomputation, the model-scaling sweep at \textsc{8B},
-the frontier API sweep, and the HotpotQA / MultiHop-RAG transfer
-arm. Total wallclock for the canonical evaluation pipeline (cache
-precompute on GPU + cliff sweep + scaling + RAG + disclosure +
-real-data transfer) is approximately $30$ hours of GPU time and
-$\sim 12$ hours of laptop time end-to-end.
-
-The reproducibility package is the complete repository: a
-\texttt{docker-compose.yml} that brings the memory-bus reference
-service up locally, a GitHub release tag for the manuscript and
-code, model and data cards under \texttt{docs/}, and a
-\texttt{README.md} that exposes one-command reproduction for every
-chapter headline figure. The filesystem layout under
-\texttt{results/} is fixed: one CSV per hypothesis run plus a
-\texttt{manifest.yaml} that records the resolved configuration,
-the configuration hash, the git revision, the Python version, the
-platform string, and the start time. Appendix~\ref{appendix}
-describes the package contents in detail and lists every command
-needed to reproduce the headline figures.
+The empirical work runs on an Apple~M4~Pro 48~GB workstation (local
+Ollama planners, deterministic-solver pipeline, and every figure when
+the compression cache is in place) and an RTX~5090 32~GB host
+(compression precompute, the $8$B model-scaling sweep, the frontier
+API sweep, and the HotpotQA / MultiHop-RAG transfer). Total wallclock
+for the canonical pipeline is $\sim 30$~GPU-hours plus $\sim 12$~hours
+of laptop time. The reproducibility package is the complete
+repository---a \texttt{docker-compose.yml} for the memory-bus
+service, a release tag, model and data cards, and one-command
+\texttt{make} targets for every headline figure; one CSV per
+hypothesis run plus a \texttt{manifest.yaml} recording the resolved
+configuration, the config hash, the git revision, and the platform.
+Appendix~\ref{appendix} lists the commands and the full compute stack.
