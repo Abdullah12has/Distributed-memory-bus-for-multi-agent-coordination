@@ -5164,3 +5164,73 @@ intentional under Oulu/Finnish norms, and is outside the "rewrite the abstract"
 request. Fix-if-wanted: pin the math decimal separator to a period once the exact
 babel hook is confirmed (a one-preamble-line change). Author to decide the
 convention.
+
+## 100. SCOPE REDUCTION + MEMORY-BUS ELEVATION (2026-06-03)
+
+Executed the author-approved 80/20 scope cut and reframed the thesis around the
+memory bus as the principal engineering contribution. Cross-references preserved
+throughout (labels kept on demoted content); build clean after every stage.
+Final: latexmk exit 0, 98 pages (was 102), 0 undefined refs, 0 multiply-defined
+labels, 0 errors, 0 em-dash glyphs; thesis.pdf synced.
+
+Cuts:
+1. H3 (RAG pipeline placement) DEMOTED to a new Appendix E
+   (\label{appendix:rag} + \label{sec:h3_cost_caveat} + the moved tab:h3);
+   experiments §H3 collapsed to a labelled 1-paragraph stub (\label{sec:h3}
+   kept). 2 contributions framing: C3 (RAG) -> one-line mention + appendix.
+2. Corollary 2 DEMOTED to a single paragraph (\label{sec:corollary2} +
+   \label{sec:theta_info_def} kept; tab:corollary2, fig:hotpotqa_cliff, the
+   theta_info-vs-theta_q subsection and result/interpretation removed). External
+   tab:corollary2 refs redirected to sec:corollary2.
+3. Course-corrections: cut 4 minor paragraphs (rounds-field, CAAC-theta,
+   CAAC-min_ratio, theta_info-estimator); kept H4-bias, Wilcoxon, fine-grid,
+   Theorem->model.
+4. tau*-register 4-value table dropped -> one sentence (LLM cliff ~2.7 is
+   deployment-relevant; 2.5/1.1 are solver artefacts). No external refs.
+5. Metric-choice catalogue: ~110-line longtable -> compact 5-row table
+   (\label{tab:metric_choices} kept).
+6. Limitations: merged the two contiguous Corollary-1 uncertainty caveats into
+   one.
+7. Family-b: LEFT IN. Correction to the earlier "family-b is null" framing: it
+   is NOT null in H1/H2; its 4 cells underpin the "11 of 12" H2 cliff count.
+   The floor effect is specific to the LLM-planner Corollary-1 arm and is
+   already covered by the single "Family-b LLM floor" limitation paragraph.
+   Removing family-b table rows would have broken the 11/12 headline, so kept.
+
+Reframe (Part 2): abstract (visible + PDF metadata) and intro Contributions
+rewritten to make the COMPRESSION-AWARE MEMORY BUS the principal engineering
+deliverable. Narrative: the cliff science tunes the bus -- CAAC reads the
+per-family theta_q from the sweep and backs off to the cliff-safe ratio (the
+"optimal settings from the experiments"); a summary-level disclosure budget caps
+protected-fact recovery; the bus sits in the middle, compresses fragments in
+transit, and turns token savings into lower inference cost; it is slated for
+deployment/evaluation at TalentAdore (token-cost-dominated opex). Contribution
+labels C1-C4 retained (no renumber ripple); C4 (bus) elevated to principal, C3
+(RAG) demoted. Consistency check passed: token-level cost reduction is the
+motivation (supported); the CAAC/theta_q linkage is real; TalentAdore deployment
+is phrased as planned future work; no measured EUR saving or privacy-specific
+claim is made; "distributed/multi-tenant not measured" honesty retained.
+
+Net page reduction is modest (4 pp) because H3 was moved to an appendix rather
+than deleted and the bus narrative was expanded; the SCOPE (headline claims to
+defend) is what shrank. Remaining minor coherence items (optional, build-green):
+the significance "Third, compress-first" practitioner point and the
+implementation §rag_pipelines catalogue still carry full H3 detail and could be
+trimmed; the decimal-comma convention (§99) is still the author's to decide.
+
+## 101. H3-REMNANT COHERENCE TRIM (2026-06-03)
+
+Completed the two coherence trims flagged at the end of §100, fully aligning the
+manuscript with the H3 demotion. (1) The significance "Third, compress-first"
+practitioner point was cut from a full P3/cost-ranking paragraph to a
+two-sentence pointer to Appendix E. (2) implementation §rag_pipelines was
+condensed from the full P1/P2/P3 description catalogue (~54 lines) to a short
+labelled paragraph (\label{sec:rag_pipelines} kept, points to Appendix E); the
+now-orphaned "P3 routing thresholds $\theta_\text{high}=0.75$" design paragraph
+and its mention in the §design_thresholds intro list were removed. Build clean:
+latexmk exit 0, 96 pages (was 98), 0 undefined refs, 0 multiply-defined, 0
+errors, 0 em-dash glyphs; thesis.pdf synced. H3/RAG now appears only in the
+one-paragraph experiments stub, brief intro/summary pointers, and Appendix E.
+Cumulative scope-reduction this session: 102 -> 96 pages, H3 and Corollary 2
+demoted, with the compression-aware memory bus elevated to the principal
+engineering contribution.

@@ -330,3 +330,76 @@ workstation to the GPU host as host \texttt{gpu} on the
 reference service runs on either host via
 \texttt{docker compose -f docker/docker-compose.yml up -d}; the image is Python~3.12-slim
 with FastAPI, Uvicorn, SQLite, and the \texttt{m6} package.
+
+\section{Appendix E. RAG Pipeline Placement (H3)}
+\markboth{left}{\normalfont{Appendix E. RAG Pipeline Placement}}
+\label{appendix:rag}
+\label{sec:h3_cost_caveat}
+
+H3 examined where compression should sit relative to retrieval. It
+is reported here, rather than in the main text, because its
+pre-registered prediction was not satisfied and the salvaged result
+is a single-stack non-reproduction orthogonal to the coordination
+cliff and the memory bus.
+
+Three pipeline placements are compared
+(Section~\ref{sec:rag_pipelines} of \charef{implementation}):
+compress-first (P1, compress the corpus then index it),
+retrieve-first (P2, index the full corpus then compress the
+top-$k$), and a joint relevance-conditional router (P3). Each runs
+under a storage-bounded regime (FAISS index $\le 100$~MB) and an
+accuracy-bounded regime (retrieval recall@10 $\le 0.85$) on the C1
+family-a generator (\texttt{results/h3\_final/}). The pre-registered
+H3 predicate was a \emph{sign-flip} in the optimal pipeline between
+the two regimes with a $\ge\!5$~pp F1 effect. It is \emph{not}
+observed: P1 is preferred over P2 in \emph{both} regimes (by $3.2$
+and $2.0$~pp F1, paired-bootstrap $95\%$ CIs $[1.84, 4.72]$ and
+$[1.15, 2.85]$, both excluding zero), which does not reproduce the
+post-retrieval-compression preference of the
+LongLLMLingua~\cite{jiang2024longllmlingua} line of work on the
+single \texttt{bge-large-en-v1.5} + FAISS-CPU stack tested.
+
+\begin{table}[h]
+\centering
+\caption{H3 verdict table. Mean F1, per-query EUR cost, and
+\emph{achieved} compression ratio ($\times$) by regime and pipeline
+from \texttt{results/h3\_final/} and the cost-instrumented re-run
+\texttt{results/h3\_eprice/} ($n=150$ workloads per cell). The
+sign-flip predicate is not satisfied (P1 is above P2 in both
+regimes); P3 leads both but only P1 actually compresses, so the
+cross-pipeline F1 gap is not a matched-compression comparison.}
+\label{tab:h3}
+\small
+\begin{tabular}{lrrr|rrr}
+\hline
+& \multicolumn{3}{c|}{Storage-bounded}
+& \multicolumn{3}{c}{Accuracy-bounded} \\
+Pipeline & F1 & EUR/q & $\times$ & F1 & EUR/q & $\times$ \\
+\hline
+P1 (compress$\to$retrieve) & $0.396$ & $2.72\times 10^{-5}$ & $7.49$ & $0.648$ & $3.29\times 10^{-5}$ & $2.11$ \\
+P2 (retrieve$\to$compress) & $0.364$ & $2.82\times 10^{-5}$ & $1.00$ & $0.628$ & $3.00\times 10^{-5}$ & $1.00$ \\
+P3 (joint, conditional)    & $\mathbf{0.820}$ & $3.07\times 10^{-5}$ & $1.00$ & $\mathbf{0.895}$ & $3.10\times 10^{-5}$ & $1.00$ \\
+\hline
+$p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{3}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{3}{c}{$2\!\times\!10^{-4}$} \\
+\hline
+\end{tabular}
+\end{table}
+
+The joint router P3 leads both regimes on F1
+(Table~\ref{tab:h3}), but a cost-instrumented re-run
+(\texttt{results/h3\_eprice/}) shows it achieves this by routing
+retrieved fragments \emph{verbatim} (achieved compression
+$1.00\times$) while only P1 actually compresses ($7.49\times$
+storage, $2.11\times$ accuracy). The \texttt{eur\_per\_query} cost
+model is corpus-dominated (the three pipelines differ by only
+$4.1$--$4.9\%$ in EUR within a regime) and, more importantly, does
+\emph{not} meter compression compute at all, only the resulting
+token counts, so a pipeline that runs an expensive compressor pass
+is not charged for it. The thesis therefore makes \textbf{no
+cost-parity and no Pareto claim} for the P3-vs-P1 comparison: the
+cross-pipeline F1 gap is not a matched-compression comparison, and
+P3 should be read as ``verbatim routing preserves F1 at an unmetered
+compression cost''. A faithful per-pipeline cost model that meters
+the compressor pass and amortises a persistent index across queries,
+together with a multi-retriever replication, is the natural
+follow-on (Section~\ref{sec:future}).

@@ -239,57 +239,23 @@ catalogue (Section~\ref{sec:rag_pipelines}).
 \section{Retrieval-Augmented Generation Pipeline Catalogue}
 \label{sec:rag_pipelines}
 
-The C3 contribution evaluates three retrieval-augmented generation
-pipeline architectures that differ in where compression sits
-relative to retrieval. The three are described here as artefacts;
-the empirical comparison between them under matched cost regimes
-is the H3 result of \charef{experiments},
-Section~\ref{sec:h3}.
-
-\begin{description}\setlength\itemsep{2pt}
-\item[P1: compress, then retrieve.] The corpus is compressed
-up-front and the FAISS index is built over the compressed
-representation. Retrieval and synthesis both operate on
-compressed text. P1 trades quality for storage efficiency: the
-index is small but information dropped at compression time is
-unrecoverable. The pre-processing baseline against which P1 is
-informally compared is Anthropic's contextual-retrieval
-work~\cite{anthropic2024contextualretrieval}, which prepends
-LLM-generated chunk-level explanatory context before embedding.
-\item[P2: retrieve, then compress.] The corpus is indexed in
-full; the compressor runs as a post-retrieval node-processor over
-the top-$k$ retrieved fragments before they are synthesised. This
-is the classical LongLLMLingua
-configuration~\cite{jiang2024longllmlingua}. P2 trades storage
-cost for retrieval recall: the index is the full corpus, but the
-synthesis context can be compressed aggressively because the
-retriever has already identified the relevant chunks.
-\item[P3: joint, conditional on relevance.] The corpus is indexed
-in full. At query time, each retrieved fragment is routed into
-one of three branches based on its retrieval relevance score
-$s$: fragments with $s \ge \theta_\text{high}$ pass through
-verbatim; fragments with $\theta_\text{low} \le s <
-\theta_\text{high}$ are compressed; fragments with
-$s < \theta_\text{low}$ are discarded. The default thresholds
-$\theta_\text{high}=0.75$ and $\theta_\text{low}=0.45$ on
-\texttt{BAAI/bge-large-en-v1.5}-cosine similarities were chosen
-empirically from a pilot HotpotQA score distribution; the
-rationale and the alternatives considered are catalogued in
-Section~\ref{sec:design_thresholds}. P3's relevance-conditional routing is
-in the spirit of adaptive context-compression schemes that vary the
-compression decision by input relevance, such as the ACC-RAG
-framework of \cite{guo2025dynamic}; the three-way
-verbatim/compress/discard routing implemented here is this thesis's
-own design.
-\end{description}
-
-The three pipelines share the same FAISS-CPU + HNSW
-infrastructure with \texttt{BAAI/bge-large-en-v1.5} as the
-embedder. The cost ledger introduced above feeds the
-EUR-per-workflow cost model that parameterises the
-H3 evaluation regimes (storage-bounded with FAISS index size
-$\le 100$~MB, accuracy-bounded with retrieval recall@10
-$\le 0.85$).
+The H3 analysis (Appendix~\ref{appendix:rag}) compares three
+retrieval-augmented-generation pipeline placements that differ in
+where compression sits relative to retrieval: \textbf{P1}
+(compress-first: compress the corpus, then build the FAISS index
+over the compressed text), \textbf{P2} (retrieve-first: index the
+full corpus, then compress the top-$k$ retrieved fragments, the
+classical LongLLMLingua~\cite{jiang2024longllmlingua}
+configuration), and \textbf{P3} (a joint router that, by
+\texttt{bge-large-en-v1.5}-cosine relevance, passes high-scoring
+fragments verbatim, compresses mid-scoring ones, and discards
+low-scoring ones; in the spirit of adaptive schemes such as
+ACC-RAG~\cite{guo2025dynamic}). All three share the FAISS-CPU + HNSW
+stack with \texttt{BAAI/bge-large-en-v1.5} embeddings. Because the
+pre-registered sign-flip did not appear and the EUR cost model does
+not meter compression compute, H3 is reported as a secondary result
+in Appendix~\ref{appendix:rag} rather than in the main results
+chapter.
 
 \section{Compressor Framework}
 \label{sec:compressors}
@@ -782,9 +748,9 @@ cheapest base that satisfies the verifier rule.
 \label{sec:design_thresholds}
 
 The cliff measurement turns on a few numerical parameters (the
-ratio grid, per-family sample size, $\theta_q$ rule, bootstrap
-configuration, and P3 routing thresholds) each a defensible but
-not unique choice, catalogued here so the sweep design is auditable.
+ratio grid, per-family sample size, $\theta_q$ rule, and bootstrap
+configuration) each a defensible but not unique choice, catalogued
+here so the sweep design is auditable.
 
 \paragraph{Ratio grid
 $\{1, 2, 3, 4, 5, 6, 8, 10, 12, 16\}\times$.}
@@ -849,19 +815,6 @@ run at $n_\text{boot} = 500$ because each iteration involves a
 piecewise curve fit whose per-iteration cost is substantially
 higher than a single-statistic resample.
 
-\paragraph{P3 routing thresholds $\theta_\text{high} = 0.75$,
-$\theta_\text{low} = 0.45$.}
-The P3 joint relevance-conditional routing pipeline
-(Section~\ref{sec:rag_pipelines}) bins retrieved fragments into
-verbatim, compress, or discard branches by their
-\texttt{bge-cosine} similarity score. The default bin boundaries
-were chosen from the score distribution on a pilot HotpotQA pass:
-scores above $0.75$ are answer-bearing on most pilot queries,
-scores below $0.45$ are typically distractors, and the middle band
-contains the fragments whose value-versus-cost trade-off is
-non-trivial. The thresholds are starting points; a sensitivity
-sweep is named in \charef{summary}~Section~\ref{sec:future} as a
-follow-on study.
 
 \section{Scope of Evaluation: the Multi-Fragment Proxy}
 \label{sec:scope}

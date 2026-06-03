@@ -91,16 +91,12 @@ violating assumption~A3. This makes the cliff a property of the
 (compressor, task) pair within a defined regime: the structural
 finding the thesis contributes to the compression literature.
 
-Compress-first is preferred over post-retrieval compression in
-both storage- and accuracy-bounded RAG regimes on the single
-retriever/embedder stack evaluated (\texttt{BAAI/bge-large-en-v1.5}
-+ FAISS-CPU; Section~\ref{sec:h3}). The pre-specified sign-flip
-($\ge 5$~pp, opposite signs across regimes) is not satisfied; the
-narrowed finding (the simpler, more amortisable architecture is
-also the better one here) does not reproduce LongLLMLingua's
-post-retrieval preference on this stack and is the substantive C3
-contribution (generalisation to other retrievers is an explicit
-limitation, Section~\ref{sec:limitations}).
+On the RAG-placement question, compress-first is preferred over
+retrieve-first on the single retriever/embedder stack tested, but
+the pre-specified regime sign-flip is not observed; because this is
+a single-stack non-reproduction orthogonal to the cliff and the
+bus, it is reported in Appendix~\ref{appendix:rag} rather than as a
+headline result.
 
 Compression measurably reduces inference disclosure of protected
 facts (Section~\ref{sec:h4_disclosure}), \emph{monotonically in how
@@ -320,43 +316,6 @@ compressed-fragment data was unchanged across the rerun. Lesson:
 synthetic-benchmark generators need bias audits before the reader
 is held responsible for the result.
 
-\paragraph{The \texttt{rounds} field truthfulness fix.}
-An earlier version of the orchestrator reported a \texttt{rounds}
-field equal to \texttt{len(sub\_tasks)}, conflating ``how many
-sub-tasks did the planner see'' with ``how many rounds of agent
-communication occurred''. Since the empirical setup is a single
-LLM call (no multi-round communication, per
-Section~\ref{sec:limitations}), the truthful value is one and the
-field was changed accordingly. The earlier value never appeared in
-a reported figure but was visible in some CSV columns; the
-misnaming was a name-versus-meaning drift of the kind that could
-mislead a downstream reader. Lesson: metric-name versus
-implementation drift; metrics referenced in the manuscript text
-need name-audits.
-
-\paragraph{CAAC's \texttt{theta} hardcoded $\to$ derived.}
-An initial CAAC implementation hardcoded $\theta = 0.65$ with no
-derivation. The strict-Pareto rate against the fixed-ratio
-compressor was $0/7$, but the verdict was ambiguous because a
-different hardcoded $\theta$ would have produced a different
-operating point and the model's per-family $\theta_q$ machinery
-was not connected. The fix was to wire \texttt{derive\_theta()}
-per-family into CAAC and reframe the strict-Pareto-zero result as
-the structural property the model predicts. The $0/7$ verdict
-survived the change, but is now defensible as an operating-point
-property of the model rather than a tuning artefact.
-
-\paragraph{CAAC's \texttt{min\_ratio} $1.0 \to 1.5$.}
-The original CAAC implementation set \texttt{min\_ratio} to $1.0$,
-which let CAAC abdicate to no-compression on hard fragments.
-Pilot runs at high target ratios on family-a showed that this
-abdication was the dominant CAAC behaviour, defeating the
-``adaptive compression'' framing because CAAC's output on those
-fragments was indistinguishable from the identity control. Raising
-\texttt{min\_ratio} to $1.5$ enforces the constructive guarantee
-that CAAC always delivers at least $1.5\times$ compression while
-staying on the safe side of the cliff.
-
 \paragraph{Mann--Whitney $U$ $\to$ paired Wilcoxon (mid-project).}
 The first H2 cliff analyses used the Mann--Whitney $U$ test for
 the two-cell drop comparison. A statistical-protocol review
@@ -388,18 +347,6 @@ $\tau^{*} = 2.5$ is retained only as an approximate coincidence
 between the LLM cliff and the coarse-grid deterministic value.
 Lesson: always run a fine-grid re-resolution at the cliff midpoint
 before publishing position numbers.
-
-\paragraph{$\theta_\text{info}$ estimator unification.}
-An earlier value for C1 family-a's $\theta_\text{info}$ was
-$0.881$, computed by a different estimator from the current
-AUC-based \texttt{estimate\_task\_theta()} implementation. After
-the estimator was unified across the three benchmarks the
-canonical value is $0.967$ (Table~\ref{tab:corollary2} of
-\charef{experiments}). The corollary verdict and the
-dense-vs-distributed ordering were unchanged; the absolute number
-shifted by $\sim 9\%$ because of the estimator change. Lesson:
-cross-benchmark estimates require a single estimator
-implementation reused across benchmarks.
 
 \paragraph{Theorem~1 $\to$ compounding-error model.}
 The early draft of \charef{experiments} called
@@ -506,24 +453,20 @@ the strongest of the four (Section~\ref{sec:cem_assumptions}), and
 H4's graded-disclosure measurements are evidence for exactly the
 binary-importance simplification the model gives up.
 
-\paragraph{Predicted-$\tau^{*}$ bootstrap band is too tight.}
-The bootstrap CI on $\theta_q$ behind the
-Section~\ref{sec:cem_match} band quantifies \emph{sampling}
-uncertainty only, not the model's \emph{specification} error, so the
-empirical $\tau^{*}$ falls outside it on all $11$ testable cells.
-Figure~\ref{fig:predicted_vs_empirical} should therefore be read as
-``the band is tight because $\theta_q$ is well-estimated; the model
-is biased because A1--A4 are first-order''. The model's accuracy is
-measured by the in-sample and LOO match rates, not by the band.
-
-\paragraph{Corollary~1's local arm misses the strict tolerance.}
-The local cross-architecture sweep (Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
-Llama-3.1-8B) on family-c shows a $\tau^{*}$ spread of $\approx 24\%$, below the \texttt{validate\_model\_independence} default $50\%$
-tolerance but above the strict $\pm 20\%$ bar matching the H2 spec.
-The local arm is thus necessary but not sufficient; the
-cross-architecture frontier evidence (Section~\ref{sec:frontier})
-carries the corollary's binary verdict across the strict bar
-(\texttt{results/h5\_final/model\_independence\_20pct.json}).
+\paragraph{Corollary~1 is consistency, not proven invariance.}
+Two caveats bound the no-shift claim. First, the local
+cross-architecture sweep (Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
+Llama-3.1-8B) on family-c shows a $\tau^{*}$ spread of $\approx 24\%$,
+below the \texttt{validate\_model\_independence} default $50\%$
+tolerance but above the strict $\pm 20\%$ bar, so it is necessary
+but not sufficient and the cross-architecture frontier evidence
+(Section~\ref{sec:frontier}) carries the binary verdict. Second, the
+predicted-$\tau^{*}$ bootstrap band (Section~\ref{sec:cem_match})
+quantifies \emph{sampling} uncertainty in $\theta_q$ only, not the
+model's \emph{specification} error, so the empirical $\tau^{*}$ falls
+outside it on all $11$ testable cells; the in-sample and LOO match
+rates, not the band, measure the model's accuracy
+(Figure~\ref{fig:predicted_vs_empirical}).
 
 \paragraph{A3 (threshold success): circularity broken by a direct probe.}
 A3 was originally licensed only by the sharp cliff it explains,
@@ -679,23 +622,13 @@ $\theta_q$ measurement on a small calibration set and apply the
 compounding-error model to obtain a safe operating point without
 running the full cliff sweep.
 
-Third, compress-first (P1) is the better RAG architecture between
-the two compressed-corpus pipelines in both regimes \emph{on the
-single retriever/embedder stack tested} (a result that does not
-reproduce the LongLLMLingua post-retrieval-compression preference
-on this stack, but is not a general falsification). Joint
-relevance-conditional routing (P3) scores higher F1 still
-($42$~pp storage, $25$~pp accuracy). That advantage, however, comes
-from \emph{not compressing}: Section~\ref{sec:h3} shows P3 routes
-fragments verbatim (achieved ratio $1.00\times$), and the
-corpus-dominated cost model does not meter the compressor pass. The
-F1 ranking $\mathrm{P3} \succ \mathrm{P1} \succ \mathrm{P2}$ is
-therefore reported \emph{without} a cost-parity claim; whether P3's
-quality gain is cost-free is undetermined until the per-pipeline
-cost model is fixed. The defensible practitioner takeaway is narrower than a
-clean ranking: on this stack, prefer compress-first over
-retrieve-first, and treat P3 as a promising routing variant whose
-cost must be measured before deployment.
+Third, on the RAG-placement question, prefer compress-first over
+retrieve-first on a comparable stack; the joint router (P3) scores
+higher F1 only by routing fragments verbatim, so its
+cost-versus-quality trade-off must be measured before deployment.
+This is a secondary, single-stack result reported in
+Appendix~\ref{appendix:rag}, not a headline practitioner
+recommendation.
 
 Fourth, compression is a privacy lever, but a \emph{blunt}
 one, and the bluntness creates a policy conflict the memory bus

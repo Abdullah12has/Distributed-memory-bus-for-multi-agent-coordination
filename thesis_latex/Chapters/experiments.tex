@@ -114,8 +114,8 @@ $0.1$ is the smallest information-density gap that produces a
 qualitatively distinct cliff shape on the three benchmarks
 evaluated; below this gap the cliffs are visually
 indistinguishable on the AUC-based $\theta_\text{info}$ axis. The
-bar is conservative against estimator noise: the empirical gaps in
-Table~\ref{tab:corollary2} ($0.48$ between C1 family-a and
+bar is conservative against estimator noise: the empirical gaps
+(Section~\ref{sec:corollary2}: $0.48$ between C1 family-a and
 MultiHop-RAG, $0.59$ between C1 family-a and HotpotQA) clear it by
 several multiples, so the corollary verdict does not turn on the
 precise location of the bar within the noise floor.
@@ -253,115 +253,25 @@ block in each section
 ($\!$Sections~\ref{sec:h1}--\ref{sec:corollary2}) rests on the
 metrics in this table.
 
-{\small
-\begin{longtable}{p{3.0cm}p{5.4cm}p{5.4cm}}
-\caption{Choice of evaluation metrics. ``Why chosen'' captures the
-property each metric measures; ``Alternative declined'' names the
-closest competitor and the reason it was not used.}
-\label{tab:metric_choices} \\
+\begin{table}[h]
+\centering
+\caption{The verdict-critical evaluation metrics and the closest
+alternative declined for each; every numerical claim in this chapter
+resolves to one of these.}
+\label{tab:metric_choices}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{5.1cm}>{\raggedright\arraybackslash}p{4.3cm}}
 \hline
 Metric & Why chosen & Alternative declined \\
 \hline
-\endfirsthead
+Coordination success (binary) & Directly answers ``did the planner recover the answer?'', the deployment question. & Graded success (future work; the A3 probe justifies binary on dense tasks). \\
+Source-retention F1 (\texttt{qa\_f1}) & Comparable to the LLMLingua-2 / LongLLMLingua numbers, which is what makes the H1 mis-ranking claim meaningful. & ROUGE-L, BERTScore (less discriminating, or conflate compressor and metric). \\
+Critical-token-recall (CTR) & Family-specific information-preservation signal; the model's $q(r)$ and CAAC's back-off signal. & Generic token-recall (misleading on Phi-3: keeps ``the'', drops numerics). \\
+Spearman $\rho$, workload level & Rank correlation robust to the coordination $\{0,1\}$ boundaries; the H1 verdict statistic. & Pearson $r$ (needs linearity); pooled $\rho$ (pseudo-replication). \\
+BCa bootstrap; paired Wilcoxon; Holm & Skew-robust CIs; a paired test for shared workloads; family-wise correction. & Percentile bootstrap; Mann--Whitney (independence fails); Bonferroni (over-conservative). \\
 \hline
-Metric & Why chosen & Alternative declined \\
-\hline
-\endhead
-\hline
-\multicolumn{3}{r}{\textit{(continued on next page)}} \\
-\endfoot
-\hline
-\endlastfoot
-\multicolumn{3}{l}{\textit{Task-level outcomes.}} \\
-Coordination success (binary per-instance)
-  & Directly answers ``did the planner recover the correct answer?'';
-    matches the practitioner's deployment question and operationalised
-    once in \charef{introduction}~Section~\ref{sec:multi_fragment}.
-  & Graded success: the A3 probe (Section~\ref{sec:a3_probe}) shows
-    binary is justified on dense tasks; the graded refinement is
-    named as future work on distributed tasks. \\
-Token-overlap F1 (qa\_f1)
-  & Comparability to the LongLLMLingua / LLMLingua-2 numbers; the
-    metric the prior literature reports against, which is what makes
-    the H1 mis-ranking claim meaningful.
-  & ROUGE-L: rewards long spans, less discriminating at high
-    compression. BERTScore: requires an embedding model in the metric
-    pipeline, conflates compressor and metric quality. \\
-\hline
-\multicolumn{3}{l}{\textit{Compressor-side measurements.}} \\
-Critical-token recall (CTR)
-  & Family-specific information-preservation signal; what the
-    compounding-error model's $q(r)$ measures, and what CAAC's
-    back-off uses.
-  & Generic token-recall: empirically misleading on Phi-3 (preserves
-    ``the'', drops numerics; Section~\ref{sec:ctr} of
-    \charef{implementation}). Retained as a reporting column only. \\
-Achieved compression ratio
-  & Phi-3-Mini extractive saturates at $\sim 2.5\times$; reporting
-    only the requested target hides the ceiling and would mis-rank
-    Phi-3 against the token-level compressors.
-  & Target ratio only: misleads on Phi-3's high-ratio cells; would
-    suggest Phi-3 cliffs the same way the token-level compressors do
-    when in fact it never reaches their compression range. \\
-\hline
-\multicolumn{3}{l}{\textit{Statistics and uncertainty.}} \\
-Spearman $\rho$ (H1)
-  & Rank correlation; appropriate for monotone-but-not-necessarily-%
-    linear relations between $\Delta$qa\_f1 and $\Delta$coord; robust
-    to clamping at the coord $\in\{0, 1\}$ boundaries.
-  & Pearson $r$: requires linearity, breaks at the boundaries.
-    Kendall $\tau$: equivalent at $n=150$ but less commonly reported
-    by downstream readers. \\
-BCa bootstrap ($n_\text{boot}=10{,}000$ for H1/H2/H3/H4; $500$ for
-$\theta_q$ and frontier-$\tau^{*}$ pipelines)
-  & Bias-corrected and accelerated~\cite{efron1993bootstrap} handles
-    the skewed residuals near $\tau^{*}$ that the interior-clamped
-    piecewise fit produces; the lower budget on the curve-fit
-    pipelines reflects per-iteration cost rather than a different
-    methodological choice.
-  & Basic percentile: under-covers in skewed residuals. Jackknife:
-    less stable on the workload-level resample at $n=150$. \\
-Paired Wilcoxon signed-rank
-  & The same workloads appear in both conditions; paired structure
-    violates the independence assumption of Mann--Whitney.
-  & Mann--Whitney $U$: independence fails on paired workloads.
-    Paired $t$-test: not robust to non-normal coord-success
-    distributions (heavily zero/one-inflated near the cliff). \\
-Holm sequentially-rejective
-  & Less conservative than Bonferroni at the family sizes used
-    ($3$--$12$ cells), preserving power on the cliff-existence
-    claim.
-  & Bonferroni: over-conservative at these family sizes.
-    Benjamini--Hochberg: controls FDR rather than FWER, which is the
-    wrong error rate for a cliff-existence verdict. \\
-TOST equivalence test (Corollary~1)
-  & Direct test of ``no shift $\ge X$'' rather than the
-    affirming-the-null reading of CI-containment.
-  & CI-containment alone: weak evidence when the CI is wide (as on
-    DeepSeek V4 Pro, Section~\ref{sec:frontier_deepseek}). \\
-\hline
-\multicolumn{3}{l}{\textit{Derived quantities.}} \\
-$\theta_q$ (cliff-recall threshold)
-  & Per-family recall at which coord-success drops to $0.5 \cdot p_0$;
-    estimated by \texttt{derive\_theta()}; the model's threshold
-    parameter.
-  & Per-task $\theta_q$: lifted to future work because per-family is
-    the tractable first-order term. \\
-$\theta_\text{info}$ (AUC-based info density)
-  & Captures the curve's \emph{shape} (sharp vs gradual). Explicitly
-    distinct from $\theta_q$
-    (Section~\ref{sec:theta_info_def}).
-  & Conditional entropy of answer given input: an external probe
-    that would break Corollary~2's circularity; named as future
-    work. \\
-Disclosure rate (H4)
-  & Fraction of yes/no protected-fact questions correctly recovered;
-    directly auditable against a governance budget.
-  & ROC-AUC: requires probabilistic outputs the Ollama reader does
-    not expose reliably. Calibration error: not what the threat
-    model in Section~\ref{sec:h4_threat} asks. \\
-\end{longtable}
-}
+\end{tabular}
+\end{table}
 
 \subsection{Workload-level versus cell-level statistics}
 \label{sec:metric_unit}
@@ -644,40 +554,12 @@ establishes is the \emph{shape}: the drop is concentrated in a
 narrow span of compression ratios, which is the signature the
 compounding-error model is built around.
 
-\paragraph{$\tau^{*}$-register table.}
-Four numerical values for the family-a $\times$ LLMLingua-2 cliff
-appear in the manuscript; they correspond to different
-measurement contexts and are not in conflict.
-Table~\ref{tab:tau_register} consolidates them so the chapter's
-later sections can reference one number per context without
-re-explaining the register.
-
-\begin{table}[h]
-\centering
-\caption{$\tau^{*}$ register for the family-a $\times$ LLMLingua-2
-cell. The deterministic coarse-grid value $2.5$ is a
-grid-quantised artefact; the fine-grid re-resolution
-$\approx 1.1$ is the true deterministic-solver cliff; the
-LLM-planner value $\approx 2.48$--$2.79$ is the deployment-relevant
-quantity (Section~\ref{sec:corollary1}); and $\tau^{*}=2.6997$ is a
-superseded auxiliary fit retained only in the audit-trail JSON.}
-\label{tab:tau_register}
-\small
-\begin{tabular}{lcl}
-\hline
-Context & $\tau^{*}$ & Source / use \\
-\hline
-Deterministic, coarse-grid sweep        & $2.5$              & Table~\ref{tab:h2_tau} (sweep midpoint, quantised) \\
-Deterministic, fine-grid re-resolution  & $\approx 1.1$      & \texttt{results/h1\_h2\_finegrid/} \\
-LLM planner, local 8B + frontier 72B    & $\approx 2.48$--$2.79$ & Section~\ref{sec:corollary1}, deployment-relevant \\
-Auxiliary fit on \texttt{h1\_h2\_final} & $2.6997$           & superseded; retained in audit trail only \\
-\hline
-\end{tabular}
-\end{table}
-
-The deployment-relevant value is the LLM-planner range; the
-deterministic-solver values are conservative lower bounds, not
-deployment numbers.
+The deployment-relevant cliff for the family-a $\times$ LLMLingua-2
+cell is the LLM-planner value $\tau^{*}\approx 2.7$ (local
+Llama-3.1-8B $\approx 2.48$, frontier Qwen-2.5-72B $\approx 2.79$;
+Section~\ref{sec:corollary1}); the coarse-grid deterministic-solver
+value $2.5$ and its fine-grid re-resolution $\approx 1.1$ are
+artefacts of the brittle regex solver, not deployment numbers.
 
 \begin{figure}[h]
 \centering
@@ -1596,178 +1478,28 @@ consistency result rather than a proven invariance, with the larger
 frontier sample that would settle it named in
 Section~\ref{sec:future}.
 
-\section{H3: RAG Pipeline Placement, Compress-First Dominance}
+\section{H3: RAG Pipeline Placement (Summary)}
 \label{sec:h3}
 
-\begin{tcolorbox}[colback=black!4, colframe=black!50, sharp corners,
-                  boxrule=0.4pt, boxsep=2pt, left=4pt, right=4pt,
-                  top=2pt, bottom=2pt]
-\textbf{H3. Supported finding:} compress-first (P1) is preferred
-over retrieve-first (P2) in \emph{both} the storage-bounded and
-accuracy-bounded regimes (by $3.2$ and $2.0$~pp F1, paired-bootstrap
-CIs excluding zero): a robust single-stack ordering that does
-\emph{not} reproduce the post-retrieval-compression preference of
-the LongLLMLingua~\cite{jiang2024longllmlingua} line of work on the
-retriever/embedder stack tested here. \textbf{Pre-registered
-predicate not satisfied:} the original H3 prediction (that the
-optimal pipeline sign-flips between the storage- and
-accuracy-bounded regimes with a $\ge\!5$~pp effect) is
-\emph{not} observed; the optimum does not change between regimes.
-P3 (joint relevance-conditional routing) leads both regimes on F1
-but routes fragments \emph{verbatim} (achieved compression
-$1.00\times$), so the cross-pipeline F1 gap is not a
-matched-compression comparison and does \emph{not} support a Pareto
-claim for P3 (Section~\ref{sec:h3_cost_caveat}).
-\end{tcolorbox}
-
-\subsection{Setup}
-
-The three pipelines (P1, P2, P3) are the catalogue described in
-Section~\ref{sec:rag_pipelines} of \charef{implementation}.
-Each is run under a storage-bounded regime (FAISS index
-$\le 100$~MB) and an accuracy-bounded regime (retrieval recall@10
-$\le 0.85$), measured on the C1 family-a generator with both
-F1 score and the EUR-per-workflow cost
-model~\cite{fcgfinancial2026}. The canonical results directory is
-\texttt{results/h3\_final/}.
-
-\subsection{Result}
-
-Table~\ref{tab:h3} reports the per-regime mean F1 and the
-per-query EUR cost for each pipeline. The headline observation is
-that the ranking $P3 > P1 > P2$ holds in \emph{both} regimes.
-P1 is above P2 by $3.2$ percentage points (pp) F1 in the
-storage-bounded regime and by $2.0$~pp in the accuracy-bounded
-regime, with $95\%$ paired-bootstrap CIs ($[1.84, 4.72]$~pp and
-$[1.15, 2.85]$~pp respectively) that comfortably exclude zero.
-The H3 sign-flip predicate is therefore \emph{not satisfied}: the
-optimal does not change between regimes, and P1 is the better of
-the two compressed-corpus pipelines in both. P3 (joint
-relevance-conditional routing) leads both regimes by a substantial
-margin.
-
-\emph{Note:} P2 and P3 achieved compression ratio $1.00\times$ on
-retrieved fragments in this implementation, routing them verbatim,
-while P1 applies compression pre-retrieval. The F1 comparison is
-therefore not matched on compression across all three pipelines, so
-the P3 lead is not a Pareto claim; see
-Section~\ref{sec:h3_cost_caveat} for the cost-model implications.
-
-\begin{table}[h]
-\centering
-\caption{H3 verdict table. Mean F1, per-query EUR cost, and
-\emph{achieved} compression ratio ($\times$) by regime and
-pipeline from \texttt{results/h3\_final/} and the cost-instrumented
-re-run \texttt{results/h3\_eprice/} (n = 150 workloads per cell).
-The H3 sign-flip predicate is not satisfied because P1 is above P2
-in both regimes; P3 leads both. The narrowed finding is a
-compress-first preference of $3.2$~pp F1 (storage) / $2.0$~pp F1
-(accuracy). The achieved-ratio column is
-the key to reading P3: only P1 actually compresses (7.49$\times$ /
-2.11$\times$), while P2 and P3 route fragments verbatim
-($1.00\times$), so the cross-pipeline F1 gap is not a
-matched-compression comparison.}
-\label{tab:h3}
-\small
-\begin{tabular}{lrrr|rrr}
-\hline
-& \multicolumn{3}{c|}{Storage-bounded}
-& \multicolumn{3}{c}{Accuracy-bounded} \\
-Pipeline & F1 & EUR/q & $\times$ & F1 & EUR/q & $\times$ \\
-\hline
-P1 (compress$\to$retrieve) & $0.396$ & $2.72\times 10^{-5}$ & $7.49$ & $0.648$ & $3.29\times 10^{-5}$ & $2.11$ \\
-P2 (retrieve$\to$compress) & $0.364$ & $2.82\times 10^{-5}$ & $1.00$ & $0.628$ & $3.00\times 10^{-5}$ & $1.00$ \\
-P3 (joint, conditional)    & $\mathbf{0.820}$ & $3.07\times 10^{-5}$ & $1.00$ & $\mathbf{0.895}$ & $3.10\times 10^{-5}$ & $1.00$ \\
-\hline
-$p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{3}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{3}{c}{$2\!\times\!10^{-4}$} \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Interpretation: why the sign-flip did not appear}
-
-The original H3 predicate rested on the LongLLMLingua-style
-intuition that post-retrieval compression (P2) is more efficient
-than pre-retrieval compression (P1) because the retriever has
-already filtered the corpus down to the relevant chunks before the
-compressor runs. The interpretation depends on two assumptions
-that the empirical work invalidates: first, that retrieval over an
-uncompressed corpus is cheap (it is not: the FAISS index over
-the uncompressed corpus grows linearly in corpus size and
-dominates the storage budget); second, that compression after
-retrieval can be more aggressive than compression before (the
-empirical compression ratios at iso-F1 are comparable). What
-remains is the symmetric effect: pre-indexing compression amortises
-the compressor cost across queries while post-retrieval compression
-pays it per query.
-
-The compress-first preference over retrieve-first is a
-substantive finding because it does not reproduce the assumed
-post-retrieval-compression default on the stack we tested, and
-the P3-higher-F1 result points to a promising routing variant.
-For practitioners, the recommendation is deliberately hedged on
-cost: \textbf{compress-first (P1) is the safe default over
-retrieve-first (P2) on a comparable stack};
-\textbf{P3 (joint relevance-conditional routing) is worth
-evaluating where the F1 gain matters}: its F1 leads
-compress-first by $42$~pp (storage) and $25$~pp (accuracy), but
-note that P3 attains this F1 by routing fragments \emph{verbatim}
-(achieved ratio $1.00\times$, Table~\ref{tab:h3}) rather than by
-better compression, and the cost model is corpus-dominated and does
-not meter compression compute (Section~\ref{sec:h3_cost_caveat}), so
-the F1 gain cannot yet be claimed as cost-free and must be
-re-measured with a faithful per-pipeline cost model before
-deployment; post-retrieval
-compression (P2) is only preferable when the corpus is small
-enough that storage cost is irrelevant and retrieval recall is
-the binding constraint.
-
-\subsection{Limitations and the cost model caveat}
-\label{sec:h3_cost_caveat}
-
-The cost model uses the requested compression ratio rather than
-the achieved compression ratio because the achieved ratio depends
-on the compressor and the request flows through the pipeline as
-target. For Phi-3-Mini extractive the ceiling effect makes
-this an asymmetric error in favour of P2 (which pays the
-compressor per query and is therefore most sensitive to the
-ceiling), so the P1 result is the conservative one.
-
-A second, stronger caveat is sharpened by a cost-instrumented
-re-run that records the \emph{achieved} compression ratio per
-pipeline (\texttt{results/h3\_eprice}). The \texttt{eur\_per\_query} column is
-\emph{not} constant: it is computed per pipeline from a
-per-pipeline token count (P1: full corpus plus compressed corpus;
-P2: corpus plus retrieved tokens; P3: corpus plus $0.7\times$
-retrieved), but on this re-run the pipelines differ by only
-$4.1$--$4.9\%$ in EUR within a regime, because a shared
-corpus-indexing term dominates
-\texttt{input\_tokens} and is added identically to every pipeline.
-This small, corpus-dominated spread is easily mistaken for a single
-constant; the substantive defect, however, is not that the
-EUR values are near-identical but that the cost model is \emph{corpus
-dominated} and, more importantly, \textbf{does not meter compression
-compute at all}, only the resulting token counts, so a pipeline
-that runs an expensive compressor pass is not charged for it. The
-achieved-ratio column makes the consequence concrete: only
-compress-first (P1) actually compresses ($7.49\times$ storage,
-$2.11\times$ accuracy), while both retrieve-first (P2) and the joint
-router (P3) record an achieved ratio of \textbf{$1.000$}; they send
-the retrieved fragments to synthesis essentially verbatim. Together
-these explain the headline cleanly: \textbf{P3's large F1 advantage
-comes substantially from not compressing}, at a compression and
-compute cost the current corpus-dominated model does not faithfully
-charge for. As a consequence the thesis makes \textbf{no cost-parity
-and no Pareto claim} for the P3-vs-P1 comparison; the cross-pipeline
-F1 comparison is \emph{not} a matched-compression comparison, and P3
-should be read as ``verbatim routing preserves F1 at a compression and
-cost the current model does not faithfully charge for'' rather than as
-a free-lunch improvement. The remedy is a faithful per-pipeline cost
-model that meters the compressor pass and amortises a persistent
-index across queries, rather than re-charging the corpus on every
-query. Section~\ref{sec:future} names this as the most natural
-follow-on study, alongside the single-retriever, single-embedder
-limitation (Section~\ref{sec:limitations}).
+The thesis also examined where compression should sit relative to
+retrieval, comparing three pipeline placements (compress-first,
+retrieve-first, and a joint relevance-conditional router) under
+matched storage- and accuracy-bounded regimes
+(Section~\ref{sec:rag_pipelines}). The pre-registered prediction was
+a sign-flip in the optimal pipeline between the two regimes; it is
+\emph{not} observed. The narrowed, supported finding is that
+compress-first is preferred over retrieve-first in both regimes (by
+$3.2$ and $2.0$~pp F1, paired-bootstrap CIs excluding zero) on the
+single \texttt{bge-large-en-v1.5} + FAISS-CPU stack tested, which
+does \emph{not} reproduce the post-retrieval-compression preference
+of the LongLLMLingua~\cite{jiang2024longllmlingua} line of work. A
+joint router scores higher F1 but achieves it by routing fragments
+verbatim, and the EUR cost model is corpus-dominated and does not
+meter compression compute, so no cost-parity or Pareto claim is
+made. Because this result is a single-stack non-reproduction
+orthogonal to the coordination cliff and the memory bus, the full
+verdict table, the pipeline definitions, and the cost-model caveat
+are reported in Appendix~\ref{appendix:rag}.
 
 \section{H4: Summary-Level Inference Disclosure}
 \label{sec:h4_disclosure}
@@ -2169,155 +1901,33 @@ core; a concurrent-HTTP-path throughput sweep and an audit-verify
 scaling curve remain future work (Section~\ref{sec:future} of
 \charef{summary}).
 
-\section{Corollary~2: Information-Density Scaling on Real Benchmarks}
+\section{Corollary~2: Information-Density Scaling (Brief)}
 \label{sec:corollary2}
-
-\begin{tcolorbox}[colback=black!4, colframe=black!50, sharp corners,
-                  boxrule=0.4pt, boxsep=2pt, left=4pt, right=4pt,
-                  top=2pt, bottom=2pt]
-\textbf{Corollary~2 (information-density scaling): empirical
-observation, $n=3$.} Across the three benchmarks tested (C1
-family-a, MultiHop-RAG, HotpotQA), the \emph{shape} of the cliff,
-sharpness and pre-cliff plateau, varies systematically with
-the AUC-based information-density estimate $\theta_\text{info}$
-(defined formally in Section~\ref{sec:theta_info_def}, distinct
-from $\theta_q$). Dense tasks ($\theta_\text{info} \to 1$)
-exhibit a sharp cliff with a high coordination-success plateau;
-distributed tasks ($\theta_\text{info} \to 0$) degrade gradually
-from a lower baseline. \textbf{Important scope:} the corollary is
-reported as an empirical observation on three benchmarks, not as
-a derived consequence of the compounding-error model. (i) $n=3$
-is a small sample; the trend is consistent but not a scaling
-law. (ii) $\theta_\text{info}$ is computed from the same
-coordination curve whose shape it describes, so
-``$\theta_\text{info}$ predicts shape'' is a circular description:
-an external probe of task density (e.g., conditional entropy of
-the answer given the input) is required to break the
-circularity and is named as future work in
-Section~\ref{sec:future}. (iii) The corollary makes a claim about
-cliff \emph{shape}, not about the absolute cliff position
-$\tau^{*}$: HotpotQA cliffs at $\tau^{*} \approx 2.7$ (similar
-to dense C1 family-a) yet has $\theta_\text{info} \approx 0.37$
-(very distributed); the baseline coordination on HotpotQA is only
-$0.59$ and the degradation shape is gradual rather than
-precipitous. \textbf{Verdict: SUPPORTED as an empirical observation
-on $n=3$ benchmarks} by the gap in $\theta_\text{info}$ between C1
-family-a ($\approx 0.97$, dense), MultiHop-RAG ($\approx 0.48$,
-distributed), and HotpotQA ($\approx 0.37$, highly distributed),
-and by the qualitatively distinct degradation shapes visible in
-Figure~\ref{fig:hotpotqa_cliff} and
-Figure~\ref{fig:cliff_families}. The original H6 predicate
-(synthetic-vs-real $\tau^{*}$ within $\pm 15\%$) is not satisfied:
-MultiHop-RAG cliffs at $11.3$, far from the C1 reference, which
-motivated the sharpening from position transfers to shape transfers.
-\end{tcolorbox}
-
-\subsection{\texorpdfstring{$\theta_\text{info}$ versus $\theta_q$}{theta\_info versus theta\_q}}
 \label{sec:theta_info_def}
 
-A subtle point that the corollary's refined framing makes explicit: the
-information-density $\theta_\text{info}$ that Corollary~2 talks
-about is \emph{not} the cliff-recall threshold $\theta_q$ that
-Corollary~1 and the compounding-error model talk about. The two
-quantities are derived from different measurements and answer
-different questions. $\theta_q$ is the recall threshold per
-family at which coordination success drops to $0.5$ of $p_0$,
-estimated by \texttt{derive\_theta()}; $\theta_\text{info}$ is
-the per-task information-density estimate
-\[
-  \theta_\text{info} \;=\; 1 - \mathrm{AUC}\!\left[\frac{\text{coord-success}(r)}{p_0}\right]_{r=1}^{r_{\max}},
-\]
-estimated by \texttt{estimate\_task\_theta()}, which captures how
-\emph{concentrated} the task's information is in compression-%
-sensitive tokens. The two are easily conflated; the project
-glossary distinguishes them explicitly.
-
-\subsection{Result on three benchmarks}
-
-Table~\ref{tab:corollary2} reports $\theta_\text{info}$ and the
-empirical $\tau^{*}$ for the three benchmarks. The information
-density spans from $0.97$ on the dense C1 family-a to $0.37$ on
-HotpotQA, and the cliff position correspondingly spans from
-$\tau^{*} \approx 2.7$ on family-a to $\tau^{*} \approx 11.3$ on
-MultiHop-RAG: a $4\times$ shift in the cliff position that the
-single-$\theta_q$ compounding-error model cannot account for and
-that the information-density scaling claim does.
-
-\begin{table}[h]
-\centering
-\caption{Corollary~2 verdict table. $\theta_\text{info}$ and
-empirical $\tau^{*}$ across the three benchmarks. The cliff shifts
-late as the information density drops, with the gap between dense
-and distributed tasks far exceeding the $0.1$ threshold of the
-corollary predicate. The C1 family-a row uses the canonical
-\texttt{h1\_h2\_v2} fit $\tau^{*}=2.5$ (Section~\ref{sec:frontier});
-the earlier register $\tau^{*}_\text{aux}=2.6997$ on
-\texttt{h1\_h2\_final} is superseded and is retained only as a
-parenthetical in the footnote. The $\sim 8\%$ shift between the
-two registers does not change the qualitative ordering or the
-corollary verdict.}
-\label{tab:corollary2}
-\small
-\begin{tabular}{p{4.5cm}rrl}
-\hline
-Task & $\theta_\text{info}$ & $\tau^{*}$ & $\theta_\text{info}$ source CSV \\
-\hline
-C1 family-a (dense, numeric)  & $0.967$ & $2.5$  & \texttt{h1\_h2\_v2/} (a, lingua2) \\
-MultiHop-RAG (distributed QA)   & $0.484$ & $11.3$ & \texttt{h6\_final/results.csv} \\
-HotpotQA (very distributed)    & $0.373$ & $2.7$  & \texttt{hotpotqa\_sweep/} \\
-\hline
-\multicolumn{3}{l}{\textbf{Gap} (dense vs MultiHop-RAG) $= 0.48$; (dense vs HotpotQA) $= 0.59$.} & \\
-\hline
-\multicolumn{4}{p{12cm}}{\footnotesize All three $\theta_\text{info}$ values are computed by \texttt{estimate\_task\_theta()} (AUC-based) from the per-task CSVs above and consolidated in \texttt{results/corollary2\_theta\_info.json}. The $\tau^{*}$ for C1 family-a is the canonical \texttt{h1\_h2\_v2} fit $2.5$ (the earlier $2.7$ was the superseded \texttt{h1\_h2\_final} auxiliary fit; the fine-grid deterministic-solver cliff is lower still, $\approx 1.1$, Section~\ref{sec:h2}).} \\
-\end{tabular}
-\end{table}
-
-The HotpotQA result requires brief comment: $\tau^{*}$ on
-HotpotQA is approximately $2.7$, similar to C1 family-a's, but
-the baseline coordination success on HotpotQA is only $0.59$, so
-the absolute coordination success at the cliff is much lower
-($\approx 0.30$). The corollary claim is about the \emph{shape}
-of the degradation (gradual versus sharp), captured by
-$\theta_\text{info}$ via the AUC computation, not about the
-absolute position alone. Figure~\ref{fig:hotpotqa_cliff} shows
-the HotpotQA cliff with the gradual-degradation pattern visible.
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.72\textwidth]{../figures/hotpotqa_cliff.pdf}
-\caption{HotpotQA cliff curve under LLMLingua-2 compression. The
-baseline coordination success is $0.59$, lower than family-a's
-$1.00$; the fitted cliff position (piecewise/logistic breakpoint,
-\texttt{results/hotpotqa\_sweep/}) is
-$\tau^{*} \approx 2.7$, similar to family-a's; but the
-\emph{shape} of the degradation is gradual rather than sharp, as
-captured by the lower $\theta_\text{info}$ of $0.37$.}
-\label{fig:hotpotqa_cliff}
-\end{figure}
-
-\subsection{Interpretation}
-
-The corollary makes the compounding-error model's per-family
-$\theta_q$ structure plausible as the first-order term of a
-finer description. $\theta_\text{info}$ tells you how much of the
-task's success curve is concentrated in compression-sensitive
-tokens; $\theta_q$ tells you the recall threshold at which
-success collapses given that concentration. The two together
-describe the cliff position and shape; either alone is a
-first-order summary. For the thesis, $\theta_\text{info}$ is what
-makes the cross-benchmark transfer of the cliff structure
-auditable: a practitioner who needs to deploy compression on a
-new task can estimate $\theta_\text{info}$ on a small calibration
-set and predict whether the task is dense (cliff early, sharp) or
-distributed (cliff late, gradual) before sweeping the full curve.
-
-The original H6 predicate (synthetic-versus-real $\tau^{*}$ within
-$\pm 15\%$) is not satisfied at the table-level numbers; the
-sharpened Corollary~2 predicate (gap in $\theta_\text{info}$
-$\ge 0.1$ between dense and distributed benchmarks) is SUPPORTED. The synthetic
-benchmark is still the right place to characterise the cliff
-mechanism cleanly, and the real benchmarks are the right place to
-validate the structure transfers.
+The cliff's \emph{shape} (how sharply success falls, and from what
+plateau) tracks how concentrated a task's information is in
+compression-sensitive tokens. An AUC-based per-task
+information-density estimate $\theta_\text{info}$, distinct from the
+recall threshold $\theta_q$ of Section~\ref{sec:cem} ($\theta_q$ is
+the recall floor at which success collapses; $\theta_\text{info}$
+summarises the whole success curve's shape), orders the three
+benchmarks tested: C1 family-a $\approx 0.97$ (dense numeric, a sharp
+early cliff), MultiHop-RAG $\approx 0.48$, and HotpotQA $\approx 0.37$
+(distributed, with gradual degradation from a lower baseline). The
+dense-versus-distributed gaps ($0.48$ and $0.59$) far exceed the
+$0.1$ predicate, so the corollary is \textbf{supported as an
+empirical observation on $n=3$ benchmarks}. Two honest limits keep it
+modest: $n=3$ is a small sample, and $\theta_\text{info}$ is computed
+from the same coordination curve whose shape it describes, so an
+external density probe is needed to break the circularity (named as
+future work, Section~\ref{sec:future}). The original H6 predicate
+(synthetic-versus-real $\tau^{*}$ within $\pm 15\%$) is \emph{not}
+satisfied: MultiHop-RAG cliffs near $11.3$, far from the C1
+reference, which is what motivated the shift from a position-transfer
+claim to a shape-transfer one. The payoff is real but bounded: the
+cliff structure transfers to real multi-hop benchmarks, even where
+the absolute positions differ.
 
 \section{Reproducibility}
 \label{sec:repro}

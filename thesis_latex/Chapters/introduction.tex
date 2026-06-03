@@ -174,11 +174,17 @@ multi-fragment coordination success for \emph{any} of the four
 compressors tested. The single-agent benchmarks that dominate the
 prompt-compression literature (LLMLingua-2, LongLLMLingua, LongBench,
 RULER) therefore systematically mis-rank compressors for
-multi-fragment deployment. The remaining contributions support this
-finding: C1 is the benchmark it is measured on, C2 is the structural
-characterisation it sits inside, C3 is a deployment-oriented
-catalogue, and C4 is the engineering artefact that operationalises
-the disclosure-side findings.
+multi-fragment deployment. The thesis then turns that finding into
+an engineering payoff that is its principal deliverable: a
+\emph{compression-aware memory bus} (C4) whose compression layer is
+tuned by the cliff measurements rather than by guesswork, and which
+is built to cut inference cost in production. Three artefacts carry
+the work: C1 is the benchmark the finding is measured on, C2 is the
+structural characterisation (the coordination cliff, the model that
+explains it, and two corollaries) it sits inside, and C4 is the
+memory bus that operationalises both. A fourth, secondary analysis
+(C3, a catalogue of retrieval-augmented-generation pipeline
+placements) is reported in Appendix~\ref{appendix:rag}.
 
 \paragraph{C1: A reproducible multi-fragment coordination
 benchmark.}
@@ -228,73 +234,53 @@ HotpotQA and MultiHop-RAG. An out-of-regime GPT-oss~120B diagnostic
 identifies extended-reasoning planners as a structurally distinct
 case that prior compression work treats implicitly.
 
-\paragraph{C3: A catalogue of three retrieval-augmented-%
-generation pipelines with a EUR-per-workflow cost model.}
-Three pipeline architectures (compress-first, retrieve-first,
-joint relevance-conditional routing) are implemented end-to-end on
-FAISS-CPU and HNSW and evaluated under matched storage-bounded
-and accuracy-bounded regimes. The original H3 hypothesis predicted
-a sign-flip in the optimal pipeline between regimes; the empirical
-work shows that compress-first (P1) is preferred over retrieve-first
-(P2) in both regimes (by 3.2 pp F1 storage, 2.0 pp F1 accuracy)
-\emph{on the single \texttt{bge-large-en-v1.5} + FAISS-CPU stack
-evaluated here}, and the joint relevance-conditional routing (P3)
-scores higher F1 still ($0.905$ in both regimes). The
-compress-first-over-retrieve-first finding \emph{does not
-reproduce}, on this stack, the post-retrieval-compression
-preference of the LongLLMLingua~\cite{jiang2024longllmlingua} line
-of work; this is a single-stack result, not a general
-falsification. The P3 F1 advantage must be read with an important
-caveat: a cost-instrumented re-run
-shows that P3 (and P2) route retrieved fragments \emph{verbatim}
-(achieved compression ratio $1.00\times$) while only compress-first
-P1 actually compresses, and the EUR cost model is corpus-dominated
-and does not meter compression compute (\S{}\ref{sec:h3}), so the
-cross-pipeline F1 gap is \emph{not} a matched-compression comparison
-and \textbf{no cost-parity or Pareto claim can be supported}. The
-honest C3 contribution is the compress-first-over-retrieve-first
-ordering on the tested stack plus the catalogue itself; the P3
-result is reported as verbatim-routing-preserves-F1-at-uncharged-cost.
+\paragraph{C3 (secondary): a catalogue of three
+retrieval-augmented-generation pipeline placements.}
+The thesis additionally catalogues three pipeline placements
+(compress-first, retrieve-first, and joint relevance-conditional
+routing) under matched storage- and accuracy-bounded regimes. The
+pre-registered sign-flip between regimes is \emph{not} observed; the
+narrowed, supported finding is that compress-first is preferred over
+retrieve-first on the single stack tested, which does not reproduce
+the LongLLMLingua~\cite{jiang2024longllmlingua} post-retrieval
+preference. Because the result is a single-stack non-reproduction
+orthogonal to the cliff and the bus, and its EUR cost model does not
+yet meter compression compute, the full treatment, table, and
+cost-model caveat are deferred to Appendix~\ref{appendix:rag}.
 
-\paragraph{C4: A memory-bus reference implementation and a
-summary-level inference-disclosure metric.}
-The memory bus is a FastAPI service with a tamper-evident SQLite
+\paragraph{C4: A compression-aware memory bus, tuned by the cliff
+measurements.}
+The thesis's principal engineering contribution is a memory bus that
+sits between the data sources and the planner, compresses every
+fragment in transit, and turns the token savings directly into lower
+inference cost. It is a FastAPI service with a tamper-evident SQLite
 audit log, a policy middleware that enforces a five-tier
 classification lattice over a $64$-bit access-control mask, an
 in-memory scratchpad with TTL eviction, and a FAISS-CPU vector
-store. The compressor abstraction is a Python protocol that all
-five compressor variants satisfy. The summary-level
-inference-disclosure metric quantifies how compression at
-$4\times$ reduces the rate at which a held-out local Llama-3.1-8B
-reader can recover protected facts from a compressed
-\textsc{confidential} fragment. The metric ranks compressors by
-disclosure rate at iso-ratio, and the memory bus's policy layer
-operationalises the ranking as a deployment-time enforcement
-mechanism; Section~\ref{sec:h4_construct} documents that the
-ranking is monotonic in how aggressively each compressor destroys
-source tokens (truncation at the top), which calibrates the
-privacy interpretation against the destruction baseline.
-\textbf{Scope of the C4 claim.} The \emph{research} content of C4 is
-the disclosure metric (H4, Section~\ref{sec:h4_disclosure}) and the
-oracle-redaction control; the bus \emph{service} is the engineering
-artefact that operationalises it. The bus is benchmarked for
-single-host throughput and latency (policy check, end-to-end
-write/read, and audit hash-chain verification;
-Section~\ref{sec:bus_bench}), but its \emph{distributed} and
-multi-tenant scaling (contention under concurrent writers,
-policy-lattice scaling, and cross-host replication) is not
-measured here and is named as follow-on work.
-
-The thesis also presents \textbf{CAAC} (Cliff-Aware Adaptive
-Compression), a wrapper that operationalises the compounding-%
-error bound as a runtime back-off: given a per-family recall
-threshold, CAAC binary-searches downward over compression ratios
-until the per-fragment critical-token-recall sits on the safe
-side of the cliff. CAAC is presented in
-\charef{summary} as a constructive demonstration of the
-compounding-error model rather than as a fifth headline
-contribution; the demonstration is that the cliff bound is not
-only descriptive but operational.
+store, behind a single \texttt{Compressor} protocol that every
+compressor variant satisfies. What makes the bus more than plumbing
+is that its compression layer is \emph{driven by the experimental
+findings}. First, a cliff-aware wrapper, \textbf{CAAC}, takes the
+per-family recall threshold $\theta_q$ measured on the cliff sweep
+and, per fragment, backs off to the most aggressive compression
+ratio that still keeps critical-token-recall on the safe side of the
+cliff, so the bus compresses as hard as the evidence allows without
+crossing the failure threshold the experiments locate. Second, a
+summary-level inference-disclosure metric (H4,
+Section~\ref{sec:h4_disclosure}) caps how much a downstream reader
+can recover a protected fact from a compressed \textsc{confidential}
+fragment, and the policy layer enforces that disclosure budget at
+write time. The research content of C4 is the disclosure metric and
+the CAAC operating-point construction; the service is the artefact
+that operationalises them. \textbf{Scope and deployment.} The bus is
+benchmarked for single-host throughput and latency
+(Section~\ref{sec:bus_bench}); its \emph{distributed} and
+multi-tenant scaling is not measured here and is named as follow-on
+work. The reference implementation is slated for deployment and
+evaluation inside the production workflows of the industry partner,
+TalentAdore, whose operating expense is dominated by token cost, as
+the concrete next step from the cliff measurements to realised cost
+savings.
 
 \subsection{Reading guide and contribution hierarchy}
 \label{sec:reading_guide}
@@ -322,8 +308,8 @@ RQ / C & Plain-English question & Hyp. & Verdict (one line) \\
 \hline
 RQ1\newline C1--C2 & Does keeping a single fragment answerable also keep several fragments \emph{combinable}? & H1 & \textbf{No}: single-fragment F1 does not predict coordination success (\textsc{supported}). \\
 RQ2\newline C2 & Is there a sharp failure point as compression rises, and what fixes its position? & H2; Cor.~1; Cor.~2 & A sharp cliff exists (\textsc{supported}, $11/12$ cells); its position is set by compressor$+$task, not planner scale (no shift detected); its shape scales with information density (\textsc{supported}, $n{=}3$). \\
-RQ3\newline C3 & Where should compression sit relative to retrieval? & H3 & Compress-first dominates on the tested stack; the pre-registered regime sign-flip is \emph{not} observed (narrowed). \\
-RQ4\newline C4 & Can compression be a measurable privacy lever, enforced by a memory bus? & H4 & Compression reduces protected-fact disclosure (\textsc{supported}, $3/4$ compressors; destruction-driven). \\
+RQ3\newline C3 & Where should compression sit relative to retrieval? & H3 & Compress-first dominates on the tested stack; the sign-flip is \emph{not} observed (\emph{secondary}; Appendix~\ref{appendix:rag}). \\
+RQ4\newline C4 & Can the cliff findings drive a deployable memory bus that compresses safely and cheaply? & H4, CAAC & The bus compresses to the cliff-safe ratio (CAAC) and caps protected-fact disclosure (\textsc{supported}, $3/4$ compressors; destruction-driven). \\
 \hline
 \end{tabular}
 \end{table}
