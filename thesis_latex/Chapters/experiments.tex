@@ -26,7 +26,7 @@ version control, not a third-party-frozen pre-registration
 (e.g.\ OSF or AsPredicted). The criteria for H3, H5, and H6 were
 refined after the sweeps; the refinements are documented as ADR-006--008
 in the project repository. The three-tier structure used in the rest
-of the chapter:
+of the chapter is as follows.
 
 \textbf{Three hold as pre-specified.} H1 (workload-level
 source-retention F1 does not transferably predict coordination
@@ -213,7 +213,7 @@ $p$ for $H_0: \rho = 0$ is reported at the workload level; the
 verdict rests on the BCa bootstrap CI (over workloads) excluding
 $0.6$.
 
-Cliff position $\tau^{*}$ is extracted by fitting both a piecewise-
+Cliff position $\tau^{*}$ is extracted by fitting both a piecewise-%
 linear model and a logistic
 \[
   f(r) = p_0 + \frac{p_\infty - p_0}{1 + e^{-k(r - \tau^{*})}}
@@ -306,7 +306,7 @@ Achieved compression ratio
 \hline
 \multicolumn{3}{l}{\textit{Statistics and uncertainty.}} \\
 Spearman $\rho$ (H1)
-  & Rank correlation; appropriate for monotone-but-not-necessarily-
+  & Rank correlation; appropriate for monotone-but-not-necessarily-%
     linear relations between $\Delta$qa\_f1 and $\Delta$coord; robust
     to clamping at the coord $\in\{0, 1\}$ boundaries.
   & Pearson $r$: requires linearity, breaks at the boundaries.
@@ -1786,7 +1786,7 @@ caveats below.} Phi-3-Mini extractive shows no significant
 reduction ($0.4$~pp, $p = 0.91$) and is the structural exception.
 \textbf{Caveat~1 (reader bias):} the Llama-3.1-8B reader exhibits
 a strong YES-bias (rate $\approx 0.03$ on priors-only with a YES
-ground truth, $\approx 1.00$ on a NO ground truth); the pooled-
+ground truth, $\approx 1.00$ on a NO ground truth); the pooled-%
 rate verdict is balanced by ground-truth-class distribution rather
 than by reader-side accuracy, and the operational reading is
 \emph{``compression preserves enough information to flip a
@@ -2073,7 +2073,7 @@ no-biased reader to confident YES on a protected-fact question''}.
 This is an asymmetric leakage signal but it is a valid one: a
 reader that defaults to NO is the conservative case for
 privacy auditing because it is the case in which the absence of
-the protected fact most cleanly translates to a privacy
+the protected fact most cleanly translates to privacy
 preservation.
 
 The caveat is documented here rather than in the verdict block
@@ -2228,7 +2228,7 @@ the per-task information-density estimate
   \theta_\text{info} \;=\; 1 - \mathrm{AUC}\!\left[\frac{\text{coord-success}(r)}{p_0}\right]_{r=1}^{r_{\max}},
 \]
 estimated by \texttt{estimate\_task\_theta()}, which captures how
-\emph{concentrated} the task's information is in compression-
+\emph{concentrated} the task's information is in compression-%
 sensitive tokens. The two are easily conflated; the project
 glossary distinguishes them explicitly.
 

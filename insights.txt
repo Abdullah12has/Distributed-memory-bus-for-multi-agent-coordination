@@ -4984,3 +4984,75 @@ item-9 long-sentence legibility pass on the ~13-paragraph limitations block;
 author-verified" -- adequate, no change recommended. Full council verdict (5
 advisor takes + 5 peer reviews + chairman synthesis) retained in the session
 transcript. thesis.pdf re-synced from main.pdf after the rebuild.
+
+## 95. ITEM-9 LEGIBILITY PASS — LIMITATIONS SENTENCE SPLITS (LaTeX, 2026-06-03)
+
+Follow-on to §94. Targeted Oulu rubric item 9 ("clarity and legibility";
+penalises "clumsy sentences"). Split four long, clause-dense sentences in the
+Ch5 Limitations block (summary.tex) into shorter ones -- NO content, number,
+citation, or hedge changed; pure readability:
+1. A3-probe para: the opening run-on (em-dash + colon + verbless "curated
+   deletion ... scored by ..." fragment) -> three clean sentences; the probe
+   action is now a complete clause ("it deletes ... and scores ..."); the
+   residual statement keeps the Corollary-2 link and splits off "A graded-
+   success refinement is the open direction."
+2. Frontier-equivalence para: the ~55-word colon run-on -> two sentences
+   (neither cell passes; then the point-estimate-vs-CI contrast as an em-dash
+   aside). All numbers kept (7%, 0.8%, 2.6997, 90%, >20%).
+3. Predicted-tau* band: closed the embedded quote with a period, then a plain
+   declarative ("The model's accuracy is measured by the in-sample and LOO
+   match rates, not by the band.").
+4. Family-a homogeneity: a 44-word compound -> two sentences at the "but".
+Build clean (102pp, latexmk exit 0, 0 undefined refs, 7 overfull hboxes -- all
+pre-existing \texttt code identifiers; none added by this pass). thesis.pdf
+re-synced. The four splits cover the objectively longest Limitations
+sentences; an optional native-English read-aloud pass remains the author's to
+do if a "revised language" (item-9 = 5) bar is targeted.
+
+## 96. ITEM-9 FULL COPY-EDIT PASS (7 parallel proofreaders + adjudication, 2026-06-03)
+
+The "polish to perfection" pass the author requested as the LAST edit before
+submission: a whole-manuscript copy-edit for the item-9 "revised language" bar.
+Protocol: 7 parallel proofreading sub-agents (intro / related-work /
+implementation / experiments x2 / summary / front+back matter), each returning
+exact-quote + minimal-fix candidates; the main agent adjudicated and applied
+only meaning-preserving fixes via exact-string edits. NO number, claim,
+citation, hedge, British spelling, or coined term changed. Build clean after:
+latexmk exit 0, 102pp, 0 undefined refs, 0 errors, 7 overfull (all pre-existing
+\texttt code-identifier lines; none added).
+
+HIGHEST-VALUE FINDING -- mid-compound HYPHEN LINE-BREAKS rendered with a
+spurious space. Verified decisively via pdftotext: source "decoder-\nonly"
+printed as "decoder- only" (space); confirmed on decoder-only, memory-bus,
+compression-quality. 12 such breaks: intro(4), relatedwork(3), experiments(4),
+summary(1); implementation 0. Fixed by appending "%" after the trailing hyphen
+(perl -i, s/([A-Za-z])-$/$1-%/, diff confirmed ONLY "%" additions). Post-fix
+pdftotext: all spaced forms = 0, tight forms present (inference-disclosure x13,
+decoder-only x5, piecewise-linear x2, etc.). Invisible in the .tex but a real
+print defect on ~12 compounds -- the single biggest item-9/10 win of the pass.
+
+9 prose fixes (exact-string, minimal):
+- relatedwork: "...production accounts the cost model is calibrated against
+  confirm this pricing" -> "...accounts against which the cost model is
+  calibrated confirm this pricing" (missing relative pronoun; genuinely broken).
+  "energy at frontier-scale models" -> "energy of ...".
+- experiments: "The three-tier structure used in the rest of the chapter:"
+  (fragment + colon before a bold heading) -> "...is as follows.";
+  "translates to a privacy preservation" -> "...to privacy preservation"
+  (spurious article on a non-count noun).
+- summary: "drift of the kind a downstream reader could be misled by" ->
+  "...of the kind that could mislead a downstream reader" (de-passivise,
+  un-strand); paragraph break inserted in the long synthesis paragraph before
+  "The compounding-error model is a first-order ..." (topic boundary).
+- intro: "multi-round agent-negotiation" -> "agent negotiation" (open compound).
+- appendices: "PolicyMiddleware which" -> "PolicyMiddleware, which" (non-
+  restrictive comma); "newly-matched" -> "newly matched" (-ly adverb).
+
+Deliberately NOT changed (precision over recall): "disclosure-reduction /
+coordination-loss" bare-noun hyphens (defensible as named quantities); "data
+was" singular-collective (consistent manuscript-wide); the one residual
+12.25pt overfull (a \texttt results path in related work -- unbreakable token,
+cosmetic). implementation.tex returned zero defects. thesis.pdf re-synced
+(102pp). The English text is now at the "impeccable + clear" item-9 level; the
+only remaining item-9/10 surface is the Finnish title + Tiivistelma (author's
+native-speaker review, route to a peer).

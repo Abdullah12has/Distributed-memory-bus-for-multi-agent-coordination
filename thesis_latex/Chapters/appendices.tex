@@ -36,14 +36,14 @@ $403$ on policy denial; $404$ on slot not found.
 \item[\texttt{POST /v1/subscribe}] Body: a \texttt{SubscribeRequest}
 with a \texttt{query} string, a \texttt{ttl\_seconds} positive integer,
 and a top-\textit{k} integer. Returns a server-sent-event stream
-emitting newly-matched \texttt{slot\_id}s with their cosine scores
+emitting newly matched \texttt{slot\_id}s with their cosine scores
 until the TTL elapses.
 
 \item[\texttt{GET /v1/audit/\{slot\_id\}}] Returns the chronological
 list of \texttt{AuditRow} entries that mention the given slot.
 \end{description}
 
-Every request is processed by the \texttt{PolicyMiddleware} which
+Every request is processed by the \texttt{PolicyMiddleware}, which
 parses the requester principal from the \texttt{X-M6-Principal} header
 in the development build and from an OAuth/JWT verifier in a production
 deployment. The principal carries a $64$-bit access-control mask and a

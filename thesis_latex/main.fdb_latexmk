@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber main"] 1780496864.05535 "main.bcf" "main.bbl" "main" 1780497324.68486 0
+["biber main"] 1780496864.05535 "main.bcf" "main.bbl" "main" 1780502680.02961 0
   "citations.bib" 1780346885.3623 38758 56c93fdbb26ef4f8dfa96025ec1593ad ""
-  "main.bcf" 1780497324.47105 119388 209621457891cd693513f75f8d0cb464 "pdflatex"
+  "main.bcf" 1780502679.80725 119388 209621457891cd693513f75f8d0cb464 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1780497316.29408 "main.tex" "main.pdf" "main" 1780497324.68506 0
+["pdflatex"] 1780502671.04836 "main.tex" "main.pdf" "main" 1780502680.02981 0
   "../figures/caac_pareto.pdf" 1780332771.313 23374 2e9a759a531f851f98aca6d769b225bb ""
   "../figures/cliff_families.pdf" 1780100348.50268 21567 6055424b670a9afeaf52a47546fc6f44 ""
   "../figures/cliff_hero.pdf" 1780332770.81895 19750 7bd61d7bced0f3c1f9270f52c23e7348 ""
@@ -364,13 +364,13 @@
   "/usr/local/texlive/2026basic/texmf.cnf" 1772405582 628 bbc09d6d38872d53c11bb48dc9b14e88 ""
   "Chapters/abbreviations.tex" 1780437093.966 3575 5f31cb688d9ec1e35928a0746503e273 ""
   "Chapters/abstract.tex" 1780392428.37611 2406 c390cd1338340ee2c8d27fb4875bfda1 ""
-  "Chapters/appendices.tex" 1780474269.84364 14636 297a208be679f5540f5e240285262c9d ""
-  "Chapters/experiments.tex" 1780496780.80665 129704 aee574cb4168cac39079fc1f9cb8eecf ""
+  "Chapters/appendices.tex" 1780502633.06168 14637 e996a371426ea8f0cedeb5d5d0421c6f ""
+  "Chapters/experiments.tex" 1780502626.87309 129720 c81bd100ab38d0a593e7b4bf60d2cdca ""
   "Chapters/foreword.tex" 1780346745.37736 2208 aba5cecda066782a80c54c9cfe6dccb9 ""
   "Chapters/implementation.tex" 1780482437.46295 47374 117ab04d83bb417e47db17461c156fea ""
-  "Chapters/introduction.tex" 1780497308.26512 23946 7df8f768caf1695e1ee7ccc2b834c461 ""
-  "Chapters/relatedwork.tex" 1780470039.74186 31336 e27afe4587b8a410c4a37340ded933e0 ""
-  "Chapters/summary.tex" 1780496827.0981 47869 61b458ae64df481755ba6b4c1bd03558 ""
+  "Chapters/introduction.tex" 1780502620.75444 23950 7a70ac7b4adb80f42bccafc1ebc45827 ""
+  "Chapters/relatedwork.tex" 1780502624.05337 31345 f9c7ec1d1d02e1b145329a40668337f3 ""
+  "Chapters/summary.tex" 1780502630.16833 47960 d53579562837d391002df85c765ef089 ""
   "Chapters/tiivistelma.tex" 1780346618.73484 2835 58ff08e59315a7cc1b7d1c672619bafe ""
   "Figures/logo-en.png" 1775401630 117664 e59298c0f5b7dbe6437ed4f0378c79f4 ""
   "copyright-ccby40.tex" 1780266549.25648 1185 44a1d643b8f78b10cee6b57878fedec3 ""
@@ -379,14 +379,14 @@
   "doclicense-di.sty" 1775401630 291 1a967432eaf1a043613658f51c6ec3c4 ""
   "doclicense-images/doclicense-CC-by-88x31.pdf" 1775401630 7621 627eb093207754076655f8835de6a472 ""
   "ieee.bbx" 1775401630 20560 847adb42c2bcc8ace00d6a9c595c22e4 ""
-  "main.aux" 1780497324.44856 94012 50536bece2442b7f4a42f75915de2b01 "pdflatex"
+  "main.aux" 1780502679.78334 94011 cf6023089fc31bc200cb9647cd4339b7 "pdflatex"
   "main.bbl" 1780496866.36168 142093 78e543d6ce901987b49731efcd46512e "biber main"
-  "main.out" 1780497324.46895 11467 341c851470740619b9f54bece55997bd "pdflatex"
-  "main.run.xml" 1780497324.47161 2404 d750b17a656eb0fc6146b7922f3e5863 "pdflatex"
+  "main.out" 1780502679.80498 11467 341c851470740619b9f54bece55997bd "pdflatex"
+  "main.run.xml" 1780502679.80784 2404 d750b17a656eb0fc6146b7922f3e5863 "pdflatex"
   "main.tex" 1780497212.92099 10657 3d5c7ea7019575dee67dde5d500d26a3 ""
-  "main.toc" 1780497324.47165 21087 c2a67f0378065dcd9ea493a44843f556 "pdflatex"
-  "main.xmpdata" 1780497319.99218 2750 f9d1c2d861b392570d2dcea3cf7aa89f "pdflatex"
-  "pdfa.xmpi" 1780497317.01695 8741 dd25481cb5bb3ca967db8e1b59f34675 "pdflatex"
+  "main.toc" 1780502679.8079 21086 087a099b20b67c3c2c328462174ece21 "pdflatex"
+  "main.xmpdata" 1780502675.09791 2750 f9d1c2d861b392570d2dcea3cf7aa89f "pdflatex"
+  "pdfa.xmpi" 1780502671.85489 8741 45296b1005b4061d2841e04c149606c3 "pdflatex"
   (generated)
   "main.aux"
   "main.bcf"

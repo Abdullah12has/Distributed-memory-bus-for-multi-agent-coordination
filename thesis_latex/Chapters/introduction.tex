@@ -89,7 +89,7 @@ measurement that turns the industry urgency into a technical
 question.
 
 The technical question does not include the multi-round
-agent-negotiation that the ``multi-agent'' framing of the FCG and
+agent negotiation that the ``multi-agent'' framing of the FCG and
 Anthropic systems would imply. The empirical evaluation uses either
 a deterministic regex information-extraction solver or a single LLM
 call with all (compressed) fragments visible as the planner; an
@@ -190,7 +190,7 @@ coordination-quality metrics (final task success, sub-task
 assignment accuracy, critical-token-recall, achieved compression
 ratio), and a single-command regeneration script from a fixed
 seed. The benchmark is the substrate on which the cliff
-characterisation, the model-scaling result, and the inference-
+characterisation, the model-scaling result, and the inference-%
 disclosure measurement all run; releasing it as part of the
 thesis lets other groups extend the characterisation to new
 compressors and new planner regimes.
@@ -228,7 +228,7 @@ HotpotQA and MultiHop-RAG. An out-of-regime GPT-oss~120B diagnostic
 identifies extended-reasoning planners as a structurally distinct
 case that prior compression work treats implicitly.
 
-\paragraph{C3 --- A catalogue of three retrieval-augmented-
+\paragraph{C3 --- A catalogue of three retrieval-augmented-%
 generation pipelines with a EUR-per-workflow cost model.}
 Three pipeline architectures (compress-first, retrieve-first,
 joint relevance-conditional routing) are implemented end-to-end on
@@ -286,7 +286,7 @@ policy-lattice scaling, and cross-host replication --- is not
 measured here and is named as follow-on work.
 
 The thesis also presents \textbf{CAAC} (Cliff-Aware Adaptive
-Compression), a wrapper that operationalises the compounding-
+Compression), a wrapper that operationalises the compounding-%
 error bound as a runtime back-off: given a per-family recall
 threshold, CAAC binary-searches downward over compression ratios
 until the per-fragment critical-token-recall sits on the safe
@@ -412,7 +412,7 @@ cells where the cliff is resolvable --- carried by one
 well-identified frontier cell, Qwen-2.5-72B, with DeepSeek V4 Pro
 weakly corroborating and GPT-oss~120B reported as an out-of-regime
 diagnostic at the regime boundary); H3 (the RAG pipeline catalogue
-with the compress-first dominance result); H4 (the inference-
+with the compress-first dominance result); H4 (the inference-%
 disclosure measurement on the unbiased benchmark); and
 Corollary~2 (the cliff \emph{shape} varies with task information
 density across three benchmarks).

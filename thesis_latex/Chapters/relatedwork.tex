@@ -48,7 +48,7 @@ autoregressive decoding loop.
 The decoder-only sub-family of the transformer architecture is
 the one this thesis evaluates. The original
 transformer~\cite{vaswani2017attention} was encoder--decoder; the
-encoder-only line gave us BERT and its descendants; the decoder-
+encoder-only line gave us BERT and its descendants; the decoder-%
 only line gave us GPT-2, GPT-3, GPT-4, and the open-source
 families that this thesis's planners are drawn from (Qwen,
 Llama, DeepSeek, Phi-3). The reasons decoder-only architectures
@@ -148,7 +148,7 @@ models on a single A100 GPU server. For its closest
 text-generation energy on the order of $0.1$~Watt-hours per
 inference (Tables~2--3 of~\cite{luccioni2024powerhungry}). The
 number scales near-linearly with
-model size, and the per-prompt energy at frontier-scale models
+model size, and the per-prompt energy of frontier-scale models
 (tens to hundreds of billions of parameters) is correspondingly
 larger. The study also separates the per-token amortised cost
 from the per-request fixed cost, and shows that for short
@@ -175,8 +175,8 @@ USD~$15{,}000$/day --- enough to fund a compression-engineering
 team. The on-premises amortised marginal cost is two orders of
 magnitude lower per token, but the absolute hardware and operations
 cost makes the same lever operationally valuable. The TalentAdore
-production accounts the cost model is calibrated against confirm
-this pricing.
+production accounts against which the cost model is calibrated
+confirm this pricing.
 
 \paragraph{Politeness as waste.}
 The peer-reviewed per-token cost results above already establish
@@ -394,7 +394,7 @@ rasmussen2025zep, saleh2025memindex, saleh2025messagebrokers}
 addresses the related question of how to store and retrieve
 agent state across long horizons. The closest published academic
 analogue to this thesis's memory bus is
-MemIndex~\cite{saleh2025memindex}, which the three-layer memory-
+MemIndex~\cite{saleh2025memindex}, which the three-layer memory-%
 bus architecture of \charef{implementation} explicitly
 extends. The MemGPT-style ``LLM as operating system''
 framing~\cite{packer2023memgpt} is related but is concerned with
@@ -454,7 +454,7 @@ multi-fragment-coordination task structure of this thesis;
 they measure single-agent long-context comprehension. They are
 complementary to the cliff measurement rather than competitive
 with it: long-context benchmarks measure the capacity of the
-model, while the cliff measurement measures the compression-
+model, while the cliff measurement measures the compression-%
 quality effect on a task structure the long-context benchmarks
 do not include.
 

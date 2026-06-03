@@ -31,7 +31,9 @@ across a $9\times$ scale-up and a change of architecture family.
 benchmarks. \textbf{One narrowed.} \textbf{H3}'s regime sign-flip
 predicate is not satisfied; the data resolved it into a single-stack
 compress-first-over-retrieve-first ordering that does not reproduce
-LongLLMLingua's post-retrieval preference on the tested stack. The compounding-error model is a \emph{first-order}
+LongLLMLingua's post-retrieval preference on the tested stack.
+
+The compounding-error model is a \emph{first-order}
 position estimate (median $\sim 35\%$ relative error) and an
 \emph{explanation} of why the cliff is sharp; the threshold
 mechanism it posits is independently confirmed on the dense family
@@ -171,7 +173,7 @@ fragment:
 
 \begin{enumerate}\setlength\itemsep{1pt}
 \item Run the inner compressor at the requested target ratio $r$,
-producing a compressed fragment and measuring its critical-token-
+producing a compressed fragment and measuring its critical-token-%
 recall $q$.
 \item If $q \ge q_\text{min}$, return the compressed fragment as
 is.
@@ -328,8 +330,8 @@ LLM call (no multi-round communication, per
 Section~\ref{sec:limitations}), the truthful value is one and the
 field was changed accordingly. The earlier value never appeared in
 a reported figure but was visible in some CSV columns; the
-misnaming was a name-versus-meaning drift of the kind a downstream
-reader could be misled by. Lesson: metric-name versus
+misnaming was a name-versus-meaning drift of the kind that could
+mislead a downstream reader. Lesson: metric-name versus
 implementation drift; metrics referenced in the manuscript text
 need name-audits.
 
@@ -456,9 +458,9 @@ variants. The cliff structure observed on family-a may not
 generalise to heterogeneous aggregation tasks (max, min, weighted
 average, conditional aggregation). The transfer to real benchmarks
 (Corollary~2) addresses the broader concern that synthetic tasks
-might not transfer to real ones, but the within-family
-homogeneity is a separate concern that future work could resolve
-by sweeping aggregation types within family-a.
+might not transfer to real ones. The within-family homogeneity is a
+separate concern, which future work could resolve by sweeping
+aggregation types within family-a.
 
 \paragraph{Family-b LLM floor.}
 The constraint-satisfaction family-b is hard for $\le 8$B planners
@@ -510,10 +512,10 @@ The bootstrap CI on $\theta_q$ behind the
 Section~\ref{sec:cem_match} band quantifies \emph{sampling}
 uncertainty only, not the model's \emph{specification} error, so the
 empirical $\tau^{*}$ falls outside it on all $11$ testable cells.
-Figure~\ref{fig:predicted_vs_empirical} should be read as ``the band
-is tight because $\theta_q$ is well-estimated; the model is biased
-because A1--A4 are first-order'' --- the in-sample/LOO match rates,
-not the band, measure the model's accuracy.
+Figure~\ref{fig:predicted_vs_empirical} should therefore be read as
+``the band is tight because $\theta_q$ is well-estimated; the model
+is biased because A1--A4 are first-order''. The model's accuracy is
+measured by the in-sample and LOO match rates, not by the band.
 
 \paragraph{Corollary~1's local arm misses the strict tolerance.}
 The local cross-architecture sweep (Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
@@ -526,19 +528,20 @@ carries the corollary's binary verdict across the strict bar
 (\texttt{results/h5\_final/model\_independence\_20pct.json}).
 
 \paragraph{A3 (threshold success): circularity broken by a direct probe.}
-A3 was originally licensed only by the sharp cliff it explains --- a
-circular justification --- now broken by the independent A3 probe
-(Section~\ref{sec:a3_probe}, \texttt{results/a3\_probe}): curated
-deletion of task-critical tokens \emph{without} a compressor, scored
-by an LLM planner that \emph{could} reconstruct partial information.
-It supports A3 directly on the dense aggregation family
+A3 was originally licensed only by the sharp cliff it explains,
+which is a circular justification. The independent A3 probe
+(Section~\ref{sec:a3_probe}, \texttt{results/a3\_probe}) breaks that
+circularity: it deletes a controlled fraction of the task-critical
+tokens \emph{without} a compressor and scores the remainder with an
+LLM planner that \emph{could} reconstruct partial information. The
+probe supports A3 directly on the dense aggregation family
 (threshold-like, $k\approx 15$) and shows it is only first-order on
 the distributed family (graded, $k\approx 5.9$). The honest residual
-statement is that A3 is a threshold model for dense tasks and a
-first-order approximation for distributed ones --- the same
-information-density axis Corollary~2 measures --- with a
-graded-success refinement as the open direction. The cliff exists
-regardless; A3 describes its shape.
+statement is therefore that A3 is a threshold model for dense tasks
+and a first-order approximation for distributed ones --- the same
+information-density axis Corollary~2 measures. A graded-success
+refinement is the open direction. The cliff exists regardless; A3
+describes its shape.
 
 \paragraph{A1 within-pass independence is approximate;
 Phi-3 extractive violates it.}
@@ -590,11 +593,11 @@ attribute P3's F1 advantage to routing rather than to uncharged cost
 \paragraph{Frontier equivalence not established (underpowered).}
 A percentile-bootstrap TOST against the $\pm 20\%$ equivalence band
 (Section~\ref{sec:frontier_deepseek};
-\texttt{results/tost\_corollary1.json}) shows \emph{neither}
-frontier cell passes: although the point estimates match the
-reference well (Qwen-2.5-72B $\sim 7\%$ from the canonical
-$\tau^{*}=2.5$, within $0.8\%$ of the auxiliary fit $2.6997$), the
-$90\%$ bootstrap intervals on $\tau^{*}$ are too wide to rule out a
+\texttt{results/tost\_corollary1.json}) shows that \emph{neither}
+frontier cell passes. The point estimates match the reference well
+--- Qwen-2.5-72B sits $\sim 7\%$ from the canonical $\tau^{*}=2.5$,
+within $0.8\%$ of the auxiliary fit $2.6997$ --- but the $90\%$
+bootstrap intervals on $\tau^{*}$ are too wide to rule out a
 $>20\%$ difference. Corollary~1's frontier evidence is therefore
 correctly stated as ``no cliff-position shift detected'' rather than
 ``invariance demonstrated''; tightening it to a passed equivalence
