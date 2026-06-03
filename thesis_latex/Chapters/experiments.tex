@@ -1201,31 +1201,32 @@ the calibrated regime (we report ``no detected shift'' rather than
 proven invariance). (The ``$p_0(m) \ge \theta_q$'' comparison is
 between a success probability and a fraction of task-critical
 tokens; the operational reading and unit-bridge gloss is in
-Section~\ref{sec:calibrated}.) \textbf{Verdict: NO SHIFT
-DETECTED (equivalence not established at $\pm 20\%$ TOST on either
-frontier cell); consistent on the local arm} (the fine-grid re-resolution of
-Section~\ref{sec:h2} shows the synthetic $\tau^{*}=2.5$ is a
-deterministic-solver artefact, so the load-bearing comparison is
-LLM-vs-LLM: Llama-3.1-8B and Qwen-2.5-72B both cliff at
-$\approx 2.5$--$2.8$ on family-a $\times$ LLMLingua-2 across a
-$9\times$ scale-up and a change of architecture --- see the
-re-anchoring paragraph below; the original $n=10$ Qwen run is
-about $7\%$ from the coarse-grid $2.5$, now read as an approximate
-coincidence rather than a validation against that number; DeepSeek
-V4 Pro's point estimate $\tau^{*}=2.15$ is only weakly identified,
-bootstrap CI $[1.76, 7.14]$, median $5.7$); the local
-cross-architecture sweep at \{Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
-Llama-3.1-8B\} shows a $\tau^{*}$ spread of $24\%$ on
-family-c, which sits \emph{below} the validator's default $50\%$
-tolerance but \emph{above} the strict $20\%$
-tolerance matching the H2 spec --- the
-local sweep is \emph{necessary but not sufficient} and the
-corollary's binary verdict rests on the cross-architecture
-frontier evidence. The family-a small-model cells correctly
-exhibit the predicted floor effect and are excluded; the
-family-b cells are below threshold for all three models because
-constraint tracking is hard for $\le 8$B planners independent of
-compression.
+Section~\ref{sec:calibrated}.) \textbf{Verdict: NO SHIFT DETECTED.} The deployment-relevant
+LLM-planner cliff holds steady across a $9\times$ parameter
+scale-up \emph{and} a change of architecture family: local
+Llama-3.1-8B and frontier Qwen-2.5-72B both cliff at
+$\approx 2.5$--$2.8$ on family-a $\times$ LLMLingua-2, and the local
+three-architecture sweep \{Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
+Llama-3.1-8B\} agrees to within a $24\%$ $\tau^{*}$ spread on
+family-c. We state this as ``no shift detected'' rather than proven
+invariance, and the qualifiers are explicit: the $\pm 20\%$ TOST
+equivalence test is \emph{not} passed on either frontier cell
+(their bootstrap CIs are wide); the local arm's $24\%$ spread clears
+the validator's default $50\%$ tolerance but \emph{not} the strict
+$20\%$ bar matching the H2 spec, so it is \emph{necessary but not
+sufficient}; and DeepSeek~V4~Pro corroborates only weakly (point
+estimate $\tau^{*}=2.15$, bootstrap CI $[1.76, 7.14]$, median
+$5.7$). The load-bearing evidence is therefore the one
+well-identified frontier cell (Qwen-2.5-72B): the fine-grid
+re-resolution of Section~\ref{sec:h2} shows the synthetic
+$\tau^{*}=2.5$ is a deterministic-solver artefact, so the
+comparison is correctly LLM-vs-LLM (the original $n=10$ Qwen run
+sits about $7\%$ from the coarse-grid $2.5$, now read as an
+approximate coincidence; see the re-anchoring paragraph below). The
+family-a small-model cells correctly exhibit the predicted floor
+effect and are excluded; the family-b cells are below threshold for
+all three models because constraint tracking is hard for $\le 8$B
+planners independent of compression.
 \end{tcolorbox}
 
 This corollary is the sharpened form of the original H5 hypothesis,
@@ -1601,21 +1602,22 @@ Section~\ref{sec:future}.
 \begin{tcolorbox}[colback=black!4, colframe=black!50, sharp corners,
                   boxrule=0.4pt, boxsep=2pt, left=4pt, right=4pt,
                   top=2pt, bottom=2pt]
-\textbf{H3 (original predicate).} The optimal pipeline between
-compress-first (P1) and retrieve-first (P2) sign-flips between a
-storage-bounded and an accuracy-bounded regime, with $\ge\!5$~pp
-effect. \textbf{Verdict: not satisfied} --- no sign-flip is
-observed. \textbf{Narrowed finding:} P1 (compress-first) is preferred
-over P2 (retrieve-first) in \emph{both} regimes; P3 (joint
-relevance-conditional routing) leads both on F1, but P3 routes
-fragments \emph{verbatim} (achieved compression $1.00\times$) ---
-so the cross-pipeline F1 gap is not a matched-compression
-comparison and does \emph{not} support a Pareto claim for P3
-(see Section~\ref{sec:h3_cost_caveat} for the cost-attribution caveat).
-This does not reproduce,
-on the single retriever/embedder stack tested here, the
-post-retrieval-compression preference of the
-LongLLMLingua~\cite{jiang2024longllmlingua} line of work.
+\textbf{H3. Supported finding:} compress-first (P1) is preferred
+over retrieve-first (P2) in \emph{both} the storage-bounded and
+accuracy-bounded regimes (by $3.2$ and $2.0$~pp F1, paired-bootstrap
+CIs excluding zero) --- a robust single-stack ordering that does
+\emph{not} reproduce the post-retrieval-compression preference of
+the LongLLMLingua~\cite{jiang2024longllmlingua} line of work on the
+retriever/embedder stack tested here. \textbf{Pre-registered
+predicate not satisfied:} the original H3 prediction --- that the
+optimal pipeline sign-flips between the storage- and
+accuracy-bounded regimes with a $\ge\!5$~pp effect --- is
+\emph{not} observed; the optimum does not change between regimes.
+P3 (joint relevance-conditional routing) leads both regimes on F1
+but routes fragments \emph{verbatim} (achieved compression
+$1.00\times$), so the cross-pipeline F1 gap is not a
+matched-compression comparison and does \emph{not} support a Pareto
+claim for P3 (Section~\ref{sec:h3_cost_caveat}).
 \end{tcolorbox}
 
 \subsection{Setup}

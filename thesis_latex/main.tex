@@ -45,6 +45,14 @@
 % tcolorbox for the per-hypothesis verdict blocks in Chapter 4.
 \usepackage[most]{tcolorbox}
 
+% Absorb a few sub-line overfull boxes gracefully without hand-tuning
+% individual lines (typographic polish; no effect on content).
+\setlength{\emergencystretch}{1.5em}
+
+% array: enables >{\raggedright\arraybackslash}p{} columns so fixed-width
+% table cells break without justification-induced overfull boxes.
+\usepackage{array}
+
 %%%%%%%%%%%%%%%%%%%%% SET YOUR INFORMATION HERE %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Both English and Finnish title are needed

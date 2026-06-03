@@ -615,6 +615,51 @@ Section~\ref{sec:future}.
 \section{Significance}
 \label{sec:significance}
 
+\subsection{For the industrial partners: TalentAdore and FCG}
+\label{sec:significance_partners}
+
+The work was scoped against two concrete industrial settings, and
+each takes away a directly actionable result. \textbf{TalentAdore},
+whose production workloads are dominated by per-token cost and whose
+pricing calibrates the EUR-per-workflow cost model of this thesis
+(\charef{implementation}~Section~\ref{sec:architecture}), gains four
+things. First, the H1 finding is a procurement guardrail: a
+compressor must \emph{not} be chosen on the single-agent QA-F1
+numbers the prompt-compression literature reports (LongBench-,
+RULER-, or LLMLingua-style), because those numbers do not predict
+multi-fragment coordination success (Section~\ref{sec:synthesis});
+a multi-fragment metric such as the C1 coordination score is
+required. Second, the measurement loop is cheap to run in
+production: measure $\theta_q$ once on a small in-domain calibration
+set, read a safe operating ratio off the compounding-error model,
+and avoid a full per-workload ratio sweep. Third, compress-first
+(P1) is the safe default retrieval pipeline on a comparable stack.
+Fourth, the summary-level disclosure metric and the memory-bus
+policy layer together give a deployment-time governance budget for
+the \textsc{confidential} candidate data TalentAdore processes, and
+CAAC provides a drop-in, recall-bounded safety floor for any inner
+compressor already in use.
+
+\textbf{FCG} (the Future Computing Group) gains a runnable reference
+artefact: the three-layer memory bus extends the group's
+MemIndex~\cite{saleh2025memindex} baseline, ships as a single
+\texttt{docker-compose} image, and is the integration target for the
+group's multi-agent roadmap. The flagship \emph{Vignette~3.7 ---
+period-end project reporting} use case~\cite{fcgusecase2026}, which
+aggregates reporting data across roughly eight institutional systems
+via about eight specialised agents, is exactly the multi-fragment
+workflow this thesis characterises; the internal FCG analysis
+estimates an $80\%$ cloud-payload reduction at approximately
+EUR~$2.15$ per report. The cliff characterisation tells FCG
+\emph{how aggressively that payload can be compressed before the
+cross-system aggregation breaks} --- the question the $80\%$ figure
+cannot answer on its own --- and the disclosure metric indicates
+which compressor to route classified institutional fragments
+through. The bus's distributed and multi-tenant behaviour
+(contention under concurrent writers, policy-lattice scaling,
+cross-host replication) is not measured here and is the natural FCG
+follow-on (Section~\ref{sec:future}).
+
 \subsection{For practitioners}
 
 Four practitioner-facing implications follow from the findings.

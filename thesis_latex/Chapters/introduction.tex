@@ -299,6 +299,35 @@ only descriptive but operational.
 \subsection{Reading guide and contribution hierarchy}
 \label{sec:reading_guide}
 
+Table~\ref{tab:contribution_map} is the one-page map of the whole
+thesis: it ties each research question to the artefact that answers
+it, the falsifiable hypotheses that operationalise it, and the
+one-line verdict, so that a reader can locate any result before
+reading the chapter that derives it.
+
+\begin{table}[h]
+\centering
+\caption{Contribution map. The four research questions, the artefact
+(C1--C4) that answers each, the falsifiable hypotheses that
+operationalise it, and the one-line verdict; all hypotheses are
+reported in \charef{experiments}. Throughout, \emph{coordination}
+means multi-fragment solvability under compression
+(Section~\ref{sec:multi_fragment}), \emph{not} multi-round agent
+negotiation.}
+\label{tab:contribution_map}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{1.0cm}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{5.0cm}}
+\hline
+RQ / C & Plain-English question & Hyp. & Verdict (one line) \\
+\hline
+RQ1\newline C1--C2 & Does keeping a single fragment answerable also keep several fragments \emph{combinable}? & H1 & \textbf{No}: single-fragment F1 does not predict coordination success (\textsc{supported}). \\
+RQ2\newline C2 & Is there a sharp failure point as compression rises, and what fixes its position? & H2; Cor.~1; Cor.~2 & A sharp cliff exists (\textsc{supported}, $11/12$ cells); its position is set by compressor$+$task, not planner scale (no shift detected); its shape scales with information density (\textsc{supported}, $n{=}3$). \\
+RQ3\newline C3 & Where should compression sit relative to retrieval? & H3 & Compress-first dominates on the tested stack; the pre-registered regime sign-flip is \emph{not} observed (narrowed). \\
+RQ4\newline C4 & Can compression be a measurable privacy lever, enforced by a memory bus? & H4 & Compression reduces protected-fact disclosure (\textsc{supported}, $3/4$ compressors; destruction-driven). \\
+\hline
+\end{tabular}
+\end{table}
+
 The four contributions are not equally weighted. \textbf{H1
 (Section~\ref{sec:h1}) is the central, load-bearing result}: under
 compression, single-fragment information preservation does not

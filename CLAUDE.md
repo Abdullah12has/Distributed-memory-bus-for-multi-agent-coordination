@@ -279,7 +279,8 @@ Tracked as harness tasks 1–9 (see TaskList). Punch list:
 ### Manuscript status (2026-05-30)
 
 First full draft compiled in `thesis_latex/` from the Oulu ITEE
-template (`dithesis.cls`). Output: 72 pages A4, ~950 KB, copied
+template (`dithesis.cls`), revised through insights §§84–94. Output
+is now **102 pages A4, ~1.18 MB** (72 at first draft), copied
 to `thesis.pdf` in the project root. Manuscript title per ADR-009
 is *Memory Bus for Multi-Fragment LLM Workflows:
 Context Compression, the Coordination Cliff, and Privacy*; the
@@ -289,12 +290,16 @@ file's header) for back-compat with existing artefacts.
 All verdict-table numbers refreshed against the canonical results
 JSON on disk (`h1_h2_v2`, `h4_unbiased`, `h5_final`, `h3_final`,
 `frontier_qwen72b`, `frontier_deepseekv4`, `hotpotqa_sweep`).
-See insights.txt §65 for the per-chapter status, per-table
-number-refresh notes, and the outstanding user-side items
-(Finnish title `\otsikko{}` review only — Tiivistelmä dropped
-per 2026-05-30 decision; region-plot regeneration for
-`caac_pareto`, predicted-τ* band figure for
-`predicted_vs_empirical`).
+See insights.txt §§65, 84–94 for the per-chapter status, per-table
+number-refresh notes, and the iteration history. **Outstanding
+user-side item: a native-Finnish review of the Finnish title
+(`\otsikko{}`) and the Tiivistelmä.** NOTE: the Tiivistelmä is in
+fact *present* in the compiled PDF (page 4, in the ToC), so the
+earlier "Tiivistelmä dropped per 2026-05-30 decision" note is
+contradicted by the manuscript and was superseded — reconcile if
+that decision still stands. The `caac_pareto` and
+`predicted_vs_empirical` figures were regenerated (2026-06-01) and
+render correctly.
 
 ## NeurIPS / ICLR — DEFERRED per Q13 (thesis-only scope)
 

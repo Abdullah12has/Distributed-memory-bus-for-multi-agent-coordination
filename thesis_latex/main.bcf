@@ -2527,9 +2527,11 @@
     <bcf:citekey order="117" intorder="1">jiang2024longllmlingua</bcf:citekey>
     <bcf:citekey order="118" intorder="1">fcgfinancial2026</bcf:citekey>
     <bcf:citekey order="119" intorder="1">pineau2021checklist</bcf:citekey>
-    <bcf:citekey order="120" intorder="1">anthropic2025multiagent</bcf:citekey>
-    <bcf:citekey order="121" intorder="1">anthropic2025contextengineering</bcf:citekey>
-    <bcf:citekey order="121" intorder="2">anthropic2025contextediting</bcf:citekey>
+    <bcf:citekey order="120" intorder="1">saleh2025memindex</bcf:citekey>
+    <bcf:citekey order="121" intorder="1">fcgusecase2026</bcf:citekey>
+    <bcf:citekey order="122" intorder="1">anthropic2025multiagent</bcf:citekey>
+    <bcf:citekey order="123" intorder="1">anthropic2025contextengineering</bcf:citekey>
+    <bcf:citekey order="123" intorder="2">anthropic2025contextediting</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="none">
