@@ -2328,7 +2328,7 @@
       \field{title}{{RAPTOR}: Recursive Abstractive Processing for Tree-Organized Retrieval}
       \field{year}{2024}
     \endentry
-    \entry{edge2024graphrag}{misc}{}{}
+    \entry{edge2024graphrag}{inproceedings}{}{}
       \name{author}{8}{}{%
         {{hash=189e08257df5e44d50272dc5a180d62e}{%
            family={Edge},
@@ -2383,7 +2383,7 @@
       \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{howpublished}{arXiv preprint arXiv:2404.16130}
+      \field{booktitle}{Advances in Neural Information Processing Systems (NeurIPS)}
       \field{title}{From Local to Global: A {GraphRAG} Approach to Query-Focused Summarization}
       \field{year}{2024}
     \endentry

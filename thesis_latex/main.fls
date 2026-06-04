@@ -692,6 +692,10 @@ INPUT Chapters/foreword.tex
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntxmi.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/NewTXMI.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/stxscr.tfm
+INPUT ./Figures/teknologiateollisuus-saatio.png
+INPUT ./Figures/teknologiateollisuus-saatio.png
+INPUT ./Figures/teknologiateollisuus-saatio.png
+INPUT ./Figures/teknologiateollisuus-saatio.png
 INPUT ./Chapters/abbreviations.tex
 INPUT ./Chapters/abbreviations.tex
 INPUT ./Chapters/abbreviations.tex
@@ -878,11 +882,11 @@ INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/amsfonts/symbols/
 INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /usr/local/texlive/2026basic/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
+INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/vf/public/newtx/ntx-Regular-tlf-ot1.vf
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/txmiaX.tfm
 INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Regular-tlf-ot1r.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
-INPUT /Users/abdullah/Library/texmf/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT ../figures/frontier_validation.pdf
 INPUT ../figures/frontier_validation.pdf
 INPUT ../figures/frontier_validation.pdf
