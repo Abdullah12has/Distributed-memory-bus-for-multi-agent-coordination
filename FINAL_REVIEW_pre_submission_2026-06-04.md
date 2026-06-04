@@ -1,0 +1,161 @@
+# Final pre-submission review — *The Coordination Cliff*
+
+**Reviewer role:** examiner-style final pass, night before submission.
+**Verdict:** This is already a strong thesis — clearly distinction-grade. The two
+supervisor audits (Lovén, 2026-05-28) and the code audit are *almost entirely*
+addressed, the manuscript compiles clean (0 undefined refs, 0 `??` in the PDF,
+3 trivial overfull boxes), and every verdict number I spot-checked matches the
+on-disk canonical results. The items below are what stands between "very good"
+and "nothing left for an examiner to catch." Almost all are <10-minute edits.
+
+I verified the headline myself: I recomputed the workload-level Spearman ρ
+directly from `results/h1_h2_v2/sweep_results.csv` and got filter **−0.818**,
+lingua2 **+0.026**, phi3 **+0.315**, truncation **+0.051** — exact match to
+Table 4.1 and the abstract. The result is real and reproducible.
+
+---
+
+## P0 — Fix tonight (cheap, examiner-visible)
+
+1. **`guo2025dynamic` is missing an author.** The bib has *Shuyu Guo and
+   Zhaochun Ren*; the real paper (arXiv:2507.22931) has **three** authors —
+   the middle author **Shuo Zhang** is missing. This entry IS cited (related
+   work + implementation), so the error renders in the bibliography. One-line fix:
+   `author = {Shuyu Guo and Shuo Zhang and Zhaochun Ren}`.
+
+2. **Untraceable number: family-c θ_info ≈ 0.62.** `implementation.tex` (§3.5,
+   family-c description) cites `θ_info ≈ 0.62`, but the only on-disk
+   information-density artefact (`results/corollary2_theta_info.json`) holds
+   **three** values — C1 family-a 0.967, MultiHop-RAG 0.484, HotpotQA 0.373 —
+   and no family-c value. Family-a's 0.97 in the same paragraph *does* match.
+   Every other number in the thesis traces to `CANONICAL_NUMBERS.md`; this one
+   doesn't. Either (a) recompute `estimate_task_theta()` on family-c and add it
+   to the JSON, or (b) soften the prose to "the most distributed of the three
+   families" and drop the specific 0.62. Option (b) is the safe overnight move.
+   *(It's descriptive only — no verdict depends on it — but you asked me to check
+   every number, and an examiner who greps the results dir will find this gap.)*
+
+3. **Canonical registry is incomplete on its own headline.** `verdicts.json`
+   stores only the *pooled* ρ (−0.593 …), not the *workload-level* ρ that the
+   abstract and Table 4.1 actually report as the verdict. The numbers are
+   correct and reproducible, but if an examiner opens `verdicts.json` expecting
+   to see −0.82 they won't. Add the workload-level ρ + CI to the verdict file
+   (or add one line to `CANONICAL_NUMBERS.md` noting that −0.82/+0.32 are the
+   workload-level values recomputed from `sweep_results.csv`). Protects you in
+   the viva.
+
+---
+
+## P1 — High value, do if you have an hour
+
+4. **Finnish abstract needs a native-speaker pass — the title compound is the
+   risk.** The Tiivistelmä content is complete and tracks the English (H1/H2/H4
+   supported, H5/H6 → corollaries, H3 narrowed, median ≈35 % error all present).
+   But the Finnish title `\otsikko{}` —
+   *"Koordinaation jyrkänne: kuinka kontekstin tiivistäminen rikkoo
+   monifragmenttisia kielimallityönkulkuja"* — and coinages like
+   *"kielmallityönkulku"* and *"monifragmenttinen"* read as constructed
+   compounds. Oulu reviewers read the Finnish abstract closely. Get one native
+   CS speaker to eyeball it for 10 minutes. This is the single most likely place
+   for a "looks machine-translated" comment. *(Already flagged as an open item in
+   your own CLAUDE.md — close it tonight.)*
+
+5. **Claude-specific pricing is still labelled generically.** `implementation.tex`
+   (cost ledger + RAG cost model) and `relatedwork.tex` cite "USD 3 / 15 per
+   million input/output tokens" as "public frontier rates / base tiers." Lovén's
+   R6 noted this is specifically **Claude 3.5 Sonnet** pricing (GPT-4o-mini is
+   USD 0.15/0.60 — 20× lower), so "frontier base tiers" over-generalises. You
+   already added the USD/EUR 0.92 snapshot (good). One word fix: call it
+   "the Claude 3.5 Sonnet reference price." Pre-empts a "which frontier model?"
+   question.
+
+6. **FCG internal techreports carry load-bearing numbers a public reader can't
+   verify.** `fcgusecase2026` / `fcgfinancial2026` (the 80 % payload reduction,
+   EUR 2.15/report, the EUR 0.05/Mtok on-prem figure) are `@techreport` "Internal
+   document" with no URL. You've correctly hedged the prose ("internal-estimate",
+   "internal FCG analysis") — for a thesis with a named industry partner this is
+   *defensible*, unlike for the deferred NeurIPS version. Leave as-is, but be
+   ready to say in the viva: "these are partner-internal figures, cited as
+   estimates, not load-bearing for any hypothesis verdict." (They aren't — every
+   H-verdict traces to `results/`.) No edit required; just know the answer.
+
+7. **Figure count is lean (5 figures in 68 pages).** Content-wise the tables
+   carry the load and that's fine, but if you want to *look* more substantial to
+   an examiner skimming, the cheapest high-value add is a single conceptual
+   schematic of the cliff mechanism (q(r) crossing θ_q → step in success) early
+   in §4.4. You have `cliff_mechanism`/`corollary_visual` diagrams generated in
+   `figures/` already; if one renders cleanly, dropping it in is a 5-minute win.
+   *Optional* — only if a figure renders correctly without fuss. Do not add a
+   broken figure under time pressure.
+
+---
+
+## P2 — Only if everything else is done
+
+8. Three foundational stats refs (`wilcoxon1945`, `mannwhitney1947`,
+   `cliff1993dominance`) lack DOIs — IEEE-style completeness nicety.
+9. Several `@inproceedings` (LLMLingua, AutoGen, HotpotQA, Lewis RAG) lack page
+   ranges. Uniform omission, low priority, but a meticulous examiner notices.
+10. 37 orphan bib entries (defined, never cited) — harmless (biblatex only
+    prints cited entries) but if your supervisor expects a tidy `.bib`, prune.
+    Notably `llama31modelcard` is uncited though you use Llama-3.1 as a planner —
+    consider citing it where the planner is introduced.
+
+---
+
+## What is already 10/10 — and how to defend it in the viva
+
+You asked me to make sure the design choices, alternatives, experiment design,
+and eval metrics are justified. They are, and here's where, so you can point to
+it under questioning:
+
+- **Design choices + alternatives considered** — `implementation.tex §3.8
+  "Design Choices and Alternatives Considered"` is exactly the section an
+  examiner wants: FAISS-CPU over Qdrant/Chroma/pgvector (single-image repro),
+  SQLite-WAL, Featherless (flat pricing → clean cost model), and **declined
+  compressors with reasons** (Selective Context = redundant with the filter;
+  RECOMP / gist / AutoCompressor / ICAE = training confound; xRAG = out of the
+  1–16× regime). Phi-3 chosen over Llama-3.2-3B / Mistral-7B is justified with
+  **pilot verifier pass rates (75 % vs 62 %/71 %)**. This directly answers
+  "what did you try and not do, and why."
+- **Experiment design** — deterministic-solver + single-LLM-call planners (not
+  multi-round agents) to isolate the compression signal from agent variance; the
+  AutoGen backend exists but is honestly excluded. The pre-specification
+  (committed 2026-05-21, ADR-documented refinements) and the falsifiability bars
+  defended as *practitioner-relevant minima* (§4.1.1) are above MSc norm.
+- **Evaluation metrics** — `§4.3 Choice of Evaluation Metrics` motivates
+  critical-token-recall over generic token-recall, and the workload-level vs
+  pooled-ρ decision (the pseudo-replication argument) is exactly right and rare
+  to see done correctly at this level.
+- **Statistical rigour** — workload-level BCa bootstrap, paired Wilcoxon (not
+  Mann-Whitney, correctly justified), Holm within hypothesis families, TOST
+  equivalence reported *and reported as failing* on the frontier cells.
+
+**The thesis's biggest strength is its honesty**, and it's reproducibly so:
+- H3 reported NOT SUPPORTED, not spun.
+- Corollary 1 is "no shift **detected**," explicitly *not* "proven invariance,"
+  with the TOST failure stated.
+- H4's privacy claim is deflated to "destruction-driven" with an oracle-redaction
+  control that proves the point against itself.
+- CAAC's strict-Pareto 0/7 is framed as the *expected* result, not hidden.
+- The A3 circularity is named and broken with a direct probe.
+
+That posture is what turns a good empirical thesis into a distinction. Don't let
+anyone talk you into softening it.
+
+## Audit cross-check (all the 2026-05-28 items)
+
+Confirmed **resolved** in the current manuscript: R1 (Compressive-Transformer
+"smooth/monotonic" misattribution — now stated on your own authority in
+`implementation.tex §3.4.1`), R2 (ICAE/NaturalQuestions claim removed), R3 (NIST
+AI RMF — the 5-tier lattice is now correctly attributed to ISO/IEC 27001
+enterprise convention, with NIST explicitly demoted to the risk *framing*), R4
+(`park2025collaborative` → `rezazadeh2025collaborative`, author list fixed), I1
+(numbered RQ1–RQ4 with H-mapping now in §1.4), I4 (the design-choices section),
+I5 (synthetic tag distribution defended). The code-audit's broken figures
+(`hotpotqa_cliff`, `theta_density`) were **dropped** — neither appears in the
+manuscript. The HotpotQA + DeepSeek reruns the audit demanded were completed and
+are now on disk and cited.
+
+**Still open from the audits:** only #1 (guo author) and the Claude-pricing label
+(#5) above. Everything else was closed.

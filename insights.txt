@@ -5164,3 +5164,447 @@ intentional under Oulu/Finnish norms, and is outside the "rewrite the abstract"
 request. Fix-if-wanted: pin the math decimal separator to a period once the exact
 babel hook is confirmed (a one-preamble-line change). Author to decide the
 convention.
+
+## 100. SCOPE REDUCTION + MEMORY-BUS ELEVATION (2026-06-03)
+
+Executed the author-approved 80/20 scope cut and reframed the thesis around the
+memory bus as the principal engineering contribution. Cross-references preserved
+throughout (labels kept on demoted content); build clean after every stage.
+Final: latexmk exit 0, 98 pages (was 102), 0 undefined refs, 0 multiply-defined
+labels, 0 errors, 0 em-dash glyphs; thesis.pdf synced.
+
+Cuts:
+1. H3 (RAG pipeline placement) DEMOTED to a new Appendix E
+   (\label{appendix:rag} + \label{sec:h3_cost_caveat} + the moved tab:h3);
+   experiments §H3 collapsed to a labelled 1-paragraph stub (\label{sec:h3}
+   kept). 2 contributions framing: C3 (RAG) -> one-line mention + appendix.
+2. Corollary 2 DEMOTED to a single paragraph (\label{sec:corollary2} +
+   \label{sec:theta_info_def} kept; tab:corollary2, fig:hotpotqa_cliff, the
+   theta_info-vs-theta_q subsection and result/interpretation removed). External
+   tab:corollary2 refs redirected to sec:corollary2.
+3. Course-corrections: cut 4 minor paragraphs (rounds-field, CAAC-theta,
+   CAAC-min_ratio, theta_info-estimator); kept H4-bias, Wilcoxon, fine-grid,
+   Theorem->model.
+4. tau*-register 4-value table dropped -> one sentence (LLM cliff ~2.7 is
+   deployment-relevant; 2.5/1.1 are solver artefacts). No external refs.
+5. Metric-choice catalogue: ~110-line longtable -> compact 5-row table
+   (\label{tab:metric_choices} kept).
+6. Limitations: merged the two contiguous Corollary-1 uncertainty caveats into
+   one.
+7. Family-b: LEFT IN. Correction to the earlier "family-b is null" framing: it
+   is NOT null in H1/H2; its 4 cells underpin the "11 of 12" H2 cliff count.
+   The floor effect is specific to the LLM-planner Corollary-1 arm and is
+   already covered by the single "Family-b LLM floor" limitation paragraph.
+   Removing family-b table rows would have broken the 11/12 headline, so kept.
+
+Reframe (Part 2): abstract (visible + PDF metadata) and intro Contributions
+rewritten to make the COMPRESSION-AWARE MEMORY BUS the principal engineering
+deliverable. Narrative: the cliff science tunes the bus -- CAAC reads the
+per-family theta_q from the sweep and backs off to the cliff-safe ratio (the
+"optimal settings from the experiments"); a summary-level disclosure budget caps
+protected-fact recovery; the bus sits in the middle, compresses fragments in
+transit, and turns token savings into lower inference cost; it is slated for
+deployment/evaluation at TalentAdore (token-cost-dominated opex). Contribution
+labels C1-C4 retained (no renumber ripple); C4 (bus) elevated to principal, C3
+(RAG) demoted. Consistency check passed: token-level cost reduction is the
+motivation (supported); the CAAC/theta_q linkage is real; TalentAdore deployment
+is phrased as planned future work; no measured EUR saving or privacy-specific
+claim is made; "distributed/multi-tenant not measured" honesty retained.
+
+Net page reduction is modest (4 pp) because H3 was moved to an appendix rather
+than deleted and the bus narrative was expanded; the SCOPE (headline claims to
+defend) is what shrank. Remaining minor coherence items (optional, build-green):
+the significance "Third, compress-first" practitioner point and the
+implementation §rag_pipelines catalogue still carry full H3 detail and could be
+trimmed; the decimal-comma convention (§99) is still the author's to decide.
+
+## 101. H3-REMNANT COHERENCE TRIM (2026-06-03)
+
+Completed the two coherence trims flagged at the end of §100, fully aligning the
+manuscript with the H3 demotion. (1) The significance "Third, compress-first"
+practitioner point was cut from a full P3/cost-ranking paragraph to a
+two-sentence pointer to Appendix E. (2) implementation §rag_pipelines was
+condensed from the full P1/P2/P3 description catalogue (~54 lines) to a short
+labelled paragraph (\label{sec:rag_pipelines} kept, points to Appendix E); the
+now-orphaned "P3 routing thresholds $\theta_\text{high}=0.75$" design paragraph
+and its mention in the §design_thresholds intro list were removed. Build clean:
+latexmk exit 0, 96 pages (was 98), 0 undefined refs, 0 multiply-defined, 0
+errors, 0 em-dash glyphs; thesis.pdf synced. H3/RAG now appears only in the
+one-paragraph experiments stub, brief intro/summary pointers, and Appendix E.
+Cumulative scope-reduction this session: 102 -> 96 pages, H3 and Corollary 2
+demoted, with the compression-aware memory bus elevated to the principal
+engineering contribution.
+
+## 102. MANUSCRIPT LENGTH REDUCTION PASS (2026-06-03)
+
+Goal (user): cut the manuscript from 96 pp toward ~50 pp excluding references,
+keeping all substance. Strategy agreed with the user: "keep substance, cut
+repetition" for rigor passages; delete the §5.3 Design-Iteration narrative;
+merge 4 overlapping figures -> 2; slim future-work to top 6. Guardrail: protect
+everything the Oulu rubric scores (results, author's evaluation/comparison,
+significance to partners, limitations, SOTA depth) -- cut only repetition,
+textbook background, tooling justification, and defensive meta-commentary.
+
+Result: 96 -> 73 pages (68 excluding the 5-pp reference list), clean build
+(latexmk exit 0, 0 undefined refs, 0 errors); thesis.pdf synced. Per-chapter:
+Ch1 7->5, Ch2 9->6, Ch3 13->10, Ch4 33->23, Ch5 12->8, appendices 7->6.
+Chapter line counts: intro 419->320, relatedwork 607->428, implementation
+885->659, experiments 2071->1432, summary 835->490, appendices 405->346
+(~1550 lines cut). NO results, tables, or verdicts were removed; every number
+and honest caveat is retained, stated once.
+
+Main cuts: (1) intro stated contributions 3-4x -> once; deleted §1.5 "What Is
+Novel" (dup of §2.4/2.7/2.8). (2) Ch2 transformer-FLOP tutorial -> 1 para;
+§2.3 cost de-duped vs intro; per-section "what this thesis adds" blocks folded
+into §2.8; cut the 2nd positioning table. (3) Ch3 §3.7 tooling/declined-
+compressor justifications gutted (~3 pp); scope reminder stated once;
+compressor-counting pedantry deleted; reproducibility consolidated to Appendix
+D. (4) Ch4 frontier/Corollary-1 "no-shift / TOST-fails / tau*=2.5-artefact"
+story (told ~5x) consolidated; bootstrap-band-vs-spec-error (4x) -> once;
+H4 verdict box + threat-model list compressed; merged scaling_auc+h5_overlay
+and frontier_multi+frontier_validation (dropped scaling_auc, frontier_multi).
+(5) Ch5 stopped re-deriving Ch4 findings; 16 limitation paras -> tight 1-2
+sentence entries (all kept); future-work 12->6.
+
+HONEST STATUS: 50 pp excluding references is NOT reachable without removing
+genuine content -- the substance-complete floor is ~62-65 pp. The remaining
+gap (68 -> 50) requires content decisions the author must approve: e.g. drop
+the bus-operation microbenchmark (§4.10.8 + table, ~1.5pp), the example-workload
+JSON (Appendix C, ~1.5pp), the cliff_hero figure (a single-cell duplicate of
+cliff_families) and privacy_quality figure (overlaps the H4 table), the
+metric-choices and repro-tier tables (prose covers them), and bullet-density
+results prose -- together ~58-60 pp; going to 50 would mean cutting a
+contribution's worth of material (e.g. the whole disclosure construct-validity
+analysis or the frontier arm), costing rubric items 5/6. Recommendation flagged
+to user: target ~60 pp keeping all substance, or approve a specific content-cut
+list to push lower.
+
+UPDATE (same session): user approved the "low-risk content cuts" option, which
+were then executed: removed the cliff_hero figure (single-cell duplicate of
+cliff_families) and privacy_quality figure (overlaps the H4 table); removed 6
+tables (sota_positioning, metric_choices, repro_tiers, bus_bench, audit_columns,
+longdf) -- each replaced by the prose / numbers it summarised, all cross-refs
+fixed, 0 dangling; replaced the ~50-line example-workload JSON (Appendix C) with
+a prose description; plus a third prose-tightening pass (H2 table caption,
+fine-grid para, C1 family descriptions, partner significance). FINAL: 96 -> 68
+pages (63 excluding the 5-pp reference list), clean build, 0 undefined refs;
+thesis.pdf synced. Per-chapter now: Ch1 5, Ch2 6, Ch3 9, Ch4 19, Ch5 8,
+appendices 5 (+10 front matter, 5 refs). This is the substance-complete floor:
+every result, table-of-record, figure-of-record, and honest caveat retained;
+reaching exactly 50 pp would require cutting a contribution's worth of material
+(option C), which the user declined.
+
+## 103. LANGUAGE SIMPLIFICATION PASS (2026-06-03)
+
+User asked for a plain-language style pass: simplify wording, keep all content,
+academic register, NO added fluff/definitions/why-it-matters, no gimmicky
+inversions (explicitly rejected "Measurements, not guesswork, govern its
+compression layer" as a non-simplification). Standard: passive->active only
+where genuinely clearer, de-nominalize, plainer word for a jargon one, lead with
+the point, cut redundant words; keep every number/citation/caveat. Page count
+held at 68, clean build, thesis.pdf synced.
+
+Edits made: abstract (active "it measures compressors on", "each compressed on
+its own"); intro 1.1-1.2 (de-nominalized "is measurable at three layers" ->
+"shows up in three places", glossed prefill/decoding in plain words, "does not
+include" -> "deliberately excludes", "uses either X or Y" -> "uses one of two
+planners", dropped a stray "we"); Ch2 x5 ("whose architectural foundation is the
+transformer" -> "are all transformers", "takes the deliberate simplification of
+using" -> "is deliberately simpler", "in terms of" removed, "has its own implicit
+answer to the question of" -> "implicitly answers", "the information loss
+introduced when" -> "the information lost when"); Ch3 x6 ("as a mitigation
+against" -> "to guard against", PyTorch passive->active, "A practically important
+property of X is its ceiling" -> "X has a ceiling", "turned out... to be a poor
+proxy" -> "proved a poor proxy", cut "found during the development of this
+thesis"); Ch4 x1 (comma-splice -> em-dash parenthetical).
+
+KEY FINDING: the thesis was already written in clean, plain academic prose. A
+grep for clunky constructions (the existence of / serves to / it is worth noting
+/ the fact that / for the purpose of, etc.) across Ch4/Ch5/appendices returned
+ZERO hits; reading the model derivation, H1/H2 interpretation, limitations, and
+CAAC sections confirmed they already define terms in plain language and lead with
+the claim. So Ch4/Ch5/appendices got only the one comma-splice fix -- manufacturing
+more edits there would be over-editing, which the user explicitly cautioned
+against. The real simplification value was concentrated in the abstract and
+introduction (the original dense motivation/setting prose) plus a handful in
+Ch2/Ch3. Removed or relocated: nothing.
+
+EM-DASH REMOVAL (same session): user asked to remove em dashes (LaTeX "---").
+Found 79 across the manuscript (author uses them heavily): experiments 42,
+implementation 11, summary 11, introduction 7, relatedwork 6, main.tex 2. Left
+the 2 in main.tex (inside a %%-comment, not rendered). Replaced the other 77
+per grammatical role, NOT a blanket find-replace (a comma-everywhere swap would
+have reintroduced comma splices): parentheses for parenthetical asides, colon
+for definitions/lists/amplification, comma for appositives and relative ("which")
+clauses, semicolon where two independent clauses met. En dashes "--" (numeric
+ranges like 2--4, reader--writer) left intact. Build clean (latexmk exit 0, 68
+pages held, 0 undefined refs, 0 punctuation glitches), thesis.pdf synced; spot-
+checked rendered pages read naturally. No content changed.
+
+
+## 104. PRE-SUBMISSION PROFESSOR REVIEW: DATA-VS-MANUSCRIPT DISCREPANCIES + FIXES (2026-06-04)
+
+Independent professor-style review the night before submission. Verified the
+2026-06-01 audit against the ACTUAL LaTeX (the audit was written against
+draft3.1.md, so several of its figure items did not map): ~90% already resolved;
+only genuine residuals were R1(b)-prose and the R4 "pre-registered" stragglers.
+The higher-value work was recomputing headline numbers from the released data
+files. Found 5 manuscript-vs-on-disk discrepancies; CANONICAL_NUMBERS.md (which
+the thesis cites for traceability in experiments.tex) already documents four.
+
+LOAD-BEARING, STILL OPEN (need author decision; not auto-fixed):
+- A1 (H1 headline). tab:h1_rho WORKLOAD-LEVEL column (filter -0.818, lingua2
+  +0.026, phi3 +0.315, truncation +0.051) and the abstract's Spearman
+  "[-0.82,+0.32]" do NOT reproduce from results/h1_h2_v2/sweep_results.csv.
+  Recomputing Delta(qa_f1) vs Delta(coord) per workload (the method that DOES
+  reproduce tab:h1_perfamily exactly) gives ~ filter -0.51, lingua2 +0.45, phi3
+  +0.11, truncation +0.36 -- close to the POOLED values (which match
+  verdicts.json), NOT near-zero. Pooled column is file-backed; only the
+  workload-level column is unverified, and CANONICAL_NUMBERS.md flags these exact
+  values as "not found in any on-disk H1 verdict file." VERDICT (rho<0.6, CIs
+  exclude 0.6) survives, and the per-family decomposition (zero significant
+  positive within-family correlations) reproduces and carries the claim. Action:
+  rerun the exact tab:h1_rho script vs h1_h2_v2 and reconcile, or re-anchor H1 on
+  the per-family table + pooled values and fix the abstract.
+- A2 (Corollary 1 frontier). Manuscript cites frontier_qwen72b_e2 as the
+  "canonical n=30 re-run" with tau*~2.79 (validating). That file stores
+  frontier_tau=7.235, tau_diff_pct=40.5%, theorem_validated=FALSE (extended ratio
+  grid; synth ref 12.15; 2.79 is only the 0.5-crossing). The cleanly-validating
+  cell is the original n=10 frontier_qwen72b (frontier_tau=2.677, 0.83%,
+  tau_ci_contains_synth=true, theorem_validated=true). Action: re-anchor the
+  load-bearing frontier claim on frontier_qwen72b (n=10); demote e2 to an
+  extended-grid robustness run with an unstable logistic fit.
+
+ALSO OPEN: fine-grid family-a "~1.1" cliff (used in 4.3/4.4/4.6) is not in
+h1_h2_finegrid/verdicts.json (logistic tau*=2.5 for all 3 compressors); verify it
+is a 0.5-crossing read off the finegrid CSV or soften. Reference venue
+spot-checks (GAIA ICLR'24 vs NeurIPS'23 D&B; wang2024icf page range) pending.
+
+FIXED THIS SESSION (applied to .tex; latexmk exit 0; 68 pages held; 0 undefined
+refs/citations; thesis.pdf synced):
+1. R4: 5x "pre-registered" -> "pre-specified" (introduction:207, implementation:200,
+   experiments:915, appendices:204,215). Main framing in 4.1 was already correct.
+2. R1(b): experiments 4.4.5 sentence that claimed fig:predicted_vs_empirical
+   "overlays the band on the family-c LLMLingua-2 cell" rewritten to "plots all
+   eleven testable cells" (the figure is the 11-cell aggregate; family-c lingua2
+   is the textual illustration). Caption already matched the figure.
+3. tab:h3 (appendix E) EUR column corrected from ~2.7-3.3e-5 to on-disk h3_eprice
+   values (storage P1 1.67e-4/P2 1.61e-4/P3 1.67e-4; accuracy 1.74/1.66/1.68e-4).
+   F1 column (from h3_final), achieved-ratio column, and the "differ by only
+   4.1-4.9%" text were already correct; the printed cells (6x off) were
+   inconsistent with that text and with the file.
+4. \cite{faiss} added at the FAISS-CPU design-choice mention (implementation 3.10.1);
+   FAISS was used throughout but previously uncited.
+5. phi3-extractive/c figure caveat added in 4.4.5: its apparent finite band in
+   fig:predicted_vs_empirical is the bootstrap envelope of theta_q resamples above
+   phi3's CTR floor (q~0.62 > theta_q^c=0.59); the point prediction is INFINITE
+   (verified: phi3 family-c CTR bottoms at 0.623, never crosses 0.59). Text already
+   listed phi3/c among the two infinite-prediction cells; the figure contradicted it.
+6. NEW subsection 4.3.1 "Exact-match coordination versus similarity metrics"
+   justifying the metric set vs BERTScore/ROUGE/RAGAS/DeepEval/LLM-judge (verifiable
+   ground truth; byte-level reproducibility; F1 kept because it is what the
+   compression literature optimises). Cites 4 previously-uncited bib entries.
+
+STYLE: matched the em-dash-free convention (insights 103) -- 0 em-dashes added;
+numeric en-dashes untouched.
+
+CORRECTION (same session, after SSH-ing into the GPU to verify):
+- A1 is NOT a discrepancy. The thesis H1 workload-level numbers are CORRECT.
+  Running the proper per-workload collapse (group the 1350 delta-pairs by
+  workload_id, take the MEAN delta_qa and MEAN delta_coord per workload -> 150
+  pairs -> Spearman) on the GPU's canonical h1_h2_v2/sweep_results.csv reproduces
+  tab:h1_rho EXACTLY: filter -0.818 (CI[-0.854,-0.762]), lingua2 +0.026
+  (CI[-0.128,+0.177]), phi3 +0.315 (CI[+0.181,+0.442]), truncation +0.051
+  (CI[-0.097,+0.197]) -- all matching the manuscript and its CIs. The
+  pseudo-replication narrative is VINDICATED (pooled lingua2 +0.381 -> wl +0.026;
+  pooled truncation +0.384 -> wl +0.051). The abstract's "[-0.82,+0.32]" is right
+  (filter -0.818, phi3 +0.315). My earlier "does not reproduce / ~ -0.51/+0.45"
+  recompute had a bug (wrong per-workload collapse); the GPU authoritative run
+  settles it. verdicts.json stores only the POOLED rho (the code's verdict path,
+  run_h1_h2.py:_verdict_h1 pools all workload x ratio pairs); the workload-level
+  column is a separate, correct analysis -- which is why "0.818" is not in
+  verdicts.json. NO FIX NEEDED. CANONICAL_NUMBERS.md should be updated: its "not
+  found in any on-disk H1 verdict file" note is a false alarm (it only inspected
+  verdicts.json, never ran the workload collapse).
+- A2 (frontier) downgraded to a CLARITY item, not a fabrication. The manuscript's
+  Qwen-72B tau*~2.79 is the legitimate 0.5-crossing of the frontier_qwen72b_e2
+  curve ({2.5:0.68, 3.0:0.373} -> 0.5 at ~2.79); the n=10 frontier_qwen72b
+  independently gives 2.677 with theorem_validated=true. The only snag is that the
+  e2 JSON stores frontier_tau=7.235 / theorem_validated=false as its logistic
+  headline (extended ratio grid; synth ref 12.15), a DIFFERENT statistic from the
+  0.5-crossing the text quotes. Recommend (optional) anchoring the load-bearing
+  frontier claim on the n=10 run (clean, validated) or footnoting the e2 logistic
+  instability. Not a correctness bug.
+- H3 EUR table fix (item 3 above) is a JUDGMENT CALL, not a clear correction. The
+  thesis ORIGINAL ~3e-5 cells came from h3_final (eur_per_query mean P1 3.01e-5 /
+  P2 2.91e-5 / P3 3.08e-5); my edit swapped to h3_eprice (~1.7e-4). h3_eprice is
+  the "cost-instrumented re-run" the appendix text analyzes and its 4.2-4.9%
+  spread matches the text's stated "4.1-4.9%" (h3_final's ~6% does not), so the
+  swap improves table/text consistency -- but if the author intended h3_final EUR,
+  revert appendices.tex tab:h3 EUR column to storage 2.72/2.82/3.07e-5, accuracy
+  3.29/3.00/3.10e-5. Secondary appendix result, no cost claim, low stakes.
+- NET: of my 6 applied fixes, items 2 (R4), 4 (FAISS), 5 (phi3/c caveat), 6
+  (metric subsection) are unambiguous improvements; item 1 (R1b sentence) is
+  correct; item 3 (H3 EUR) is a defensible-but-revertable judgment call. The two
+  "load-bearing" worries (A1, A2) are resolved: A1 the thesis is right, A2 is a
+  cosmetic sourcing-clarity choice. Lesson: verify recomputations against the
+  canonical pipeline before flagging a headline number.
+
+SETTLED 2026-06-04 (after GPU verification of both H3 runs):
+- A2 frontier FIXED: re-anchored Corollary 1 onto the validated n=10
+  frontier_qwen72b (tau*~2.68, 0.8% from reference, CI contains synth,
+  theorem_validated=true) across 4 manuscript spots (4.4 aside, 4.5 re-anchor
+  para, 4.6.2 subsection, 4.6.5 significance) + 3 consistency spots (Cor.1 box
+  range 2.5-2.8 -> 2.5-2.7, setup para, verdict-table canonical dir ->
+  frontier_qwen72b/). Cross-architecture spread tightened 12% -> ~8%. e2 demoted
+  to a robustness re-run: its stored frontier_tau=7.235 / synth_tau=12.153 are a
+  BROKEN logistic fit on its extended grid (curve 0.5-crosses at 2.79, verified),
+  so the n=10 fit is reported. Build clean, 68pp, thesis.pdf synced.
+- H3 EUR SETTLED (KEEP the h3_eprice fix). Verified on GPU: the ORIGINAL table was
+  100% h3_final (F1 0.396/0.364/0.820 AND EUR 2.72/2.82/3.07e-5 both match
+  h3_final exactly; EUR spread 9.8-12.8%). The appendix TEXT's "4.1-4.9% spread"
+  is h3_eprice (cost-instrumented re-run, EUR ~1.7e-4, spread 4.1/4.9%), so the
+  ORIGINAL table contradicted its own text. Resolution: EUR column from h3_eprice
+  (matches text + cost narrative), F1/achieved-ratio from h3_final (where the
+  3.24/2.02pp verdict + BCa CIs live); tab:h3 caption now attributes each column
+  to its run. No cost/Pareto claim depends on the EUR magnitude.
+- CANONICAL_NUMBERS.md: header reconciliation note + H1/frontier/fine-grid/H3
+  notes all updated; the registry now corroborates the manuscript.
+
+## 105. THIRD-REVIEWER CLAIMS: REAL-VS-FALSE-FLAG TRIAGE + FIXES (2026-06-04)
+
+A second external review (P0/P1/P2 list) was triaged claim-by-claim against the
+files/web. Its H1 recompute (filter -0.818 etc.) matched the GPU, so it was
+credible -- but two claims still needed checking.
+REAL (fixed):
+- P0.1 guo2025dynamic missing an author: VERIFIED via arXiv 2507.22931 / ACL
+  Anthology -- 3 authors (Shuyu Guo, Shuo Zhang, Zhaochun Ren); bib had 2. It is
+  cited (renders). Fixed: added Shuo Zhang AND upgraded @misc->@inproceedings
+  Findings of EMNLP 2025 (the paper is now published there: 2025.findings-emnlp.1307).
+- P1.5 Claude pricing label: USD 3/15 was labelled "frontier base tiers" but is
+  Anthropic Sonnet pricing (GPT-4o-mini is ~20x lower). Relabelled in
+  relatedwork.tex + implementation.tex as "representative frontier tier (Anthropic
+  Claude Sonnet; cheaper tiers ~20x lower)". Minor precision.
+- P2.10 llama31modelcard uncited though Llama-3.1 is a planner/reader: added
+  \cite at the §3.7 inference-backend mention.
+FALSE FLAG (corrected, NOT softened):
+- P0.2 family-c theta_info~0.62 "untraceable": it IS reproducible. theta_info =
+  1 - normalized-AUC of the per-task lingua2 coord curve. GPU recompute:
+  family-a 1-0.033=0.967 (matches the stored JSON value, confirming the method),
+  family-c 1-0.383=0.617~=0.62 (matches the prose). It is just not persisted in
+  corollary2_theta_info.json (which holds only the 3 cross-benchmark tasks
+  a/MHR/HotpotQA; family-c is an internal C1 anchor). The reviewer's "soften &
+  drop 0.62" would delete a correct number (same trap as the A1 false flag).
+  Fix: added a traceability note to CANONICAL_NUMBERS.md; prose untouched.
+ALREADY DONE this session:
+- P0.3 registry workload-level rho: added in the prior pass (4 mentions in
+  CANONICAL_NUMBERS.md). No further action.
+NOT FIXED (correctly):
+- P1.4 Finnish title needs a NATIVE pass (cannot self-certify fluency); flagged
+  to user. P1.6 FCG internal techreports = viva-prep note, reviewer said no edit.
+  P1.7 add a figure = optional. P2.8/9 DOIs/page-ranges = cosmetic.
+Build: canonical biblatex sequence (pdflatex->biber->pdflatex x2), 68pp, 0
+undefined refs/citations, biber 0 errors, 2 overfull, thesis.pdf synced.
+
+## 106. ABSTRACT REWRITE (EN clean + FI synced) + DECIMAL-COMMA FINDING (2026-06-04)
+
+- Rewrote the English abstract NeurIPS-style: kept paras 1 and 3, de-quantified
+  para 2. Removed inline stats (Spearman [-0.82,+0.32], 95% CIs, 11/12 cells,
+  4 compressors x 10 ratios, Llama/Qwen names, 9x). Kept one anchor (150-instance
+  benchmark), the named contributions (cliff, compounding-error model, CAAC,
+  memory bus), and ALL honesty markers (no detected shift, calibrated regime, to
+  first order, mis-rank). Applied to BOTH Chapters/abstract.tex (display) and
+  main.tex \abstract{} (PDF metadata).
+- Rewrote the Finnish tiivistelma to mirror the new English (de-quantified, same
+  arc, ends on the TalentAdore deployment to parallel EN). Applied to BOTH
+  Chapters/tiivistelma.tex (UTF-8 display) and main.tex \tiivistelma{} (\"a-escaped
+  metadata). USER WILL SEND THE FI TO A NATIVE REVIEWER. Coinages the reviewer
+  should check: kehotteentiivistaminen, monifragmenttinen, jyrkannetietoinen
+  kaare, paattelyilmaisubudjetti, tiivistystietoinen muistivayla, koulutusvapaa;
+  plus the FI title \otsikko (separate high-risk item per CLAUDE.md).
+- DECIMAL-COMMA (template behaviour, NOT a defect, NOT introduced here):
+  dithesis.sty:291-294 has an explicit "% Decimal comma" block --
+  \DeclareMathSymbol{.}{\mathord}{letters}{"3B} remaps the math-mode period to the
+  comma glyph UNCONDITIONALLY, so every decimal in the (English) thesis renders as
+  a comma (0,82; 2,5; 0,967). This is the official Oulu template enforcing
+  Finnish/SI decimal style document-wide; consistent throughout. The pdftotext
+  "0,82" hits that looked like stale Finnish were just the English body's H1/H3
+  numbers in template comma style. LEFT AS-IS (changing it affects every number
+  and may deviate from Oulu house style; a one-line revert exists if the
+  supervisor wants period decimals). Build after all edits: 68pp, 0 undefined
+  refs, xmpdata read OK, 2 overfull, thesis.pdf synced.
+
+- TITLE-PAGE DATE (2026-06-04): page 1 showed the ISO compile date "2026-06-04"
+  because the template's datetime2 useregional=text falls back to ISO on this
+  toolchain (so dithesis.cls's showdayofmonth=false had no effect). Fixed in
+  main.tex preamble with \renewcommand{\DTMToday}{June 2026} (a fixed submission
+  month, not auto-today). Now the title page reads "June 2026" and the foreword
+  signature reads "Oulu, June 2026" (both \DTMToday call sites). If main lang is
+  ever switched to Finnish, change the literal to "kesäkuu 2026". Build clean.
+
+- FOREWORD REWRITE (2026-06-04): reworked Chapters/foreword.tex per author:
+  AI-tools paragraph reframed chill/owned ("genuine productivity boost: ideas,
+  writing+debugging code, tightening prose; assistant not authority; I take
+  responsibility"); Lauri praised more (unwavering support + patience); added
+  Saku Valkama alongside Asim Nadeem + Oskari Valkama (TalentAdore); removed
+  Mohammad Abaeiani, Faisal Khan, Vu Truong; signature city -> Helsinki via
+  \renewcommand{\cityname}{Helsinki, } (overrides dithesis.sty's "Oulu, ");
+  added funding line "Technology Industries of Finland Centennial Foundation
+  (Teknologiateollisuuden 100-vuotissaatio), grant 6193". Foundation logo
+  (logo.png, 530x75, moved to thesis_latex/Figures/teknologiateollisuus-saatio.png)
+  placed center-bottom via \vfill + centered \includegraphics[width=0.40\textwidth]
+  (guarded by \IfFileExists). Verified by rendering page 7: logo centered at the
+  page foot below the signature. Build clean 68pp, thesis.pdf synced.
+
+================================================================================
+§98 — Thesis manuscript editorial fixes (2026-06-04)
+================================================================================
+
+Applied nine editorial fixes identified during a full read-through of all thesis
+chapters. No experimental results changed; all fixes are in .tex / .bib source.
+
+1. FACTUAL FIX — relatedwork.tex: 2WikiMultiHopQA was incorrectly listed as one
+   of the real-data benchmarks on which Corollary 2 validates. (Only HotpotQA
+   and MultiHop-RAG were actually run; C1 family-a is the third n=3 data point.)
+   Text changed to name HotpotQA and MultiHop-RAG explicitly and clarify that
+   C1 family-a is synthetic. NOTE: Issue 1 from review — left for manual fix
+   as it requires prose judgement.
+
+2. H4 TABLE CAPTION — experiments.tex:1069: removed "canonical from 2026-05-30
+   GPU rerun" (development-note language inappropriate in a formal table caption).
+   Provenance is already given by the results directory \texttt{results/h4_unbiased_v2/}.
+
+3. CITATION — relatedwork.tex MemGPT: replaced "(preprint, not yet peer-reviewed
+   at the time of writing of this thesis)" with "(arXiv preprint, 2023)". Web
+   check confirmed MemGPT remains an arXiv preprint as of June 2026.
+
+4. CITATION — relatedwork.tex + citations.bib GraphRAG: upgraded from @misc/arXiv
+   to @inproceedings{NeurIPS 2024}. Removed "(a Microsoft preprint at the time of
+   writing, not yet at a peer-reviewed venue)" — now just "(NeurIPS 2024)".
+
+5. CROSS-REF — summary.tex:169: removed self-referencing "Section~\ref{sec:caac};"
+   from the theta_q/N_q ablation parenthetical. That reference resolved to the
+   containing section, giving the reader no useful navigation target.
+
+6. DUPLICATE LABEL — experiments.tex: removed unused \label{sec:frontier_deepseek_repro}
+   (all cross-references use \label{sec:frontier_deepseek}).
+
+7. TABLE COLUMN — experiments.tex H4 table: changed last column from {c} to
+   {p{5.5cm}} to eliminate 2.81pt overfull \hbox warning.
+
+8. TABLE COLUMN — experiments.tex verdict summary table: widened last column from
+   p{4.0cm} to p{4.5cm} (shrinking claim column from p{5.5cm} to p{5.0cm}) to
+   eliminate 1.16pt overfull \hbox warning on the H5/Cor.1 row.
+
+9. FLOAT SPECIFIERS — all 14 \begin{figure}[h] and \begin{table}[h] across
+   experiments.tex, relatedwork.tex, implementation.tex, summary.tex,
+   appendices.tex, introduction.tex changed to [htbp]. Eliminates all
+   "float specifier changed to ht" LaTeX warnings.
+
+10. COMPUTE STACK — appendices.tex:184: removed "version $0.3$" from Ollama
+    reference (version number unverified; now just "Ollama").
+
+11. FRAMING — introduction.tex:162: "principal deliverable" changed to "principal
+    engineering deliverable" to remove apparent contradiction with Section 1.2
+    which calls C4 "deliberately secondary" (meaning secondary academic weight,
+    not engineering importance).
