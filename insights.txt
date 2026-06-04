@@ -5533,3 +5533,11 @@ undefined refs/citations, biber 0 errors, 2 overfull, thesis.pdf synced.
   and may deviate from Oulu house style; a one-line revert exists if the
   supervisor wants period decimals). Build after all edits: 68pp, 0 undefined
   refs, xmpdata read OK, 2 overfull, thesis.pdf synced.
+
+- TITLE-PAGE DATE (2026-06-04): page 1 showed the ISO compile date "2026-06-04"
+  because the template's datetime2 useregional=text falls back to ISO on this
+  toolchain (so dithesis.cls's showdayofmonth=false had no effect). Fixed in
+  main.tex preamble with \renewcommand{\DTMToday}{June 2026} (a fixed submission
+  month, not auto-today). Now the title page reads "June 2026" and the foreword
+  signature reads "Oulu, June 2026" (both \DTMToday call sites). If main lang is
+  ever switched to Finnish, change the literal to "kesäkuu 2026". Build clean.
