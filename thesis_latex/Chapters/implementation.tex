@@ -179,8 +179,9 @@ confirms that the \texttt{verify()} chain-walker reports failure.
 
 A second SQLite table records every paid model call (provider,
 model, token counts, EUR cost, wallclock), sharing the audit database
-for transactional consistency. Pricing follows public frontier rates
-(USD~$3$/$15$ per million input/output tokens, $\approx$
+for transactional consistency. Pricing follows a representative
+frontier rate (Anthropic Claude Sonnet tier, USD~$3$/$15$ per million
+input/output tokens, $\approx$
 EUR~$2.76$/$13.80$ at $0.92$~USD/EUR) against an on-premises marginal
 $\approx$ EUR~$0.05$ per million tokens~\cite{fcgfinancial2026}; the
 ledger feeds the EUR-per-workflow cost model of the RAG catalogue
@@ -487,8 +488,8 @@ backends are used in the evaluation. The first is a local Ollama
 endpoint~\cite{ollama} that hosts Qwen-2.5-Instruct at the three
 local sizes (\textsc{1.5B}, \textsc{3.8B}, \textsc{8B}) used in
 the model-scaling sweep, Phi-3-Mini-3.8B for the extractive
-compressor, and Llama-3.1-8B-Instruct as the local protected-fact
-reader. The second is the OpenAI-compatible Featherless API used
+compressor, and Llama-3.1-8B-Instruct~\cite{llama31modelcard} as the
+local protected-fact reader. The second is the OpenAI-compatible Featherless API used
 for the frontier validation (Qwen-2.5-72B-Instruct, DeepSeek V4
 Pro). The third is the OpenAI API for the GPT-class frontier
 arm (excluded from the calibrated regime per

@@ -36,7 +36,7 @@
 % and no copyright page will be generated
 %
 %\input{copyright-allrightsreserved}
-\input{copyright-ccby40.tex}
+%\input{copyright-ccby40.tex}
 
 % TikZ for the architecture diagram in Chapter 3.
 \usepackage{tikz}
@@ -52,6 +52,12 @@
 % array: enables >{\raggedright\arraybackslash}p{} columns so fixed-width
 % table cells break without justification-induced overfull boxes.
 \usepackage{array}
+
+% Title-page (and foreword) date: render "June 2026" instead of the ISO
+% compile date. The template's datetime2 useregional=text setting falls back
+% to ISO (YYYY-MM-DD) on this toolchain, so showdayofmonth has no effect;
+% override \DTMToday directly to the submission month.
+\renewcommand{\DTMToday}{June 2026}
 
 %%%%%%%%%%%%%%%%%%%%% SET YOUR INFORMATION HERE %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -78,83 +84,87 @@
 % This version should otherwise remain identical to it
 \abstract{Every token a multi-step LLM workflow reads costs energy,
   latency, and money, so context compression is the obvious lever.
-  The prompt-compression literature is mature, but it measures
-  compressors on single-fragment question-answering, whereas
-  production workflows must combine information across several
+  The prompt-compression literature is mature, but it evaluates
+  compressors on single-fragment question answering, whereas
+  production workflows must combine information spread across several
   fragments each compressed on its own, and whether preserving
-  single-fragment quality also preserves that harder property had
-  never been tested. It does not:
-  on a new 150-instance benchmark spanning cross-document fact
-  aggregation, constraint-satisfaction planning, and multi-step
-  retrieval, four training-free compressors swept over ten ratios show
-  no positive workload-level correlation between source-retention F1
-  and multi-fragment coordination success (Spearman in [-0.82, +0.32],
-  all 95 percent bootstrap intervals excluding 0.6), so the
-  single-agent benchmarks that dominate the field mis-rank compressors
-  for multi-fragment deployment. The failure is abrupt: a sharp
-  coordination cliff, present on 11 of 12 (compressor, family) cells,
-  at which success collapses once compression strips the task-critical
-  tokens a planner must combine; a compounding-error model explains
-  the sharp threshold and recovers its position to first order, and
-  the cliff is a property of the compressor and the task, not the
-  planner, showing no detected shift within a calibrated regime from a
-  local Llama-3.1-8B to a frontier Qwen-2.5-72B across a 9x scale-up
-  and a change of architecture family. Turning these findings into a
-  deployable system is the thesis's principal engineering
-  contribution: a compression-aware memory bus that sits between the
-  data sources and the planner and compresses every fragment in
-  transit, turning token savings directly into lower inference cost.
-  Its compression layer is governed by the measurements rather than by
-  guesswork: a cliff-aware wrapper (CAAC) takes the per-family recall
-  threshold learned from the sweep and backs off to the most
-  aggressive ratio that still keeps each fragment on the safe side of
-  the cliff, while a summary-level disclosure budget caps how much a
-  downstream reader can recover from a compressed confidential
-  fragment. The reference implementation is a policy-enforcing service
-  with a tamper-evident audit log, slated for deployment and
-  evaluation in the production workflows of the industry partner,
-  TalentAdore, where token cost dominates operating expense.}
+  single-fragment quality also preserves that harder multi-fragment
+  property had never been tested. It does not. On a new 150-instance
+  benchmark spanning cross-document fact aggregation,
+  constraint-satisfaction planning, and multi-step retrieval,
+  single-fragment retention quality fails to predict multi-fragment
+  coordination success for every training-free compressor tested, and
+  the two measures even disagree on how to rank compressors, so the
+  single-agent benchmarks that dominate the field mis-rank them for
+  multi-fragment use. The failure is abrupt rather than gradual: a
+  sharp coordination cliff at which success collapses once compression
+  strips the task-critical tokens a planner must combine. A
+  compounding-error model explains why the transition is sharp and
+  recovers its position to first order, and the cliff is a property of
+  the compressor and the task, not the planner, showing no detected
+  shift within a calibrated regime from a small local model to a
+  frontier model an order of magnitude larger, even across a change of
+  architecture family. Turning these findings into a deployable system
+  is the thesis's principal engineering contribution: a
+  compression-aware memory bus that sits between the data sources and
+  the planner and compresses every fragment in transit, converting
+  token savings directly into lower inference cost. Its compression
+  layer is governed by the measurements rather than by guesswork: a
+  cliff-aware wrapper (CAAC) backs each fragment off to the most
+  aggressive ratio that still keeps it on the safe side of the cliff,
+  while a summary-level disclosure budget caps how much a downstream
+  reader can recover from a compressed confidential fragment. The
+  reference implementation is a policy-enforcing service with a
+  tamper-evident audit log, slated for deployment in the production
+  workflows of the industry partner, TalentAdore, where token cost
+  dominates operating expense.}
 
-\tiivistelma{Suuria kielimalleja k\"aytt\"av\"at monivaiheiset
-  ty\"onkulut maksavat jokaisesta lukemastaan tokenista, ja
-  kontekstin tiivist\"aminen on luonteva s\"a\"at\"okeino. Yhden
-  agentin kehotteentiivist\"amist\"a koskeva kirjallisuus ei
-  kuitenkaan mittaa sit\"a, s\"ailytt\"a\"ak\"o
-  kysymys-vastaus-tarkkuutta s\"ailytt\"av\"a tiivist\"aminen
-  my\"os sit\"a vaikeampaa ominaisuutta, jonka suunnittelija
-  tarvitsee: useaan tiivistettyyn fragmenttiin jaetun tiedon
-  yhdist\"amist\"a oikeaksi vastaukseksi. T\"am\"a tutkielma
-  tarkastelee kysymyst\"a monifragmenttisilla
-  kielimallity\"onkuluilla. Arvioinnissa suunnittelijana toimii
-  joko deterministinen regex-j\"asennin tai yksi kielimallikutsu,
-  jossa kaikki tiivistetyt fragmentit ovat n\"akyvill\"a;
-  monikierroksinen agenttisimulointi on rajattu empiirisen
-  tarkastelun ulkopuolelle. Ty\"o esitt\"a\"a nelj\"a p\"a\"atulosta.
-  Toistettava koordinaation vertailutesti, jossa on 150 instanssia
-  kolmesta ty\"okuormaperheest\"a. Empiirinen kuvaus koordinaation
-  jyrk\"anteest\"a yhdess\"a kumuloituvan virheen mallin kanssa,
-  joka selitt\"a\"a jyrk\"anteen kynnysrakenteen ja palauttaa
-  empiirisen sijainnin ensimm\"aisen kertaluvun tarkkuudella
-  kierroskohtaisesta token-recallista. Havainto, jonka mukaan
-  kalibroidulla alueella jyrk\"anteen sijainnissa ei havaita
-  siirtym\"a\"a paikallisen Llama-3.1-8B-suunnittelijan ja
-  huipputason Qwen-2.5-72B-suunnittelijan v\"alill\"a, DeepSeek V4
-  Pro:n vahvistaessa tuloksen heikosti. Sek\"a kolmen RAG-putken
-  katalogi, jossa tiivist\"a-ensin-j\"arjestys osoittautuu yhdess\"a
-  testatussa upotus- ja indeksipinossa johdonmukaisesti mutta vain
-  kohtuullisesti paremmaksi (2--3 prosenttiyksik\"on F1-ero) kuin
-  hae-ensin-j\"arjestys. Lis\"aksi ty\"o toimittaa muistiv\"ayl\"an
-  viitetoteutuksen ja yhteenvetotason p\"a\"attelyilmaisumetriikan.
-  P\"a\"atulokset: yhden fragmentin tiedon s\"ailyminen ei ennusta
-  positiivisesti koordinaation onnistumista mill\"a\"an testatulla
-  tiivist\"aj\"all\"a; jyrkk\"a jyrk\"anne on olemassa; suunnittelijan
-  kapasiteetti m\"a\"aritt\"a\"a onnistumiskaton mutta ei
-  jyrk\"anteen sijaintia kalibroidulla alueella; informaation tiheys
-  skaalaa jyrk\"annett\"a aineistojen v\"alill\"a; ja tiivist\"aminen
-  v\"ahent\"a\"a mitattavasti suojattujen faktojen
-  p\"a\"attelyilmaisua. Jyrk\"annetietoinen adaptiivinen k\"a\"are
-  CAAC operationaalistaa kumuloituvan virheen rajan ajonaikaisena
-  per\"a\"antymismekanismina.}
+\tiivistelma{Suuria kielimalleja hy\"odynt\"av\"at monivaiheiset
+  ty\"onkulut maksavat jokaisesta lukemastaan tokenista, joten
+  kontekstin tiivist\"aminen on luonteva keino karsia kustannuksia.
+  Kehotteentiivist\"amisen kirjallisuus on kyps\"a\"a, mutta se
+  arvioi tiivist\"aji\"a yhden fragmentin kysymys--vastaus-teht\"avill\"a,
+  vaikka tuotannon ty\"okuormat joutuvat yhdist\"am\"a\"an tietoa
+  useasta erikseen tiivistetyst\"a fragmentista. Sit\"a,
+  s\"ailytt\"a\"ak\"o yhden fragmentin laadun s\"ailytt\"av\"a
+  tiivist\"aj\"a my\"os t\"am\"an vaikeamman, monifragmenttisen
+  ominaisuuden, ei ollut aiemmin tutkittu. Ei s\"ailyt\"a. Uudessa
+  150 instanssin vertailuaineistossa, joka kattaa faktojen
+  yhdist\"amisen dokumenttien v\"alill\"a, rajoiteperustaisen
+  suunnittelun ja monivaiheisen tiedonhaun, yhden fragmentin tiedon
+  s\"ailyminen ei ennusta monifragmenttisen koordinaation
+  onnistumista yhdell\"ak\"a\"an testatulla koulutusvapaalla
+  tiivist\"aj\"all\"a, ja mittarit jopa eroavat siit\"a, miten
+  tiivist\"aj\"at tulisi asettaa paremmuusj\"arjestykseen. N\"ain
+  alaa hallitsevat yhden agentin vertailuaineistot asettavat
+  tiivist\"aj\"at v\"a\"ar\"a\"an j\"arjestykseen monifragmenttista
+  k\"aytt\"o\"a ajatellen. Romahdus on \"akillinen, ei asteittainen:
+  ter\"av\"a koordinaation jyrk\"anne, jossa onnistuminen romahtaa
+  heti, kun tiivist\"aminen karsii ne teht\"av\"an kannalta
+  kriittiset tokenit, jotka suunnittelijan on yhdistett\"av\"a.
+  Kumuloituvan virheen malli selitt\"a\"a, miksi siirtym\"a on
+  jyrkk\"a, ja palauttaa sen sijainnin ensimm\"aisen kertaluvun
+  tarkkuudella. Jyrk\"anne on tiivist\"aj\"an ja teht\"av\"an, ei
+  suunnittelijan, ominaisuus: kalibroidulla alueella sen
+  sijainnissa ei havaita siirtym\"a\"a pienest\"a paikallisesta
+  mallista suuruusluokkaa suurempaan huipputason malliin, ei
+  my\"osk\"a\"an arkkitehtuuriperheen vaihtuessa. N\"aiden
+  havaintojen muuntaminen k\"aytt\"o\"onotettavaksi j\"arjestelm\"aksi
+  on tutkielman keskeinen tekninen kontribuutio: tiivistystietoinen
+  muistiv\"ayl\"a, joka sijaitsee tietol\"ahteiden ja suunnittelijan
+  v\"aliss\"a, tiivist\"a\"a jokaisen fragmentin matkalla ja muuntaa
+  tokens\"a\"ast\"ot suoraan pienemm\"aksi p\"a\"attelykustannukseksi.
+  Sen tiivistyskerrosta ohjaavat mittaukset eiv\"at arvaukset:
+  jyrk\"annetietoinen k\"a\"are (CAAC) per\"a\"antyy kunkin fragmentin
+  kohdalla aggressiivisimpaan suhteeseen, joka pit\"a\"a fragmentin
+  jyrk\"anteen turvallisella puolella, kun taas yhteenvetotason
+  p\"a\"attelyilmaisubudjetti rajoittaa sit\"a, kuinka paljon
+  loppulukija voi palauttaa tiivistetyst\"a luottamuksellisesta
+  fragmentista. Viitetoteutus on k\"ayt\"ant\"o\"a valvova palvelu,
+  jossa on v\"a\"arent\"amisen paljastava tarkastusloki, ja se on
+  m\"a\"ar\"a ottaa k\"aytt\"o\"on teollisuuskumppani TalentAdoren
+  tuotantoty\"onkuluissa, joissa token-kustannus hallitsee
+  k\"aytt\"omenoja.}
 
 
 % Keywords are also included in the PDF metadata, and cannot contain any

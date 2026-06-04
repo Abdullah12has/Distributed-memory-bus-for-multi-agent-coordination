@@ -224,13 +224,15 @@ single \texttt{bge-large-en-v1.5} + FAISS-CPU stack tested.
 
 \begin{table}[h]
 \centering
-\caption{H3 verdict table. Mean F1, per-query EUR cost, and
-\emph{achieved} compression ratio ($\times$) by regime and pipeline
-from \texttt{results/h3\_final/} and the cost-instrumented re-run
-\texttt{results/h3\_eprice/} ($n=150$ workloads per cell). The
-sign-flip predicate is not satisfied (P1 is above P2 in both
-regimes); P3 leads both but only P1 actually compresses, so the
-cross-pipeline F1 gap is not a matched-compression comparison.}
+\caption{H3 verdict table, by regime and pipeline ($n=150$ workloads
+per cell). Mean F1 and \emph{achieved} compression ratio ($\times$)
+are from \texttt{results/h3\_final/} (the run the P1-vs-P2 verdict is
+computed on); per-query EUR is from the cost-instrumented re-run
+\texttt{results/h3\_eprice/}, whose EUR differs by only $4.1$--$4.9\%$
+across pipelines within a regime. The sign-flip predicate is not
+satisfied (P1 is above P2 in both regimes); P3 leads both but only P1
+actually compresses, so the cross-pipeline F1 gap is not a
+matched-compression comparison.}
 \label{tab:h3}
 \small
 \begin{tabular}{lrrr|rrr}
@@ -241,7 +243,7 @@ Pipeline & F1 & EUR/q & $\times$ & F1 & EUR/q & $\times$ \\
 \hline
 P1 (compress$\to$retrieve) & $0.396$ & $1.67\times 10^{-4}$ & $7.49$ & $0.648$ & $1.74\times 10^{-4}$ & $2.11$ \\
 P2 (retrieve$\to$compress) & $0.364$ & $1.61\times 10^{-4}$ & $1.00$ & $0.628$ & $1.66\times 10^{-4}$ & $1.00$ \\
-P3 (joint, conditional)    & $\mathbf{0.820}$ & $1.67\times 10^{-4}$ & $1.00$ & $\mathbf{0.895}$ & $1.68\times 10^{-4}$ & $1.00$ \\
+P3 (joint, conditional)    & $\mathbf{0.820}$ & $1.68\times 10^{-4}$ & $1.00$ & $\mathbf{0.895}$ & $1.68\times 10^{-4}$ & $1.00$ \\
 \hline
 $p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{3}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{3}{c}{$2\!\times\!10^{-4}$} \\
 \hline

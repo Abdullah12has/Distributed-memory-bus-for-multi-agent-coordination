@@ -5449,3 +5449,87 @@ CORRECTION (same session, after SSH-ing into the GPU to verify):
   "load-bearing" worries (A1, A2) are resolved: A1 the thesis is right, A2 is a
   cosmetic sourcing-clarity choice. Lesson: verify recomputations against the
   canonical pipeline before flagging a headline number.
+
+SETTLED 2026-06-04 (after GPU verification of both H3 runs):
+- A2 frontier FIXED: re-anchored Corollary 1 onto the validated n=10
+  frontier_qwen72b (tau*~2.68, 0.8% from reference, CI contains synth,
+  theorem_validated=true) across 4 manuscript spots (4.4 aside, 4.5 re-anchor
+  para, 4.6.2 subsection, 4.6.5 significance) + 3 consistency spots (Cor.1 box
+  range 2.5-2.8 -> 2.5-2.7, setup para, verdict-table canonical dir ->
+  frontier_qwen72b/). Cross-architecture spread tightened 12% -> ~8%. e2 demoted
+  to a robustness re-run: its stored frontier_tau=7.235 / synth_tau=12.153 are a
+  BROKEN logistic fit on its extended grid (curve 0.5-crosses at 2.79, verified),
+  so the n=10 fit is reported. Build clean, 68pp, thesis.pdf synced.
+- H3 EUR SETTLED (KEEP the h3_eprice fix). Verified on GPU: the ORIGINAL table was
+  100% h3_final (F1 0.396/0.364/0.820 AND EUR 2.72/2.82/3.07e-5 both match
+  h3_final exactly; EUR spread 9.8-12.8%). The appendix TEXT's "4.1-4.9% spread"
+  is h3_eprice (cost-instrumented re-run, EUR ~1.7e-4, spread 4.1/4.9%), so the
+  ORIGINAL table contradicted its own text. Resolution: EUR column from h3_eprice
+  (matches text + cost narrative), F1/achieved-ratio from h3_final (where the
+  3.24/2.02pp verdict + BCa CIs live); tab:h3 caption now attributes each column
+  to its run. No cost/Pareto claim depends on the EUR magnitude.
+- CANONICAL_NUMBERS.md: header reconciliation note + H1/frontier/fine-grid/H3
+  notes all updated; the registry now corroborates the manuscript.
+
+## 105. THIRD-REVIEWER CLAIMS: REAL-VS-FALSE-FLAG TRIAGE + FIXES (2026-06-04)
+
+A second external review (P0/P1/P2 list) was triaged claim-by-claim against the
+files/web. Its H1 recompute (filter -0.818 etc.) matched the GPU, so it was
+credible -- but two claims still needed checking.
+REAL (fixed):
+- P0.1 guo2025dynamic missing an author: VERIFIED via arXiv 2507.22931 / ACL
+  Anthology -- 3 authors (Shuyu Guo, Shuo Zhang, Zhaochun Ren); bib had 2. It is
+  cited (renders). Fixed: added Shuo Zhang AND upgraded @misc->@inproceedings
+  Findings of EMNLP 2025 (the paper is now published there: 2025.findings-emnlp.1307).
+- P1.5 Claude pricing label: USD 3/15 was labelled "frontier base tiers" but is
+  Anthropic Sonnet pricing (GPT-4o-mini is ~20x lower). Relabelled in
+  relatedwork.tex + implementation.tex as "representative frontier tier (Anthropic
+  Claude Sonnet; cheaper tiers ~20x lower)". Minor precision.
+- P2.10 llama31modelcard uncited though Llama-3.1 is a planner/reader: added
+  \cite at the §3.7 inference-backend mention.
+FALSE FLAG (corrected, NOT softened):
+- P0.2 family-c theta_info~0.62 "untraceable": it IS reproducible. theta_info =
+  1 - normalized-AUC of the per-task lingua2 coord curve. GPU recompute:
+  family-a 1-0.033=0.967 (matches the stored JSON value, confirming the method),
+  family-c 1-0.383=0.617~=0.62 (matches the prose). It is just not persisted in
+  corollary2_theta_info.json (which holds only the 3 cross-benchmark tasks
+  a/MHR/HotpotQA; family-c is an internal C1 anchor). The reviewer's "soften &
+  drop 0.62" would delete a correct number (same trap as the A1 false flag).
+  Fix: added a traceability note to CANONICAL_NUMBERS.md; prose untouched.
+ALREADY DONE this session:
+- P0.3 registry workload-level rho: added in the prior pass (4 mentions in
+  CANONICAL_NUMBERS.md). No further action.
+NOT FIXED (correctly):
+- P1.4 Finnish title needs a NATIVE pass (cannot self-certify fluency); flagged
+  to user. P1.6 FCG internal techreports = viva-prep note, reviewer said no edit.
+  P1.7 add a figure = optional. P2.8/9 DOIs/page-ranges = cosmetic.
+Build: canonical biblatex sequence (pdflatex->biber->pdflatex x2), 68pp, 0
+undefined refs/citations, biber 0 errors, 2 overfull, thesis.pdf synced.
+
+## 106. ABSTRACT REWRITE (EN clean + FI synced) + DECIMAL-COMMA FINDING (2026-06-04)
+
+- Rewrote the English abstract NeurIPS-style: kept paras 1 and 3, de-quantified
+  para 2. Removed inline stats (Spearman [-0.82,+0.32], 95% CIs, 11/12 cells,
+  4 compressors x 10 ratios, Llama/Qwen names, 9x). Kept one anchor (150-instance
+  benchmark), the named contributions (cliff, compounding-error model, CAAC,
+  memory bus), and ALL honesty markers (no detected shift, calibrated regime, to
+  first order, mis-rank). Applied to BOTH Chapters/abstract.tex (display) and
+  main.tex \abstract{} (PDF metadata).
+- Rewrote the Finnish tiivistelma to mirror the new English (de-quantified, same
+  arc, ends on the TalentAdore deployment to parallel EN). Applied to BOTH
+  Chapters/tiivistelma.tex (UTF-8 display) and main.tex \tiivistelma{} (\"a-escaped
+  metadata). USER WILL SEND THE FI TO A NATIVE REVIEWER. Coinages the reviewer
+  should check: kehotteentiivistaminen, monifragmenttinen, jyrkannetietoinen
+  kaare, paattelyilmaisubudjetti, tiivistystietoinen muistivayla, koulutusvapaa;
+  plus the FI title \otsikko (separate high-risk item per CLAUDE.md).
+- DECIMAL-COMMA (template behaviour, NOT a defect, NOT introduced here):
+  dithesis.sty:291-294 has an explicit "% Decimal comma" block --
+  \DeclareMathSymbol{.}{\mathord}{letters}{"3B} remaps the math-mode period to the
+  comma glyph UNCONDITIONALLY, so every decimal in the (English) thesis renders as
+  a comma (0,82; 2,5; 0,967). This is the official Oulu template enforcing
+  Finnish/SI decimal style document-wide; consistent throughout. The pdftotext
+  "0,82" hits that looked like stale Finnish were just the English body's H1/H3
+  numbers in template comma style. LEFT AS-IS (changing it affects every number
+  and may deviate from Oulu house style; a one-line revert exists if the
+  supervisor wants period decimals). Build after all edits: 68pp, 0 undefined
+  refs, xmpdata read OK, 2 overfull, thesis.pdf synced.

@@ -138,6 +138,17 @@ Source: `results/corollary2_theta_info.json` (`<task>.theta_info`).
 
 (All three match the brief.)
 
+> **Family-c θ_info ≈ 0.62 (cited in `implementation.tex` §3.5) is reproducible
+> but not stored in this JSON.** The JSON holds only the three *cross-benchmark*
+> tasks of the Corollary 2 comparison (family-a vs MultiHopRAG vs HotpotQA);
+> family-c is an internal C1 density anchor, not part of that comparison.
+> θ_info is `1 − normalized-AUC` of the per-task lingua2 coordination curve;
+> recomputed on the GPU from `h1_h2_v2/sweep_results.csv` it gives **family-a
+> 1−0.033 = 0.967** (matching the stored value, confirming the method) and
+> **family-c 1−0.383 = 0.617 ≈ 0.62** (matching the prose). So the 0.62 is a
+> correct, method-consistent number, not an untraceable one; it is simply not
+> persisted because family-c is outside the three-benchmark Corollary 2 set.
+
 ---
 
 ## H3 — RAG pipeline placement (NOT SUPPORTED)
@@ -151,10 +162,19 @@ Source: `results/corollary2_theta_info.json` (`<task>.theta_info`).
 | EUR/query mean P2 | **1.63e-04** (n=300) | `results/h3_eprice/results.csv`, `pipeline=P2` |
 | EUR/query mean P3 | **1.68e-04** (n=300) | `results/h3_eprice/results.csv`, `pipeline=P3` |
 
-> **Discrepancy:** brief said P1−P2 "3.2pp/2.0pp" (matches: 3.24/2.02) but quoted
-> per-pipeline EUR means of "P1 3.0e-5 / P2 2.9e-5 / P3 3.1e-5". The on-disk
-> column is `eur_per_query` (not `eur_cost`, which does not exist) and its means
-> are **~1.7e-4**, an order of magnitude larger. **Using the file values.**
+> **Settled (2026-06-04). `tab:h3` is now column-attributed across two runs.**
+> The two H3 runs give different per-query EUR because `h3_eprice` is the
+> *cost-instrumented re-run*: `h3_final` eur_per_query ≈ 3e-5 (storage P1 2.72e-5
+> / P2 2.82e-5 / P3 3.07e-5; accuracy 3.29 / 3.00 / 3.10e-5; spread 9.8–12.8%),
+> while `h3_eprice` eur_per_query ≈ 1.7e-4 (storage 1.67 / 1.61 / 1.67e-4;
+> accuracy 1.74 / 1.66 / 1.68e-4; spread **4.1–4.9%**). The manuscript's appendix
+> text quotes the **4.1–4.9%** spread, i.e. the `h3_eprice` figure — so the
+> table's EUR column is taken from `h3_eprice` (matching the text) while **F1 and
+> achieved-ratio stay from `h3_final`** (where the P1−P2 verdict 3.24/2.02 pp and
+> its BCa CIs are computed). The caption attributes each column to its run. The
+> table originally carried `h3_final` EUR (~3e-5), which contradicted its own
+> "4.1–4.9%" text; corrected 2026-06-04. No conclusion depends on the EUR
+> magnitude (the thesis makes **no cost-parity / Pareto claim**).
 
 ## H4 — Protected-fact recovery (per-compressor reduction)
 

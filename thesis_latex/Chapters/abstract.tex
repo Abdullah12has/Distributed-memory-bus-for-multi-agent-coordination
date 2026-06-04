@@ -2,44 +2,41 @@
 
 Every token a multi-step LLM workflow reads costs energy, latency,
 and money, so context compression is the obvious lever. The
-prompt-compression literature is mature, but it measures compressors
-on single-fragment question-answering, whereas production workflows
-must combine information across several fragments, each compressed on
-its own. Whether preserving single-fragment quality also preserves
-that harder property had never been tested.
+prompt-compression literature is mature, but it evaluates compressors
+on single-fragment question answering, whereas production workflows
+must combine information spread across several fragments, each
+compressed on its own. Whether a compressor that preserves
+single-fragment quality also preserves that harder, multi-fragment
+property had never been tested.
 
-It does not. On a new $150$-instance benchmark spanning
-cross-document fact aggregation, constraint-satisfaction planning,
-and multi-step retrieval, four training-free compressors swept over
-ten ratios show no positive workload-level correlation between
-source-retention F1 and multi-fragment coordination success
-(Spearman $[-0.82, +0.32]$, all $95\%$ bootstrap CIs excluding
-$0.6$), so the single-agent benchmarks that dominate the field
-mis-rank compressors for multi-fragment deployment. The failure is
-abrupt: a sharp \emph{coordination cliff}, present on $11$ of $12$
-(compressor, family) cells, at which success collapses once
-compression strips the task-critical tokens a planner must combine.
-A compounding-error model explains the sharp threshold and recovers
-its position to first order, and the cliff is a property of the
-compressor and the task, not the planner: within a calibrated
-regime it shows no detected shift from a local Llama-3.1-8B to a
-frontier Qwen-2.5-72B across a $9\times$ scale-up and a change of
-architecture family.
+It does not. On a new $150$-instance benchmark spanning cross-document
+fact aggregation, constraint-satisfaction planning, and multi-step
+retrieval, single-fragment retention quality fails to predict
+multi-fragment coordination success for every training-free
+compressor tested, and the two measures even disagree on how to rank
+compressors, so the single-agent benchmarks that dominate the field
+mis-rank them for multi-fragment use. The failure is abrupt rather
+than gradual: a sharp \emph{coordination cliff} at which success
+collapses once compression strips the task-critical tokens a planner
+must combine. A compounding-error model explains why the transition
+is sharp and recovers its position to first order. The cliff is a
+property of the compressor and the task, not the planner: within a
+calibrated regime its position shows no detected shift from a small
+local model to a frontier model an order of magnitude larger, even
+across a change of architecture family.
 
 Turning these findings into a deployable system is the thesis's
-principal engineering contribution: a compression-aware memory bus.
-The bus sits between the data sources and the planner and compresses
-every fragment in transit, turning the token savings directly into
+principal engineering contribution: a compression-aware memory bus
+that sits between the data sources and the planner and compresses
+every fragment in transit, converting the token savings directly into
 lower inference cost. Its compression layer is governed by the
 measurements rather than by guesswork: a cliff-aware wrapper (CAAC)
-takes the per-family
-recall threshold learned from the sweep and backs off to the most
-aggressive ratio that still keeps each fragment on the safe side of
-the cliff, while a summary-level disclosure budget caps how much a
-downstream reader can recover from a compressed confidential
-fragment. The reference implementation is a policy-enforcing service
-with a tamper-evident audit log, slated for deployment and
-evaluation in the production workflows of the industry partner,
+backs each fragment off to the most aggressive ratio that still keeps
+it on the safe side of the cliff, while a summary-level disclosure
+budget caps how much a downstream reader can recover from a compressed
+confidential fragment. The reference implementation is a
+policy-enforcing service with a tamper-evident audit log, slated for
+deployment in the production workflows of the industry partner,
 TalentAdore, where token cost dominates operating expense.
 
 \end{thesisabstract}
