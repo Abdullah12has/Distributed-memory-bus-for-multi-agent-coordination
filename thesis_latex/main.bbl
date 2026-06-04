@@ -3159,6 +3159,52 @@
       \verb https://ollama.com/
       \endverb
     \endentry
+    \entry{faiss}{online}{}{}
+      \name{author}{3}{}{%
+        {{hash=1805e103501075ef0b21851b4259f4a3}{%
+           family={Johnson},
+           familyi={J\bibinitperiod},
+           given={Jeff},
+           giveni={J\bibinitperiod}}}%
+        {{hash=e9190eb3cfa416148f38314a0698d592}{%
+           family={Douze},
+           familyi={D\bibinitperiod},
+           given={Matthijs},
+           giveni={M\bibinitperiod}}}%
+        {{hash=a2329be98a372037fcb95334bdc0c720}{%
+           family={Jégou},
+           familyi={J\bibinitperiod},
+           given={Hervé},
+           giveni={H\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {Facebook AI Research}%
+      }
+      \strng{namehash}{a88e22972b818a24341c3c5850d21232}
+      \strng{fullhash}{56312ad5556c436281266d9cb1d0863a}
+      \strng{fullhashraw}{56312ad5556c436281266d9cb1d0863a}
+      \strng{bibnamehash}{56312ad5556c436281266d9cb1d0863a}
+      \strng{authorbibnamehash}{56312ad5556c436281266d9cb1d0863a}
+      \strng{authornamehash}{a88e22972b818a24341c3c5850d21232}
+      \strng{authorfullhash}{56312ad5556c436281266d9cb1d0863a}
+      \strng{authorfullhashraw}{56312ad5556c436281266d9cb1d0863a}
+      \field{sortinit}{8}
+      \field{sortinithash}{a231b008ebf0ecbe0b4d96dcc159445f}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{Faiss}: A Library for Efficient Similarity Search and Clustering of Dense Vectors}
+      \field{urlday}{12}
+      \field{urlmonth}{5}
+      \field{urlyear}{2026}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/facebookresearch/faiss
+      \endverb
+      \verb{url}
+      \verb https://github.com/facebookresearch/faiss
+      \endverb
+    \endentry
     \entry{efron1993bootstrap}{book}{}{}
       \name{author}{2}{}{%
         {{hash=5470455fc7dceb3ccf6db38cb22a113d}{%
@@ -3281,6 +3327,147 @@
       \field{year}{1979}
       \field{pages}{65\bibrangedash 70}
       \range{pages}{6}
+    \endentry
+    \entry{zhang2020bertscore}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{hash=733e3732b7e3ce5cf2b04cf5e9bd9cf1}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Tianyi},
+           giveni={T\bibinitperiod}}}%
+        {{hash=68f7171bfe61e73c62ff3ffc4c84e5ab}{%
+           family={Kishore},
+           familyi={K\bibinitperiod},
+           given={Varsha},
+           giveni={V\bibinitperiod}}}%
+        {{hash=5d3c3a632d3c15054a532172777a7e40}{%
+           family={Wu},
+           familyi={W\bibinitperiod},
+           given={Felix},
+           giveni={F\bibinitperiod}}}%
+        {{hash=68a0238356fbd88b34be8886f25938a7}{%
+           family={Weinberger},
+           familyi={W\bibinitperiod},
+           given={Kilian\bibnamedelima Q.},
+           giveni={K\bibinitperiod\bibinitdelim Q\bibinitperiod}}}%
+        {{hash=bda57b6734e461152eada7e447798ca8}{%
+           family={Artzi},
+           familyi={A\bibinitperiod},
+           given={Yoav},
+           giveni={Y\bibinitperiod}}}%
+      }
+      \strng{namehash}{b7341c276394125587ea24e5ba844df4}
+      \strng{fullhash}{0f3fc6c6b2643b223fd923710ae91526}
+      \strng{fullhashraw}{0f3fc6c6b2643b223fd923710ae91526}
+      \strng{bibnamehash}{0f3fc6c6b2643b223fd923710ae91526}
+      \strng{authorbibnamehash}{0f3fc6c6b2643b223fd923710ae91526}
+      \strng{authornamehash}{b7341c276394125587ea24e5ba844df4}
+      \strng{authorfullhash}{0f3fc6c6b2643b223fd923710ae91526}
+      \strng{authorfullhashraw}{0f3fc6c6b2643b223fd923710ae91526}
+      \field{sortinit}{9}
+      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proc. International Conference on Learning Representations (ICLR)}
+      \field{title}{{BERTScore}: Evaluating Text Generation with {BERT}}
+      \field{year}{2020}
+    \endentry
+    \entry{lin2004rouge}{inproceedings}{}{}
+      \name{author}{1}{}{%
+        {{hash=bc6dfe0750848d77d639c1de6b9934e4}{%
+           family={Lin},
+           familyi={L\bibinitperiod},
+           given={Chin-Yew},
+           giveni={C\bibinithyphendelim Y\bibinitperiod}}}%
+      }
+      \strng{namehash}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{fullhash}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{fullhashraw}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{bibnamehash}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{authorbibnamehash}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{authornamehash}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{authorfullhash}{bc6dfe0750848d77d639c1de6b9934e4}
+      \strng{authorfullhashraw}{bc6dfe0750848d77d639c1de6b9934e4}
+      \field{sortinit}{9}
+      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Text Summarization Branches Out}
+      \field{title}{{ROUGE}: A Package for Automatic Evaluation of Summaries}
+      \field{year}{2004}
+      \field{pages}{74\bibrangedash 81}
+      \range{pages}{8}
+    \endentry
+    \entry{ragas2023}{misc}{}{}
+      \name{author}{4}{}{%
+        {{hash=d8dead04bec0d1ebb462dd6ac4504a36}{%
+           family={Es},
+           familyi={E\bibinitperiod},
+           given={Shahul},
+           giveni={S\bibinitperiod}}}%
+        {{hash=5ebf432f1942f224b50ebd01708c854c}{%
+           family={James},
+           familyi={J\bibinitperiod},
+           given={Jithin},
+           giveni={J\bibinitperiod}}}%
+        {{hash=3d36fadaa097eea8962c0e05d187b8a2}{%
+           family={Espinosa-Anke},
+           familyi={E\bibinithyphendelim A\bibinitperiod},
+           given={Luis},
+           giveni={L\bibinitperiod}}}%
+        {{hash=b66c934ea85e43f75cae6e977ceaca03}{%
+           family={Schockaert},
+           familyi={S\bibinitperiod},
+           given={Steven},
+           giveni={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{c1c4ea85e78c313d8c00616419b5c4d6}
+      \strng{fullhash}{6f9b389c1f3fc11e9601e665bb932466}
+      \strng{fullhashraw}{6f9b389c1f3fc11e9601e665bb932466}
+      \strng{bibnamehash}{6f9b389c1f3fc11e9601e665bb932466}
+      \strng{authorbibnamehash}{6f9b389c1f3fc11e9601e665bb932466}
+      \strng{authornamehash}{c1c4ea85e78c313d8c00616419b5c4d6}
+      \strng{authorfullhash}{6f9b389c1f3fc11e9601e665bb932466}
+      \strng{authorfullhashraw}{6f9b389c1f3fc11e9601e665bb932466}
+      \field{sortinit}{9}
+      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{arXiv preprint arXiv:2309.15217}
+      \field{title}{{RAGAS}: Automated Evaluation of Retrieval Augmented Generation}
+      \field{year}{2023}
+    \endentry
+    \entry{deepeval2024}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=f2b4633b53369a7c0c62cb9a6296eb0e}{%
+           family={{Confident AI}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{fullhash}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{fullhashraw}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{bibnamehash}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{authorbibnamehash}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{authornamehash}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{authorfullhash}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \strng{authorfullhashraw}{f2b4633b53369a7c0c62cb9a6296eb0e}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{GitHub repository}
+      \field{title}{{DeepEval}: The {LLM} Evaluation Framework}
+      \field{urlday}{12}
+      \field{urlmonth}{5}
+      \field{urlyear}{2026}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/confident-ai/deepeval
+      \endverb
+      \verb{url}
+      \verb https://github.com/confident-ai/deepeval
+      \endverb
     \endentry
     \entry{pineau2021checklist}{article}{}{}
       \name{author}{8}{}{%
