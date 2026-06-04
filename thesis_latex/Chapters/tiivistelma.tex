@@ -1,59 +1,39 @@
 \begin{thesisabstract}{finnish}
 
-Monivaiheiset suurten kielimallien työnkulut maksavat
-jokaisesta lukemastaan tokenista, joten kontekstin
-tiivistäminen on luonteva säätökeino. Yhden agentin
-kehotteentiivistämistä koskeva kirjallisuus on kypsää,
-mutta se mittaa kysymys--vastaus-tarkkuutta yhdellä
-fragmentilla, kun taas tuotannon työkuormat yhdistävät
-tietoa useasta tiivistetystä fragmentista. Sitä,
-ennustaako yhden agentin kysymys--vastaus-tarkkuus tätä
-vaikeampaa ominaisuutta, ei ole aiemmin testattu.
+Suuria kielimalleja hyödyntävät monivaiheiset työnkulut
+maksavat jokaisesta lukemastaan tokenista, joten
+kontekstin tiivistäminen on luonteva keino karsia
+kustannuksia. Tiivistämistä mitataan kuitenkin yhden
+fragmentin kysymys--vastaus-tarkkuudella, vaikka
+tuotannon työkuormat yhdistävät tietoa useasta erikseen
+tiivistetystä fragmentista. Sitä, säilyttääkö yhden
+fragmentin laadun säilyttävä tiivistäminen myös tämän
+vaikeamman ominaisuuden, ei ollut aiemmin tutkittu.
 
-Ei ennusta. Uudessa $150$ instanssin monifragmenttisessa
-vertailutestissä, joka kattaa faktojen yhdistämisen
-dokumenttien välillä, rajoiteperustaisen suunnittelun ja
-monivaiheisen tiedonhaun, neljä koulutusta vaatimatonta
-tiivistäjää kymmenellä tiivistyssuhteella tuottaa
-työkuormatason Spearman-korrelaatiot
-lähdesäilyvyys-F1-mittarin (kunkin tiivistetyn fragmentin
-ja sen alkuperäisen lähdetekstin token-päällekkäisyys) ja
-koordinaation onnistumisen välillä; korrelaatiot ovat
-välillä $[-0{,}82, +0{,}32]$, ja kaikki $95\,\%$:n
-bootstrap-luottamusvälit sulkevat pois arvon $0{,}6$.
-Tiivistämiskirjallisuutta hallitsevat yhden agentin
-vertailutestit asettavat siten tiivistäjät
-järjestelmällisesti väärään järjestykseen
-monifragmenttista käyttöä ajatellen.
+Ei säilytä. Uudessa $150$ instanssin vertailuaineistossa
+neljä ilman koulutusta toimivaa tiivistäjää kymmenen
+tiivistyssuhteen yli ei tuota lainkaan positiivista
+työkuormatason korrelaatiota lähdesäilyvyys-F1:n ja
+koordinaation onnistumisen välille (Spearmanin
+järjestyskorrelaatio $[-0{,}82, +0{,}32]$). Romahdus on
+äkillinen: jyrkkä koordinaation jyrkänne $\tau^{*}$
+esiintyy $11$ solussa $12$:sta, kun tiivistäminen karsii
+ne kriittiset tokenit, jotka suunnittelijan on
+yhdistettävä. Kumuloituvan virheen malli selittää
+kynnyksen ja palauttaa sen sijainnin ensimmäisen
+kertaluvun tarkkuudella. Jyrkänne on tiivistäjän ja
+tehtävän, ei suunnittelijan, ominaisuus: kalibroidulla
+alueella sen sijainti ei siirry paikallisesta
+Llama-3.1-8B:stä huipputason Qwen-2.5-72B:hen.
 
-Mekanismi on jyrkkä koordinaation jyrkänne $\tau^{*}$,
-joka esiintyy $11$ solussa $12$:sta (tiivistäjä, perhe).
-Kumuloituvan virheen malli johtaa kynnysrakenteen
-perhekohtaisesta kriittisten tokenien recall-rajoitteesta
-ja palauttaa empiirisen sijainnin ensimmäisen kertaluvun
-tarkkuudella (mediaani $\approx 35\,\%$ suhteellinen
-virhe). Kalibroidulla alueella jyrkänteen sijainnissa ei
-havaittu siirtymää paikallisen Llama-3.1-8B-suunnittelijan
-ja huipputason Qwen-2.5-72B-suunnittelijan välillä,
-vaikka parametrimäärä kasvoi $9$-kertaiseksi ja
-arkkitehtuuriperhe vaihtui; laajennettua päättelyä
-käyttävät suunnittelijat jäävät tämän alueen ulkopuolelle.
-Tiivistäminen vähentää myös suojattujen faktojen
-päättelyilmaisua, mutta suhteessa siihen, kuinka
-aggressiivisesti kukin tiivistäjä tuhoaa lähdetokeneita,
-ei yksityisyyteen kohdistuvan suodatuksen kautta.
-
-Kolme ennalta määriteltyä hypoteesia (H1, H2, H4) saa
-tuen sellaisinaan. Kaksi (H5, H6) terävöityi analyysin
-aikana muotoon \emph{Seurauslause~1
-(katto--jyrkänne-erottelu)} ja \emph{Seurauslause~2
-(informaatiotiheyden skaalautuminen)}; molemmat saavat
-tuen täsmennettyjen kriteerien mukaan. H3 kapeni
-regiimien välisen merkkivaihdon ennustuksesta yhden
-pinon tiivistä-ensin-järjestykseksi. Tuloksena on
-käsikirjoitus ja avoimen lähdekoodin viitetoteutus
-käytäntöä valvovasta muistiväylästä, joka on
-toistettavissa yhdellä komennolla esilasketun
-tiivistämisvälimuistin avulla.
+Työn tuloksena on käytäntöjä valvova muistiväylä, joka
+tiivistää jokaisen fragmentin matkalla ja muuntaa
+tokensäästöt suoraan pienemmäksi päättelykustannukseksi.
+Sen tiivistystä ohjaa mittauksiin perustuva
+jyrkännetietoinen kääre (CAAC), joka perääntyy
+aggressiivisimpaan suhteeseen, joka pitää kunkin
+fragmentin jyrkänteen turvalliselle puolelle. Avoimen
+lähdekoodin viitetoteutus on toistettavissa yhdellä
+komennolla esilasketun tiivistysvälimuistin avulla.
 
 \end{thesisabstract}

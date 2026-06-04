@@ -163,6 +163,30 @@ Falsifiability bars are in Section~\ref{sec:prereg_refinement}; tool
 and grid choices in
 \charef{implementation}~Section~\ref{sec:design_choices}.
 
+\subsection{Exact-match coordination versus similarity metrics}
+\label{sec:metric_exactmatch}
+
+The verdict metric is a per-instance binary \emph{coordination
+success} against a deterministic ground truth, not a
+semantic-similarity score (BERTScore~\cite{zhang2020bertscore},
+ROUGE~\cite{lin2004rouge}) nor an LLM-judge pipeline
+(RAGAS~\cite{ragas2023}, DeepEval~\cite{deepeval2024}). Three reasons.
+First, every C1 task has a verifiable ground truth (an arithmetic
+sum, a capacity-feasible assignment, a chain-leaf answer), so a
+graded similarity score would add noise without resolving
+correctness: the planner either recovers the answer or it does not.
+Second, byte-level reproducibility (Section~\ref{sec:repro}, Tier~1)
+requires a deterministic scorer; an LLM-judge would reintroduce
+exactly the planner-side stochasticity the deterministic solver is
+designed to isolate (\charef{implementation}~Section~\ref{sec:scope}).
+Third, source-retention F1 is retained \emph{because} it is the metric
+the prompt-compression literature optimises; that is precisely what H1
+needs in order to show the two disagree, and substituting a similarity
+metric would blunt the comparison rather than sharpen it. Semantic
+metrics remain the right tool for the open-ended generation tasks
+(summarisation, dialogue) the compression literature targets; they are
+mismatched to a coordination task with a checkable answer.
+
 \subsection{Workload-level versus cell-level statistics}
 \label{sec:metric_unit}
 
@@ -381,7 +405,7 @@ the coarse grid the logistic fit lands at the quantised midpoint
 $\tau^{*}\approx2.5$; the fine-grid re-resolution below shows the
 true deterministic-solver cliff sits near $1.1$, while the
 deployment-relevant LLM-planner cliff on the same cell is
-$\approx2.7$ (Llama-3.1-8B $\approx2.48$, Qwen-2.5-72B $\approx2.79$;
+$\approx2.7$ (Llama-3.1-8B $\approx2.48$, Qwen-2.5-72B $\approx2.68$;
 Section~\ref{sec:corollary1}); the coarse-grid $2.5$ and its
 re-resolution $1.1$ are artefacts of the brittle regex solver, not
 deployment numbers.
@@ -613,10 +637,10 @@ band quantifies only the \emph{sampling} uncertainty in $\theta_q$,
 not the model's specification error, and the empirical $\tau^{*}$
 falls \emph{outside} it on all $11/11$ testable cells, so the band is
 not the model's accuracy; the match rate below is.
-Figure~\ref{fig:predicted_vs_empirical} overlays the band on the
-family-c LLMLingua-2 cell (chosen over family-a, whose single-step
-$1.0\to0$ drop collapses prediction and data into the same near-step
-function). The model is \emph{conservative} there, predicting
+Figure~\ref{fig:predicted_vs_empirical} plots all eleven testable
+cells. The family-c LLMLingua-2 cell (chosen over family-a, whose
+single-step $1.0\to0$ drop collapses prediction and data into the same
+near-step function) illustrates the conservative direction, predicting
 $r\approx2.85$ against an empirical $r\approx6.7$ ($57.4\%$
 under-prediction): the second-order gap Corollary~2 explains, since
 family-c's lower information density breaks the binary-importance
@@ -648,7 +672,10 @@ compressors, consistent with a structural rather than
 compressor-specific bound. Two cells give infinite predicted
 $\tau^{*}$ because $q(r)$ never crosses $\theta_q$: filter/c (matched
 by a no-cliff empirical observation) and phi3-extractive/c (a MISS,
-empirical $\tau^{*}=2.5$); the phi3 cells are outside A1's formal
+empirical $\tau^{*}=2.5$, whose apparent finite band in
+Figure~\ref{fig:predicted_vs_empirical} is the bootstrap envelope of
+$\theta_q$ resamples above phi3's recall floor ($q\approx0.62$), not a
+finite point prediction); the phi3 cells are outside A1's formal
 regime (Section~\ref{sec:cem_assumptions}) and retained as a
 robustness check. The headline this underwrites is the
 cliff-position dependence structure: $\tau^{*}$ is controlled by the
@@ -707,7 +734,7 @@ Section~\ref{sec:calibrated}); when $p_0(m)\ge\theta_q$ we detect
 \textbf{Verdict: NO SHIFT DETECTED.} The deployment-relevant
 LLM-planner cliff holds steady across a $9\times$ scale-up \emph{and}
 a change of architecture family: local Llama-3.1-8B and frontier
-Qwen-2.5-72B both cliff at $\approx2.5$--$2.8$ on
+Qwen-2.5-72B both cliff at $\approx2.5$--$2.7$ on
 family-a~$\times$~LLMLingua-2, and the local three-architecture sweep
 agrees within a $24\%$ spread on family-c. The qualifiers are
 explicit: the $\pm20\%$ TOST test passes on neither frontier cell
@@ -746,10 +773,11 @@ artefact of the deterministic solver (true family-a cliff near
 $1.1$), so comparing a frontier LLM against it compares two kinds of
 planner. Holding planner \emph{type} fixed, the LLM cliff on
 family-a~$\times$~LLMLingua-2 is essentially invariant: Llama-3.1-8B
-cliffs at $\tau^{*}\approx2.48$ and Qwen-2.5-72B (the $n=30$ re-run,
-\texttt{frontier\_qwen72b\_e2}) at $\approx2.79$, a $\sim12\%$ spread
-across a $9\times$ scale-up and an architecture change, both at
-$p_0=1.0$. So planner \emph{type} moves the cliff (parser $1.1$ vs
+cliffs at $\tau^{*}\approx2.48$ and Qwen-2.5-72B (the validated $n=10$
+run, \texttt{frontier\_qwen72b}) at $\tau^{*}\approx2.68$, a $\sim8\%$
+spread across a $9\times$ scale-up and an architecture change, both at
+$p_0=1.0$ (the $n=30$ extended-grid re-run agrees by $0.5$-crossing,
+$\approx2.79$; Section~\ref{sec:frontier}). So planner \emph{type} moves the cliff (parser $1.1$ vs
 LLM $\approx2.5$--$2.8$) but scale and architecture within the LLM
 class do not; the earlier match to ``$2.5$'' survives as an
 approximate coincidence. (The DeepSeek $n=30$ re-run was abandoned to
@@ -797,8 +825,9 @@ an extended-reasoning model at the calibrated-regime boundary.
 \subsection{Setup and statistical protocol}
 
 The sweep uses \textbf{10 family-a workloads $\times$ 6 ratios
-$\times$ 3 seeds $=$ 180 cells per model} (Qwen re-run at $n=30$ in
-\texttt{frontier\_qwen72b\_e2/}), via Featherless for Qwen and
+$\times$ 3 seeds $=$ 180 cells per model} (the validated Qwen cell is
+\texttt{frontier\_qwen72b/}; an extended-grid $n=30$ re-run is retained
+in \texttt{frontier\_qwen72b\_e2/}), via Featherless for Qwen and
 DeepSeek and the OpenAI Responses API for GPT-oss; $\tau^{*}$ is fit
 as in the local sweep with a workload bootstrap
 ($n_\text{boot}=500$). \textbf{The reference is the LLM-planner cliff
@@ -814,12 +843,15 @@ names this as the binding frontier limitation.
 
 \subsection{Qwen-2.5-72B-Instruct: in-regime, within bootstrap CI}
 
-The canonical $n=30$ Qwen-2.5-72B re-run
-(\texttt{frontier\_qwen72b\_e2}) places the cliff at
-$\tau^{*}\approx2.79$ ($n=10$ sweep: $2.68$, CI $[1.92,7.23]$),
-within $\sim12\%$ of the LLM-planner reference $\approx2.7$: a
-same-band agreement across a $9\times$ scale-up and an architecture
-change, both planners at $p_0=1.0$ (squarely in-regime). This is the
+The Qwen-2.5-72B sweep (\texttt{frontier\_qwen72b}, $n=10$) places the
+cliff at $\tau^{*}\approx2.68$ (logistic fit; CI $[1.92,7.23]$),
+within $0.8\%$ of the reference $\tau^{*}\approx2.7$ with the bootstrap
+CI containing it: a same-band agreement across a $9\times$ scale-up
+and an architecture change, both planners at $p_0=1.0$ (squarely
+in-regime). A larger $n=30$ re-run on an extended ratio grid
+(\texttt{frontier\_qwen72b\_e2}) reproduces the same cliff by
+$0.5$-crossing ($\approx2.79$), but its parametric fit is unstable on
+that grid, so the $n=10$ fit is the reported value. This is the
 load-bearing evidence for Corollary~1: no cliff-position shift
 detected within the LLM-planner class, though the formal $\pm20\%$
 equivalence test these cells do not pass
@@ -894,7 +926,7 @@ Together: \textbf{no shift detected} in the LLM-planner cliff across
 three local architecture families ($24\%$ family-c spread, within
 $50\%$ but not the strict $20\%$ tolerance) and a $9\times$
 cross-architecture scale-up to the frontier (Llama-3.1-8B
-$\approx2.48\to$ Qwen-2.5-72B $\approx2.79$, the one well-identified
+$\approx2.48\to$ Qwen-2.5-72B $\approx2.68$, the one well-identified
 frontier cell), weakly corroborated across vendors by DeepSeek, all
 within the calibrated regime, while the position \emph{does} shift
 for the extended-reasoning GPT-oss~120B. The defensible claim is
@@ -912,7 +944,7 @@ named in Section~\ref{sec:future}.
 
 The thesis also examined where compression should sit relative to
 retrieval (compress-first, retrieve-first, joint router) under
-matched storage- and accuracy-bounded regimes. The pre-registered
+matched storage- and accuracy-bounded regimes. The pre-specified
 sign-flip between regimes is \emph{not} observed; the narrowed
 finding is that compress-first beats retrieve-first in both regimes
 (by $3.2$ and $2.0$~pp F1) on the single \texttt{bge-large} +
@@ -1235,7 +1267,7 @@ H2 & Sharp coordination cliff exists & SUPPORTED ($11/12$ cells) & \texttt{h1\_h
 H4 & Compression reduces inference disclosure & SUPPORTED on unbiased benchmark (3/4 compressors; destruction-monotonic privacy scope) & \texttt{h4\_unbiased\_v2/} \\
 \hline
 \multicolumn{4}{l}{\textbf{Tier B: Sharpened into stronger structural claim.}} \\
-H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime (Ceiling--Cliff Separation) & NO SHIFT DETECTED (point estimates within tolerance across $9\times$ scale + arch change; $\pm 20\%$ TOST not passed on either frontier cell) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b\_e2/}, \texttt{frontier\_deepseekv4/} \\
+H5 $\to$ Cor.~1 & Cliff-position invariance within calibrated regime (Ceiling--Cliff Separation) & NO SHIFT DETECTED (point estimates within tolerance across $9\times$ scale + arch change; $\pm 20\%$ TOST not passed on either frontier cell) & \texttt{h5\_final/}, \texttt{frontier\_qwen72b/}, \texttt{frontier\_deepseekv4/} \\
 H6 $\to$ Cor.~2 & $\theta_\text{info}$ scales the cliff (Information-Density Scaling) & SUPPORTED (empirical observation, $n=3$ benchmarks) & \texttt{h6\_final/}, \texttt{hotpotqa\_sweep/} \\
 \hline
 \multicolumn{4}{l}{\textbf{Tier C: Narrowed to a supported single-stack ordering.}} \\

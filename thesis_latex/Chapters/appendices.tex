@@ -201,7 +201,7 @@ with FastAPI, Uvicorn, SQLite, and the \texttt{m6} package.
 
 H3 examined where compression should sit relative to retrieval. It
 is reported here, rather than in the main text, because its
-pre-registered prediction was not satisfied and the salvaged result
+pre-specified prediction was not satisfied and the salvaged result
 is a single-stack non-reproduction orthogonal to the coordination
 cliff and the memory bus.
 
@@ -212,7 +212,7 @@ retrieve-first (P2, index the full corpus then compress the
 top-$k$), and a joint relevance-conditional router (P3). Each runs
 under a storage-bounded regime (FAISS index $\le 100$~MB) and an
 accuracy-bounded regime (retrieval recall@10 $\le 0.85$) on the C1
-family-a generator (\texttt{results/h3\_final/}). The pre-registered
+family-a generator (\texttt{results/h3\_final/}). The pre-specified
 H3 predicate was a \emph{sign-flip} in the optimal pipeline between
 the two regimes with a $\ge\!5$~pp F1 effect. It is \emph{not}
 observed: P1 is preferred over P2 in \emph{both} regimes (by $3.2$
@@ -239,9 +239,9 @@ cross-pipeline F1 gap is not a matched-compression comparison.}
 & \multicolumn{3}{c}{Accuracy-bounded} \\
 Pipeline & F1 & EUR/q & $\times$ & F1 & EUR/q & $\times$ \\
 \hline
-P1 (compress$\to$retrieve) & $0.396$ & $2.72\times 10^{-5}$ & $7.49$ & $0.648$ & $3.29\times 10^{-5}$ & $2.11$ \\
-P2 (retrieve$\to$compress) & $0.364$ & $2.82\times 10^{-5}$ & $1.00$ & $0.628$ & $3.00\times 10^{-5}$ & $1.00$ \\
-P3 (joint, conditional)    & $\mathbf{0.820}$ & $3.07\times 10^{-5}$ & $1.00$ & $\mathbf{0.895}$ & $3.10\times 10^{-5}$ & $1.00$ \\
+P1 (compress$\to$retrieve) & $0.396$ & $1.67\times 10^{-4}$ & $7.49$ & $0.648$ & $1.74\times 10^{-4}$ & $2.11$ \\
+P2 (retrieve$\to$compress) & $0.364$ & $1.61\times 10^{-4}$ & $1.00$ & $0.628$ & $1.66\times 10^{-4}$ & $1.00$ \\
+P3 (joint, conditional)    & $\mathbf{0.820}$ & $1.67\times 10^{-4}$ & $1.00$ & $\mathbf{0.895}$ & $1.68\times 10^{-4}$ & $1.00$ \\
 \hline
 $p_\text{Holm}$ (P1 vs P2, paired bootstrap) & \multicolumn{3}{c|}{$2\!\times\!10^{-4}$} & \multicolumn{3}{c}{$2\!\times\!10^{-4}$} \\
 \hline

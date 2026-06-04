@@ -5340,3 +5340,112 @@ clauses, semicolon where two independent clauses met. En dashes "--" (numeric
 ranges like 2--4, reader--writer) left intact. Build clean (latexmk exit 0, 68
 pages held, 0 undefined refs, 0 punctuation glitches), thesis.pdf synced; spot-
 checked rendered pages read naturally. No content changed.
+
+
+## 104. PRE-SUBMISSION PROFESSOR REVIEW: DATA-VS-MANUSCRIPT DISCREPANCIES + FIXES (2026-06-04)
+
+Independent professor-style review the night before submission. Verified the
+2026-06-01 audit against the ACTUAL LaTeX (the audit was written against
+draft3.1.md, so several of its figure items did not map): ~90% already resolved;
+only genuine residuals were R1(b)-prose and the R4 "pre-registered" stragglers.
+The higher-value work was recomputing headline numbers from the released data
+files. Found 5 manuscript-vs-on-disk discrepancies; CANONICAL_NUMBERS.md (which
+the thesis cites for traceability in experiments.tex) already documents four.
+
+LOAD-BEARING, STILL OPEN (need author decision; not auto-fixed):
+- A1 (H1 headline). tab:h1_rho WORKLOAD-LEVEL column (filter -0.818, lingua2
+  +0.026, phi3 +0.315, truncation +0.051) and the abstract's Spearman
+  "[-0.82,+0.32]" do NOT reproduce from results/h1_h2_v2/sweep_results.csv.
+  Recomputing Delta(qa_f1) vs Delta(coord) per workload (the method that DOES
+  reproduce tab:h1_perfamily exactly) gives ~ filter -0.51, lingua2 +0.45, phi3
+  +0.11, truncation +0.36 -- close to the POOLED values (which match
+  verdicts.json), NOT near-zero. Pooled column is file-backed; only the
+  workload-level column is unverified, and CANONICAL_NUMBERS.md flags these exact
+  values as "not found in any on-disk H1 verdict file." VERDICT (rho<0.6, CIs
+  exclude 0.6) survives, and the per-family decomposition (zero significant
+  positive within-family correlations) reproduces and carries the claim. Action:
+  rerun the exact tab:h1_rho script vs h1_h2_v2 and reconcile, or re-anchor H1 on
+  the per-family table + pooled values and fix the abstract.
+- A2 (Corollary 1 frontier). Manuscript cites frontier_qwen72b_e2 as the
+  "canonical n=30 re-run" with tau*~2.79 (validating). That file stores
+  frontier_tau=7.235, tau_diff_pct=40.5%, theorem_validated=FALSE (extended ratio
+  grid; synth ref 12.15; 2.79 is only the 0.5-crossing). The cleanly-validating
+  cell is the original n=10 frontier_qwen72b (frontier_tau=2.677, 0.83%,
+  tau_ci_contains_synth=true, theorem_validated=true). Action: re-anchor the
+  load-bearing frontier claim on frontier_qwen72b (n=10); demote e2 to an
+  extended-grid robustness run with an unstable logistic fit.
+
+ALSO OPEN: fine-grid family-a "~1.1" cliff (used in 4.3/4.4/4.6) is not in
+h1_h2_finegrid/verdicts.json (logistic tau*=2.5 for all 3 compressors); verify it
+is a 0.5-crossing read off the finegrid CSV or soften. Reference venue
+spot-checks (GAIA ICLR'24 vs NeurIPS'23 D&B; wang2024icf page range) pending.
+
+FIXED THIS SESSION (applied to .tex; latexmk exit 0; 68 pages held; 0 undefined
+refs/citations; thesis.pdf synced):
+1. R4: 5x "pre-registered" -> "pre-specified" (introduction:207, implementation:200,
+   experiments:915, appendices:204,215). Main framing in 4.1 was already correct.
+2. R1(b): experiments 4.4.5 sentence that claimed fig:predicted_vs_empirical
+   "overlays the band on the family-c LLMLingua-2 cell" rewritten to "plots all
+   eleven testable cells" (the figure is the 11-cell aggregate; family-c lingua2
+   is the textual illustration). Caption already matched the figure.
+3. tab:h3 (appendix E) EUR column corrected from ~2.7-3.3e-5 to on-disk h3_eprice
+   values (storage P1 1.67e-4/P2 1.61e-4/P3 1.67e-4; accuracy 1.74/1.66/1.68e-4).
+   F1 column (from h3_final), achieved-ratio column, and the "differ by only
+   4.1-4.9%" text were already correct; the printed cells (6x off) were
+   inconsistent with that text and with the file.
+4. \cite{faiss} added at the FAISS-CPU design-choice mention (implementation 3.10.1);
+   FAISS was used throughout but previously uncited.
+5. phi3-extractive/c figure caveat added in 4.4.5: its apparent finite band in
+   fig:predicted_vs_empirical is the bootstrap envelope of theta_q resamples above
+   phi3's CTR floor (q~0.62 > theta_q^c=0.59); the point prediction is INFINITE
+   (verified: phi3 family-c CTR bottoms at 0.623, never crosses 0.59). Text already
+   listed phi3/c among the two infinite-prediction cells; the figure contradicted it.
+6. NEW subsection 4.3.1 "Exact-match coordination versus similarity metrics"
+   justifying the metric set vs BERTScore/ROUGE/RAGAS/DeepEval/LLM-judge (verifiable
+   ground truth; byte-level reproducibility; F1 kept because it is what the
+   compression literature optimises). Cites 4 previously-uncited bib entries.
+
+STYLE: matched the em-dash-free convention (insights 103) -- 0 em-dashes added;
+numeric en-dashes untouched.
+
+CORRECTION (same session, after SSH-ing into the GPU to verify):
+- A1 is NOT a discrepancy. The thesis H1 workload-level numbers are CORRECT.
+  Running the proper per-workload collapse (group the 1350 delta-pairs by
+  workload_id, take the MEAN delta_qa and MEAN delta_coord per workload -> 150
+  pairs -> Spearman) on the GPU's canonical h1_h2_v2/sweep_results.csv reproduces
+  tab:h1_rho EXACTLY: filter -0.818 (CI[-0.854,-0.762]), lingua2 +0.026
+  (CI[-0.128,+0.177]), phi3 +0.315 (CI[+0.181,+0.442]), truncation +0.051
+  (CI[-0.097,+0.197]) -- all matching the manuscript and its CIs. The
+  pseudo-replication narrative is VINDICATED (pooled lingua2 +0.381 -> wl +0.026;
+  pooled truncation +0.384 -> wl +0.051). The abstract's "[-0.82,+0.32]" is right
+  (filter -0.818, phi3 +0.315). My earlier "does not reproduce / ~ -0.51/+0.45"
+  recompute had a bug (wrong per-workload collapse); the GPU authoritative run
+  settles it. verdicts.json stores only the POOLED rho (the code's verdict path,
+  run_h1_h2.py:_verdict_h1 pools all workload x ratio pairs); the workload-level
+  column is a separate, correct analysis -- which is why "0.818" is not in
+  verdicts.json. NO FIX NEEDED. CANONICAL_NUMBERS.md should be updated: its "not
+  found in any on-disk H1 verdict file" note is a false alarm (it only inspected
+  verdicts.json, never ran the workload collapse).
+- A2 (frontier) downgraded to a CLARITY item, not a fabrication. The manuscript's
+  Qwen-72B tau*~2.79 is the legitimate 0.5-crossing of the frontier_qwen72b_e2
+  curve ({2.5:0.68, 3.0:0.373} -> 0.5 at ~2.79); the n=10 frontier_qwen72b
+  independently gives 2.677 with theorem_validated=true. The only snag is that the
+  e2 JSON stores frontier_tau=7.235 / theorem_validated=false as its logistic
+  headline (extended ratio grid; synth ref 12.15), a DIFFERENT statistic from the
+  0.5-crossing the text quotes. Recommend (optional) anchoring the load-bearing
+  frontier claim on the n=10 run (clean, validated) or footnoting the e2 logistic
+  instability. Not a correctness bug.
+- H3 EUR table fix (item 3 above) is a JUDGMENT CALL, not a clear correction. The
+  thesis ORIGINAL ~3e-5 cells came from h3_final (eur_per_query mean P1 3.01e-5 /
+  P2 2.91e-5 / P3 3.08e-5); my edit swapped to h3_eprice (~1.7e-4). h3_eprice is
+  the "cost-instrumented re-run" the appendix text analyzes and its 4.2-4.9%
+  spread matches the text's stated "4.1-4.9%" (h3_final's ~6% does not), so the
+  swap improves table/text consistency -- but if the author intended h3_final EUR,
+  revert appendices.tex tab:h3 EUR column to storage 2.72/2.82/3.07e-5, accuracy
+  3.29/3.00/3.10e-5. Secondary appendix result, no cost claim, low stakes.
+- NET: of my 6 applied fixes, items 2 (R4), 4 (FAISS), 5 (phi3/c caveat), 6
+  (metric subsection) are unambiguous improvements; item 1 (R1b sentence) is
+  correct; item 3 (H3 EUR) is a defensible-but-revertable judgment call. The two
+  "load-bearing" worries (A1, A2) are resolved: A1 the thesis is right, A2 is a
+  cosmetic sourcing-clarity choice. Lesson: verify recomputations against the
+  canonical pipeline before flagging a headline number.

@@ -197,7 +197,7 @@ pipeline placements over the shared FAISS-CPU + HNSW +
 LongLLMLingua~\cite{jiang2024longllmlingua} configuration), and
 \textbf{P3} a joint relevance router (pass high-scoring fragments
 verbatim, compress mid-scoring, discard low-scoring; after
-ACC-RAG~\cite{guo2025dynamic}). Because the pre-registered sign-flip
+ACC-RAG~\cite{guo2025dynamic}). Because the pre-specified sign-flip
 did not appear and the cost model does not meter compression compute,
 H3 is reported as a secondary result in Appendix~\ref{appendix:rag}.
 
@@ -511,7 +511,7 @@ at the point of pre-specification
 \label{sec:design_tooling}
 
 The serving stack is chosen for single-host reproducibility:
-\textbf{FAISS-CPU} with an HNSW index (over Qdrant/Chroma/pgvector)
+\textbf{FAISS-CPU}~\cite{faiss} with an HNSW index (over Qdrant/Chroma/pgvector)
 so the reference service ships as one Docker image with no external
 database and no GPU dependency for retrieval;
 \texttt{BAAI/bge-large-en-v1.5} embeddings with a
