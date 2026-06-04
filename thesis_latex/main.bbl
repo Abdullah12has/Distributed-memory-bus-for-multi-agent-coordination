@@ -2521,12 +2521,17 @@
       \field{title}{{Self-RAG}: Learning to Retrieve, Generate, and Critique through Self-Reflection}
       \field{year}{2024}
     \endentry
-    \entry{guo2025dynamic}{misc}{}{}
-      \name{author}{2}{}{%
+    \entry{guo2025dynamic}{inproceedings}{}{}
+      \name{author}{3}{}{%
         {{hash=cddceb54eea0ef8f03be0c3c0a81e2a2}{%
            family={Guo},
            familyi={G\bibinitperiod},
            given={Shuyu},
+           giveni={S\bibinitperiod}}}%
+        {{hash=7e1eaaf146a647a72a69d324b8168b8b}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Shuo},
            giveni={S\bibinitperiod}}}%
         {{hash=1941235203150251e261846fd02f2008}{%
            family={Ren},
@@ -2534,19 +2539,20 @@
            given={Zhaochun},
            giveni={Z\bibinitperiod}}}%
       }
-      \strng{namehash}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{fullhash}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{fullhashraw}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{bibnamehash}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{authorbibnamehash}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{authornamehash}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{authorfullhash}{f1f308bd2c4720eef7639b0fa6e77f53}
-      \strng{authorfullhashraw}{f1f308bd2c4720eef7639b0fa6e77f53}
+      \strng{namehash}{7deaa2702a93eb922a5be6d1b385634d}
+      \strng{fullhash}{73374b8e49e649a417089d63755ac9ce}
+      \strng{fullhashraw}{73374b8e49e649a417089d63755ac9ce}
+      \strng{bibnamehash}{73374b8e49e649a417089d63755ac9ce}
+      \strng{authorbibnamehash}{73374b8e49e649a417089d63755ac9ce}
+      \strng{authornamehash}{7deaa2702a93eb922a5be6d1b385634d}
+      \strng{authorfullhash}{73374b8e49e649a417089d63755ac9ce}
+      \strng{authorfullhashraw}{73374b8e49e649a417089d63755ac9ce}
       \field{sortinit}{5}
       \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{howpublished}{arXiv preprint arXiv:2507.22931}
+      \field{booktitle}{Findings of the Association for Computational Linguistics: EMNLP 2025}
+      \field{note}{arXiv:2507.22931.}
       \field{title}{Enhancing {RAG} Efficiency with Adaptive Context Compression}
       \field{year}{2025}
     \endentry
@@ -3159,6 +3165,28 @@
       \verb https://ollama.com/
       \endverb
     \endentry
+    \entry{llama31modelcard}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=ca43b8b2bdf82aa380c9fed8712d8db8}{%
+           family={{Meta AI}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{fullhash}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{fullhashraw}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{bibnamehash}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{authorbibnamehash}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{authornamehash}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{authorfullhash}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \strng{authorfullhashraw}{ca43b8b2bdf82aa380c9fed8712d8db8}
+      \field{sortinit}{8}
+      \field{sortinithash}{a231b008ebf0ecbe0b4d96dcc159445f}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{arXiv preprint arXiv:2407.21783}
+      \field{title}{The {Llama} 3 Herd of Models}
+      \field{year}{2024}
+    \endentry
     \entry{faiss}{online}{}{}
       \name{author}{3}{}{%
         {{hash=1805e103501075ef0b21851b4259f4a3}{%
@@ -3429,8 +3457,8 @@
       \strng{authornamehash}{c1c4ea85e78c313d8c00616419b5c4d6}
       \strng{authorfullhash}{6f9b389c1f3fc11e9601e665bb932466}
       \strng{authorfullhashraw}{6f9b389c1f3fc11e9601e665bb932466}
-      \field{sortinit}{9}
-      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{howpublished}{arXiv preprint arXiv:2309.15217}
