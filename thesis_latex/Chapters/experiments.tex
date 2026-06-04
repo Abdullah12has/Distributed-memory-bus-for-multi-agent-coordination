@@ -260,7 +260,7 @@ that is a between-family effect. The robust H1 statement is the
 negative one: source-retention F1 change does not positively and
 consistently predict coordination change for any compressor.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{H1 verdict table. Spearman correlation between
 $\Delta$~token-overlap F1 and $\Delta$~coordination success under
@@ -293,7 +293,7 @@ Truncation (baseline)    & $+0.051$ ($150$) & $[-0.092, +0.198]$ & $+0.384$ ($13
 \end{tabular}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{H1 per-family decomposition (workload-level Spearman,
 $n=50$ per family; computed from
@@ -425,7 +425,7 @@ on whether the compressor's mechanism preserves the
 task-critical tokens, which is exactly what the
 compounding-error model predicts.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{H2 verdict table: empirical cliff $\tau^{*}$, observed-range
 drop, slope-extrapolated drop $\Delta$, and Holm-corrected
@@ -490,7 +490,7 @@ Phi-3) is consistent within a family, and truncation cliffs at the
 lowest ratio of any compressor, which is what the lower-bound
 argument predicts.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.82\textwidth]{../figures/cliff_families.pdf}
 \caption{Cliff curves for the four compressors $\times$ three
@@ -646,7 +646,7 @@ under-prediction): the second-order gap Corollary~2 explains, since
 family-c's lower information density breaks the binary-importance
 approximation A2 earliest.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.82\textwidth]{../figures/predicted_vs_empirical.pdf}
 \caption{Predicted-versus-empirical $\tau^{*}$ across the eleven
@@ -792,7 +792,7 @@ $\tau^{*}$ stays flat. (On family-a the small-model cells sit in the
 floor regime $p_0<\theta_q$ and are correctly skipped; on family-b
 all sizes are below threshold for the constraint-tracking reason.)
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.74\textwidth]{../figures/h5_model_overlay.pdf}
 \caption{Family-c ceiling versus cliff: baseline coordination
@@ -862,7 +862,6 @@ floor effect; the cross-architecture Llama-8B-vs-Qwen-72B comparison
 is the clean one.
 
 \subsection{DeepSeek~V4~Pro: within tolerance but weakly identified}
-\label{sec:frontier_deepseek_repro}
 \label{sec:frontier_deepseek}
 
 The DeepSeek~V4~Pro sweep returns a $\tau^{*}$ point estimate of
@@ -908,7 +907,7 @@ Qwen-72B and DeepSeek~V4~Pro both overlap the synthetic reference
 band while GPT-oss~120B diverges visibly, the out-of-regime
 diagnostic.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.68\textwidth]{../figures/frontier_validation.pdf}
 \caption{Frontier versus local coordination cliff on
@@ -1062,11 +1061,11 @@ ordering is monotonic in how aggressively each compressor
 destroys source tokens; the construct-validity reading is
 developed in Section~\ref{sec:h4_construct}.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{H4 verdict table from
 \texttt{results/h4\_unbiased\_v2/} (4 compressors including
-truncation; canonical from 2026-05-30 GPU rerun). The signal
+truncation). The signal
 $\Delta$ (priors $\to$ baseline) is $+0.286$
 ($p_\text{Holm}=8\times10^{-4}$) for every compressor, identical
 across rows because it does not depend on the compressor, so it is
@@ -1084,7 +1083,7 @@ Section~\ref{sec:h4_construct} for the construct-validity finding
 on this ordering.}
 \label{tab:h4}
 \small
-\begin{tabular}{lccc|c}
+\begin{tabular}{lccc|p{5.5cm}}
 \hline
 Compressor & priors & baseline & compr-$4\times$ & reduction $\Delta$ \\
 \hline
@@ -1251,13 +1250,13 @@ introduced in Section~\ref{sec:prereg_refinement}. Each row links to the canonic
 results directory under \texttt{results/} that produced the
 numbers.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Consolidated verdict table, three-tier structure
 (Section~\ref{sec:prereg_refinement}).}
 \label{tab:verdict_summary}
 \small
-\begin{tabular}{p{2.0cm}p{5.5cm}p{2.5cm}p{4.0cm}}
+\begin{tabular}{p{2.0cm}p{5.0cm}p{2.5cm}p{4.5cm}}
 \hline
 ID & Claim & Verdict & Canonical dir \\
 \hline

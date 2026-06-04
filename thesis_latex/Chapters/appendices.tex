@@ -181,7 +181,7 @@ in the repository.
 The empirical work was carried out on the following stack.
 The local workstation is an Apple Mac with the M4~Pro SoC,
 $48$~GB of unified memory, Python~3.12, MLX framework version
-$0.21$, Ollama version $0.3$ with the Qwen-2.5, Phi-3-Mini,
+$0.21$, Ollama with the Qwen-2.5, Phi-3-Mini,
 and Llama-3.1 model weights pre-pulled, and the
 \texttt{m6} package installed in editable mode from the
 repository. The GPU host is a Windows desktop running WSL2
@@ -222,7 +222,7 @@ post-retrieval-compression preference of the
 LongLLMLingua~\cite{jiang2024longllmlingua} line of work on the
 single \texttt{bge-large-en-v1.5} + FAISS-CPU stack tested.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{H3 verdict table, by regime and pipeline ($n=150$ workloads
 per cell). Mean F1 and \emph{achieved} compression ratio ($\times$)

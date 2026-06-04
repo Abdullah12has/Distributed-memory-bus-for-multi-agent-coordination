@@ -200,7 +200,7 @@ tolerance and an LLMLingua-2 fallback (Section~\ref{sec:compressors}).
 
 \subsection{Comparison table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{The compressor families this thesis surveys, along the
 design dimensions that matter for multi-fragment evaluation. The
@@ -237,8 +237,7 @@ published at the Conference on Language Modeling (COLM) 2024),
 MetaGPT~\cite{hong2024metagpt} (ICLR 2024 main),
 CAMEL~\cite{li2023camel} (NeurIPS 2023),
 Reflexion~\cite{shinn2023reflexion} (NeurIPS 2023),
-MemGPT~\cite{packer2023memgpt} (preprint, not yet
-peer-reviewed at the time of writing of this thesis), and
+MemGPT~\cite{packer2023memgpt} (arXiv preprint, 2023), and
 Collaborative Memory~\cite{rezazadeh2025collaborative} (Rezazadeh et al., 2025 preprint). Each
 framework implicitly answers how shared context flows between agents
 and what an individual agent needs to see. None of them formally
@@ -273,8 +272,7 @@ Retrieval-augmented generation as a paradigm dates to Lewis
 \emph{et~al.}~\cite{lewis2020rag}. The landmark works since
 include RAPTOR~\cite{sarthi2024raptor} (recursive abstractive
 processing for tree-organised retrieval, ICLR 2024),
-GraphRAG~\cite{edge2024graphrag} (a Microsoft preprint at the
-time of writing, not yet at a peer-reviewed venue),
+GraphRAG~\cite{edge2024graphrag} (NeurIPS 2024),
 HippoRAG~\cite{gutierrez2024hipporag, gutierrez2025hipporag2}
 (NeurIPS 2024 and follow-on), and
 Self-RAG~\cite{asai2024selfrag} (ICLR 2024). The pipeline
@@ -307,18 +305,19 @@ model, while the cliff measurement measures the compression-%
 quality effect on a task structure the long-context benchmarks
 do not include.
 
-The multi-hop question-answering benchmarks
+The canonical multi-hop question-answering benchmarks include
 HotpotQA~\cite{yang2018hotpotqa} (EMNLP 2018),
 2WikiMultiHopQA~\cite{ho2020wiki2hop} (COLING 2020), and
-MultiHop-RAG~\cite{tang2024multihoprag} (COLM 2024)
-are the real-data benchmarks on which Corollary~2 of
-\charef{experiments} validates the
-information-density-scaling claim. The transfer is
-qualitative: the absolute cliff positions differ between
-synthetic and real benchmarks because the information density
-$\theta_\text{info}$ differs, but the cliff structure
-(existence, sharpness as a function of $\theta_\text{info}$)
-transfers.
+MultiHop-RAG~\cite{tang2024multihoprag} (COLM 2024).
+HotpotQA and MultiHop-RAG serve as the two real-data external
+arms on which Corollary~2 of \charef{experiments} validates
+the information-density-scaling claim; the third data point
+in the $n{=}3$ comparison is the synthetic C1 family-a.
+The transfer is qualitative: the absolute cliff positions
+differ between synthetic and real benchmarks because the
+information density $\theta_\text{info}$ differs, but the
+cliff structure (existence, sharpness as a function of
+$\theta_\text{info}$) transfers.
 
 \emph{What is missing.} RAG benchmarks measure retrieval quality
 and long-context benchmarks measure model capacity; neither captures

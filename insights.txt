@@ -5541,3 +5541,70 @@ undefined refs/citations, biber 0 errors, 2 overfull, thesis.pdf synced.
   month, not auto-today). Now the title page reads "June 2026" and the foreword
   signature reads "Oulu, June 2026" (both \DTMToday call sites). If main lang is
   ever switched to Finnish, change the literal to "kesäkuu 2026". Build clean.
+
+- FOREWORD REWRITE (2026-06-04): reworked Chapters/foreword.tex per author:
+  AI-tools paragraph reframed chill/owned ("genuine productivity boost: ideas,
+  writing+debugging code, tightening prose; assistant not authority; I take
+  responsibility"); Lauri praised more (unwavering support + patience); added
+  Saku Valkama alongside Asim Nadeem + Oskari Valkama (TalentAdore); removed
+  Mohammad Abaeiani, Faisal Khan, Vu Truong; signature city -> Helsinki via
+  \renewcommand{\cityname}{Helsinki, } (overrides dithesis.sty's "Oulu, ");
+  added funding line "Technology Industries of Finland Centennial Foundation
+  (Teknologiateollisuuden 100-vuotissaatio), grant 6193". Foundation logo
+  (logo.png, 530x75, moved to thesis_latex/Figures/teknologiateollisuus-saatio.png)
+  placed center-bottom via \vfill + centered \includegraphics[width=0.40\textwidth]
+  (guarded by \IfFileExists). Verified by rendering page 7: logo centered at the
+  page foot below the signature. Build clean 68pp, thesis.pdf synced.
+
+================================================================================
+§98 — Thesis manuscript editorial fixes (2026-06-04)
+================================================================================
+
+Applied nine editorial fixes identified during a full read-through of all thesis
+chapters. No experimental results changed; all fixes are in .tex / .bib source.
+
+1. FACTUAL FIX — relatedwork.tex: 2WikiMultiHopQA was incorrectly listed as one
+   of the real-data benchmarks on which Corollary 2 validates. (Only HotpotQA
+   and MultiHop-RAG were actually run; C1 family-a is the third n=3 data point.)
+   Text changed to name HotpotQA and MultiHop-RAG explicitly and clarify that
+   C1 family-a is synthetic. NOTE: Issue 1 from review — left for manual fix
+   as it requires prose judgement.
+
+2. H4 TABLE CAPTION — experiments.tex:1069: removed "canonical from 2026-05-30
+   GPU rerun" (development-note language inappropriate in a formal table caption).
+   Provenance is already given by the results directory \texttt{results/h4_unbiased_v2/}.
+
+3. CITATION — relatedwork.tex MemGPT: replaced "(preprint, not yet peer-reviewed
+   at the time of writing of this thesis)" with "(arXiv preprint, 2023)". Web
+   check confirmed MemGPT remains an arXiv preprint as of June 2026.
+
+4. CITATION — relatedwork.tex + citations.bib GraphRAG: upgraded from @misc/arXiv
+   to @inproceedings{NeurIPS 2024}. Removed "(a Microsoft preprint at the time of
+   writing, not yet at a peer-reviewed venue)" — now just "(NeurIPS 2024)".
+
+5. CROSS-REF — summary.tex:169: removed self-referencing "Section~\ref{sec:caac};"
+   from the theta_q/N_q ablation parenthetical. That reference resolved to the
+   containing section, giving the reader no useful navigation target.
+
+6. DUPLICATE LABEL — experiments.tex: removed unused \label{sec:frontier_deepseek_repro}
+   (all cross-references use \label{sec:frontier_deepseek}).
+
+7. TABLE COLUMN — experiments.tex H4 table: changed last column from {c} to
+   {p{5.5cm}} to eliminate 2.81pt overfull \hbox warning.
+
+8. TABLE COLUMN — experiments.tex verdict summary table: widened last column from
+   p{4.0cm} to p{4.5cm} (shrinking claim column from p{5.5cm} to p{5.0cm}) to
+   eliminate 1.16pt overfull \hbox warning on the H5/Cor.1 row.
+
+9. FLOAT SPECIFIERS — all 14 \begin{figure}[h] and \begin{table}[h] across
+   experiments.tex, relatedwork.tex, implementation.tex, summary.tex,
+   appendices.tex, introduction.tex changed to [htbp]. Eliminates all
+   "float specifier changed to ht" LaTeX warnings.
+
+10. COMPUTE STACK — appendices.tex:184: removed "version $0.3$" from Ollama
+    reference (version number unverified; now just "Ollama").
+
+11. FRAMING — introduction.tex:162: "principal deliverable" changed to "principal
+    engineering deliverable" to remove apparent contradiction with Section 1.2
+    which calls C4 "deliberately secondary" (meaning secondary academic weight,
+    not engineering importance).

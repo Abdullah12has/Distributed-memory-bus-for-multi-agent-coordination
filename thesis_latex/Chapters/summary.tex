@@ -135,7 +135,7 @@ two compressors thus populate complementary regions of the
 (Figure~\ref{fig:caac_pareto}), with the $q(r)=\theta_q$ curve drawn
 as the boundary CAAC respects.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.74\textwidth]{../figures/caac_pareto.pdf}
 \caption{CAAC and the fixed-ratio compressor on the
@@ -166,8 +166,7 @@ floor, conditional on the per-family recall threshold being
 correctly measured.
 
 The $\theta_q$/$N_q$ ablation
-(Section~\ref{sec:caac}; \texttt{results/caac\_theta\_*} and
-\texttt{results/caac\_N\_*})
+(\texttt{results/caac\_theta\_*} and \texttt{results/caac\_N\_*})
 returns an informative null. Here $N_q$ is CAAC's internal
 \emph{recall-exponent} knob, the exponent in the back-off
 threshold $q_\text{min}=\theta_q^{1/N_q}$ that controls how
