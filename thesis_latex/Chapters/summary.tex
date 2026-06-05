@@ -22,7 +22,7 @@ information destruction and matched at $\sim 23$~pp by oracle
 field-redaction at near-zero destruction: the metric ranks
 compressors but the privacy interpretation requires a
 destruction-aware threat model. \textbf{Two sharpened.}
-\textbf{H5}'s directional prediction resolved into the invariance
+H5's directional prediction resolved into the invariance
 result \emph{Corollary~1 (Ceiling--Cliff Separation)}, carried by
 the Llama-3.1-8B vs Qwen-2.5-72B family-a $\times$ LLMLingua-2 cell
 across a $9\times$ scale-up and a change of architecture family.
@@ -62,9 +62,7 @@ runtime back-off.
 
 \section{Cliff-Aware Adaptive Compression: a Constructive Realisation}
 \label{sec:caac}
-
-CAAC, Cliff-Aware Adaptive Compression
-(\texttt{src/m6/compressors/caac.py}), is the algorithmic
+CAAC, Cliff-Aware Adaptive Compression, is the algorithmic
 counterpart of the compounding-error model of
 Section~\ref{sec:cem}. \textbf{CAAC's contribution is a
 measurement-bounded safety floor:} given a per-family
@@ -78,9 +76,10 @@ wrapper}: by construction it trades compression for a recall
 guarantee, so it cannot strict-dominate the fixed-ratio compressor
 that makes the opposite trade. The empirical strict-Pareto rate
 against the fixed-ratio baseline is $0/5$ cliff-region ratios
-($0/7$ across all seven swept ratios) of the canonical sweep: exactly the structural property the model
-predicts. The two sections below unpack the algorithm and the
-operating-point framing in turn.
+($0/7$ across all seven swept ratios) of the canonical sweep:
+exactly the structural property the model predicts. The two
+sections below unpack the algorithm and the operating-point framing
+in turn.
 
 \subsection{Algorithm}
 \label{sec:caac_algo}
@@ -185,18 +184,17 @@ that this thesis defers as future work.
 
 \subsection{What CAAC contributes to the thesis}
 
-CAAC is the demonstration that the compounding-error model is
-operationally usable, not just descriptively predictive. The
-algorithm is short, training-free, drop-in, and bounded in
-behaviour by a measurement. The contribution sits in
-\charef{summary} rather than as a headline contribution
-in \charef{introduction} because the model is the
-substantive contribution and CAAC is its constructive realisation, but the design choice that CAAC enables is real: a
-practitioner who has measured $\theta_q$ on one family can deploy
-CAAC at any target ratio with the guarantee that the achieved
-operating point sits on the safe side of the cliff. This
-deployment-mode property is what makes the cliff measurement
-useful as something other than a publication finding.
+CAAC shows that the compounding-error model can be put to work, not
+only used to predict. The algorithm is short and training-free, adds
+no inference dependencies, and bounds its own behaviour by a single
+measurement. It sits in \charef{summary} rather than among the
+headline contributions of \charef{introduction} because the model is
+the substantive contribution and CAAC is its constructive
+realisation. The design choice it enables, though, is a concrete one:
+a practitioner who has measured $\theta_q$ on one family can deploy
+CAAC at any target ratio and know the achieved operating point sits
+on the safe side of the cliff. That deployment guarantee is what
+turns the cliff measurement into something a system can be built on.
 
 \section{Limitations}
 \label{sec:limitations}
@@ -311,7 +309,7 @@ unbiased reader (future work) would disentangle.
 \section{Significance}
 \label{sec:significance}
 
-\subsection{For the industrial partners: TalentAdore and FCG}
+\subsection{For Industry}
 \label{sec:significance_partners}
 
 The work was scoped against two industrial settings, each with an
@@ -325,18 +323,17 @@ safe ratio off the model, avoiding a full sweep; (3) compress-first
 (P1) as the safe default retrieval pipeline; and (4) the disclosure
 metric plus policy layer as a deployment-time governance budget for
 \textsc{confidential} data, with CAAC a drop-in recall-bounded safety
-floor. \textbf{FCG} gains a runnable reference artefact: the
-three-layer bus extends the group's MemIndex~\cite{saleh2025memindex}
-baseline, ships as one \texttt{docker-compose} image, and targets the
-group's multi-agent roadmap. The flagship \emph{Vignette~3.7} use
-case~\cite{fcgusecase2026} (reporting aggregated across roughly eight
-institutional systems, an internal-estimate $80\%$ payload reduction
-at $\approx$~EUR~$2.15$/report) is exactly the multi-fragment workflow
-this thesis characterises: the cliff tells FCG \emph{how aggressively
-that payload can be compressed before cross-system aggregation
-breaks}, and the disclosure metric which compressor to route
-classified fragments through. The bus's distributed/multi-tenant
-behaviour is the natural FCG follow-on.
+floor. The second setting, a multi-agent memory deployment, gains a
+runnable reference artefact: the three-layer bus extends a prior
+shared-memory baseline, ships as a single container image, and
+targets a multi-agent roadmap. A representative flagship use case
+(reporting aggregated across roughly eight institutional systems,
+with an internal-estimate payload reduction of around $80\%$) is
+exactly the multi-fragment workflow this thesis characterises: the
+cliff says how aggressively that payload can be compressed before
+cross-system aggregation breaks, and the disclosure metric says which
+compressor to route classified fragments through. The bus's
+distributed and multi-tenant behaviour is the natural follow-on.
 
 \subsection{For practitioners}
 
@@ -377,20 +374,6 @@ the cliff across benchmarks, so a multi-benchmark comparison that
 does not control $\theta_\text{info}$ conflates compressor mechanism
 with task structure.
 
-\section{Comparison to Industry Observations}
-\label{sec:industry_comparison}
-
-Anthropic's report that token usage explains $\approx80\%$ of the
-performance variance in their multi-agent
-workflow~\cite{anthropic2025multiagent, anthropic2025contextediting}
-is consistent with this thesis and underwrites the practitioner
-urgency, but it is an aggregate observation on a single workflow; the
-cliff measurement here is the controlled cross-compressor,
-cross-family, cross-architecture sweep with a position-predicting
-model that the observation lacks. The industry number is the macro
-reason a practitioner cares; the thesis findings are the micro answer
-that lets them act.
-
 \section{Future Work}
 \label{sec:future}
 
@@ -398,7 +381,7 @@ The most natural follow-on studies, in order of expected impact.
 
 \paragraph{Extended-reasoning regime.}
 Characterise the cliff for planners that recover from sub-threshold
-information by chain-of-thought (GPT-oss-class, GPT-4-Turbo and Claude
+information by chain-of-thought (GPT-4-Turbo and Claude
 Sonnet with extended thinking). The theoretical counterpart is
 replacing A3 (threshold success) with a graded-success model.
 

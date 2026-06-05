@@ -4,7 +4,7 @@ the reference memory bus, the compressor framework, the multi-fragment
 critical-token-recall metrics that the cliff analysis turns on, the
 precomputed compression cache that decouples compression from
 evaluation, and the single-command reproducibility envelope. It gives
-a reader enough detail to reproduce the system from the reference
+the reader enough detail to reproduce the system from the reference
 repository without reading the code, and makes the design choices
 explicit so the results of \charef{experiments} can be read against
 the constraints those choices imposed.
@@ -65,6 +65,8 @@ access layers.
                   minimum height=1.6cm, align=center, font=\small},
     cmp/.style={draw, rounded corners=1pt, minimum width=1.9cm,
                 minimum height=0.6cm, font=\footnotesize},
+    ccmp/.style={draw, rounded corners=1pt, minimum width=1.7cm,
+                 minimum height=0.6cm, font=\scriptsize, inner xsep=2pt},
     arrow/.style={-{Latex[length=2mm]}, thick},
     label/.style={font=\footnotesize\itshape}
 ]
@@ -74,29 +76,25 @@ access layers.
    \footnotesize POST /v1/write \quad GET /v1/read \quad POST /v1/subscribe
    \quad GET /v1/audit \\
    \footnotesize PolicyMiddleware \quad StructLogMiddleware \quad OtelMiddleware};
-
 % Compression layer
-\node[layer, fill=black!4, minimum height=2.0cm] (compress) at (0,1.8)
-  {\textbf{Compression layer} \\[2pt]
-   \texttt{Compressor} protocol \\[2pt]};
-\node[cmp] (id)     at (-5.0, 1.5) {identity};
-\node[cmp] (lingua) at (-2.9, 1.5) {LLMLingua-2};
-\node[cmp] (filter) at (-0.8, 1.5) {filter};
-\node[cmp] (phi)    at ( 1.3, 1.5) {Phi-3 ext.};
-\node[cmp] (trunc)  at ( 3.4, 1.5) {truncation};
-\node[cmp] (caac)   at ( 5.5, 1.5) {CAAC (wrap)};
-
+\node[layer, fill=black!4, minimum height=2.2cm] (compress) at (0,1.8) {};
+\node[font=\small\bfseries]            at (0, 2.55) {Compression layer};
+\node[font=\footnotesize\ttfamily]     at (0, 2.20) {Compressor protocol};
+\node[ccmp] (id)     at (-4.75, 1.25) {identity};
+\node[ccmp] (lingua) at (-2.85, 1.25) {LLMLingua-2};
+\node[ccmp] (filter) at (-0.95, 1.25) {filter};
+\node[ccmp] (phi)    at ( 0.95, 1.25) {Phi-3 ext.};
+\node[ccmp] (trunc)  at ( 2.85, 1.25) {truncation};
+\node[ccmp] (caac)   at ( 4.75, 1.25) {CAAC (wrap)};
 % Storage layer
-\node[layer, fill=black!4, minimum height=2.0cm] (storage) at (0,-1.0)
-  {\textbf{Storage layer} \\[2pt]};
+\node[layer, fill=black!4, minimum height=2.0cm] (storage) at (0,-1.0) {};
+\node[font=\small\bfseries] at (0, -0.45) {Storage layer};
 \node[cmp, minimum width=3cm] (audit) at (-3.7, -1.3) {SQLite AuditLog};
 \node[cmp, minimum width=3cm] (scr)   at ( 0.0, -1.3) {InMemory Scratchpad};
 \node[cmp, minimum width=3cm] (vs)    at ( 3.7, -1.3) {FAISS VectorStore};
-
 % Arrows between layers
 \draw[arrow] (access) -- (compress);
 \draw[arrow] (compress) -- (storage);
-
 % Side annotations
 \node[label] at (7.6,  4.0) {ACL-checked};
 \node[label] at (7.6,  1.8) {pluggable};
@@ -248,17 +246,7 @@ compounding-error model presumes.
 
 \subsection{Instruction-aware filter}
 
-The instruction-aware filter is a pure-Python heuristic baseline.
-It operates in two stages. The first is a sentence-level filter
-that ranks sentences by their relevance to the task hint using a
-cross-encoder reranker (\texttt{BAAI/bge-reranker-base}) when
-available and a lexical-overlap fallback when not. The second is a
-token-level trim that drops English stop-words and short tokens
-($\le 2$ characters) until the target compression ratio is reached.
-The stop-word list is encoded explicitly so that the trim is
-deterministic given the task hint, the fragment, and the target
-ratio: a subtle bug showed that dropping stop-words in Python
-set-iteration order introduced run-to-run variance.
+The instruction-aware filter is a pure-Python heuristic baseline operating in two stages. First, a sentence-level filter ranks sentences by relevance to the task hint using a cross-encoder reranker (\texttt{BAAI/bge-reranker-base}), falling back to lexical overlap when the model is unavailable. Second, a token-level trim drops English stop-words and short tokens ($\le 2$ characters) until the target ratio is reached; the stop-word list is an explicit ordered sequence so that the trim is fully deterministic given the task hint, the fragment, and the target ratio.
 
 The filter's reranker preserves task-keyword tokens that simpler
 token-level methods drop, which is why its $q(r)$ curve on the
@@ -270,29 +258,22 @@ gracefully rather than collapsing: chain-reference tokens like
 \label{sec:phi3}
 
 The Phi-3-Mini extractive compressor is the only thesis compressor
-that uses an LLM at inference time. It runs the Phi-3-Mini-3.8B
-instruction-tuned model~\cite{phi3} via a local Ollama
-endpoint~\cite{ollama} with a structured prompt that asks for
-verbatim contiguous spans from the source. The post-hoc verifier
-\texttt{Phi3ExtractiveCompressor.\_verify\_extractive} checks the
-output: every token in the output must appear in the source. Two
-loosenings of the strict verifier were necessary in practice. First,
-a $15\%$ novel-token tolerance: small language models frequently
-insert function words (``the'', ``is'', ``and'') even when
-explicitly asked not to. Second, a post-hoc
-\texttt{\_strip\_novel\_tokens} pass that removes any token not in
-the source after the verifier passes; this guarantees zero novel
-tokens in the final output even if the model produced some during
-generation. Outputs that fail even after stripping fall back to
-LLMLingua-2 at the same target ratio.
+that uses an LLM at inference time. It runs Phi-3-Mini-3.8B~\cite{phi3}
+via a local Ollama endpoint~\cite{ollama} with a structured prompt
+requesting verbatim contiguous spans from the source. A post-hoc
+verifier enforces extractiveness: a $15\%$ novel-token tolerance
+accommodates common function-word insertions
+(``the'', ``is'', ``and''), and any remaining novel tokens are
+stripped before the output is accepted. Outputs that fail even after
+stripping fall back to LLMLingua-2 at the same target ratio; in
+practice this occurs only at aggressive ratios where span selection
+cannot reach the target.
 
-Phi-3-Mini extractive has a \emph{compression ceiling}: span-level
-selection, the stripping pass, and the LLMLingua-2 fallback together
-bound the achievable ratio at about $2.5\times$, regardless of the
-requested target. This is documented as a limitation in
-\charef{summary} and is the reason all evaluation reports
-\emph{achieved} compression ratio (the ratio actually delivered)
-alongside the requested target ratio.
+Phi-3-Mini extractive has a \emph{compression ceiling} of
+approximately $2.5\times$, imposed by span-level selection and the
+stripping pass together. This is documented as a limitation in
+\charef{summary} and is the reason all evaluation reports include
+the \emph{achieved} compression ratio alongside the requested target.
 
 \subsection{Truncation (prefix-keep baseline)}
 
@@ -468,9 +449,8 @@ Compression is the slowest evaluation step (Phi-3-Mini extractive
 is a $\sim11$~second Ollama call per fragment), and the cliff sweep
 touches $\approx30{,}000$ (compressor, ratio, workload, task-hint)
 cells, so a precomputed cache (\texttt{CompressionCache} /
-\texttt{CachedCompressor} in \texttt{src/m6/compressors/cache.py},
-keyed on
-$(\text{compressor}, r, \text{fragment\_id}, \text{hash}(\text{task\_hint}))$)
+\texttt{CachedCompressor}
+keyed on $(\text{compressor}, r, \text{fragment\_id}, \text{hash}(\text{task\_hint}))$)
 is populated once on the GPU and consumed as JSON thereafter. This
 decouples compression from evaluation, letting H1, H2, the frontier
 sweep, and the CAAC ablation run on a laptop, and guarantees every
@@ -482,7 +462,7 @@ rate $100\%$ by construction).
 \label{sec:inference}
 
 The unified \texttt{InferenceBackend} protocol exposes a single
-\texttt{complete(prompt, max\_tokens, temperature, stop)} method
+ method
 together with an optional \texttt{embed(text)} method. Three concrete
 backends are used in the evaluation. The first is a local Ollama
 endpoint~\cite{ollama} that hosts Qwen-2.5-Instruct at the three
@@ -491,10 +471,7 @@ the model-scaling sweep, Phi-3-Mini-3.8B for the extractive
 compressor, and Llama-3.1-8B-Instruct~\cite{llama31modelcard} as the
 local protected-fact reader. The second is the OpenAI-compatible Featherless API used
 for the frontier validation (Qwen-2.5-72B-Instruct, DeepSeek V4
-Pro). The third is the OpenAI API for the GPT-class frontier
-arm (excluded from the calibrated regime per
-\charef{summary}, retained on disk as a noncanonical
-diagnostic). All API calls are routed through the cost ledger so
+Pro). All API calls are routed through the cost ledger so
 that the EUR-per-workflow figures in
 \charef{experiments} are auditable.
 
@@ -508,21 +485,18 @@ that made them. The per-hypothesis falsifiability bars are discussed
 at the point of pre-specification
 (\charef{experiments}~Section~\ref{sec:prereg_refinement}).
 
+
+
 \subsection{Tooling: storage, retrieval, and serving stack}
 \label{sec:design_tooling}
-
 The serving stack is chosen for single-host reproducibility:
-\textbf{FAISS-CPU}~\cite{faiss} with an HNSW index (over Qdrant/Chroma/pgvector)
-so the reference service ships as one Docker image with no external
-database and no GPU dependency for retrieval;
-\texttt{BAAI/bge-large-en-v1.5} embeddings with a
-\texttt{bge-reranker-base} re-ranker (open-weight, digests in
-\texttt{docs/MODEL\_CARDS.md}); \textbf{FastAPI}/Starlette for the
-access layer; \textbf{SQLite-WAL} for the audit log (one-file
-footprint, concurrent reader--writer, a replicated multi-host chain
-named as future work); \textbf{Ollama} for local LLM serving
-(uniform model lifecycle across the Apple-Metal and CUDA hosts behind
-one \texttt{complete()} call, Section~\ref{sec:inference}); and the
+\textbf{FAISS-CPU}~\cite{faiss} with an HNSW index (over Qdrant, Chroma,
+or pgvector) so the reference service ships as one Docker image with no
+external database and no GPU dependency for retrieval; open-weight BGE
+embeddings with a BGE re-ranker; \textbf{FastAPI}/Starlette for the
+access layer; \textbf{SQLite} in WAL mode for the audit log; \textbf{Ollama} for local LLM serving (one
+\texttt{complete()} call gives a uniform model lifecycle across the
+Apple-Metal and CUDA hosts, Section~\ref{sec:inference}); and the
 OpenAI-compatible \textbf{Featherless} endpoint for the frontier arm,
 chosen for its flat per-token price so the EUR cost model compiles
 without per-provider markup tracking.

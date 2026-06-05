@@ -1026,6 +1026,12 @@ def fig_frontier_multi(out: Path) -> None:
     # frontier dirs (e.g. qwen72b + qwen72b_e2, or gpt-oss v1 + v2), keep the
     # dir with the most rows (the canonical / largest-n run). This removes the
     # duplicate "gpt-oss-120b" and double-Qwen series the audit flagged.
+    #
+    # GPT-oss exception: prefer *_v2 over v1 regardless of row count because
+    # v1 had p0=0.53 (floor-effect reading) while v2 was run at p0=1.00 (the
+    # properly in-calibrated-regime baseline). Using v1's curve would give a
+    # misleading shape in the out-of-regime diagnostic panel.
+    PREFER_V2 = {"openai/gpt-oss-120b"}
     best_by_model: dict[str, tuple[int, Path]] = {}
     for d in frontier_dirs:
         csv = d / "results.csv"
@@ -1035,7 +1041,13 @@ def fig_frontier_multi(out: Path) -> None:
         if df.empty or "model" not in df.columns:
             continue
         model = df["model"].iloc[0]
-        if model not in best_by_model or len(df) > best_by_model[model][0]:
+        already = best_by_model.get(model)
+        if already is None:
+            best_by_model[model] = (len(df), d)
+        elif model in PREFER_V2 and d.name.endswith("_v2"):
+            # Always prefer the _v2 run for GPT-oss
+            best_by_model[model] = (len(df), d)
+        elif model not in PREFER_V2 and len(df) > already[0]:
             best_by_model[model] = (len(df), d)
 
     for color_idx, (model, (_, d)) in enumerate(sorted(best_by_model.items())):

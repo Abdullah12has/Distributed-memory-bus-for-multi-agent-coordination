@@ -1,7 +1,7 @@
 \begin{thesisabstract}{english}
 
-Every token a multi-step LLM workflow reads costs energy, latency,
-and money, so context compression is the obvious lever. The
+Every token used by an LLM has a cost: energy, latency,
+and money, so context compression is extremely important if we want to reduce costs and environmental impact of AI. The
 prompt-compression literature is mature, but it evaluates compressors
 on single-fragment question answering, whereas production workflows
 must combine information spread across several fragments, each
@@ -9,34 +9,16 @@ compressed on its own. Whether a compressor that preserves
 single-fragment quality also preserves that harder, multi-fragment
 property had never been tested.
 
-It does not. On a new 150-instance benchmark spanning cross-document
+We tested on a new 150-instance benchmark spanning cross-document
 fact aggregation, constraint-satisfaction planning, and multi-step
 retrieval, single-fragment retention quality fails to predict
 multi-fragment coordination success for every training-free
 compressor tested, and the two measures even disagree on how to rank
 compressors, so the single-agent benchmarks that dominate the field
-mis-rank them for multi-fragment use. The failure is abrupt rather
-than gradual: a sharp \emph{coordination cliff} at which success
-collapses once compression strips the task-critical tokens a planner
+mis-rank them for multi-fragment use. The failure is abrupt: a sharp \emph{coordination cliff} at which success collapses once compression strips the task-critical tokens a planner
 must combine. A compounding-error model explains why the transition
-is sharp and recovers its position to first order. The cliff is a
-property of the compressor and the task, not the planner: within a
-calibrated regime its position shows no detected shift from a small
-local model to a frontier model an order of magnitude larger, even
-across a change of architecture family.
+is sharp and recovers its position to first order. The cliff is related to the compressor and the task, not the planner: its position shows no detected shift from a small local model to a frontier model an order of magnitude larger, even across a change of architecture family.
 
-Turning these findings into a deployable system is the thesis's
-principal engineering contribution: a compression-aware memory bus
-that sits between the data sources and the planner and compresses
-every fragment in transit, converting the token savings directly into
-lower inference cost. Its compression layer is governed by the
-measurements rather than by guesswork: a cliff-aware wrapper (CAAC)
-backs each fragment off to the most aggressive ratio that still keeps
-it on the safe side of the cliff, while a summary-level disclosure
-budget caps how much a downstream reader can recover from a compressed
-confidential fragment. The reference implementation is a
-policy-enforcing service with a tamper-evident audit log, slated for
-deployment in the production workflows of the industry partner,
-TalentAdore, where token cost dominates operating expense.
+Turning these findings into a deployable system is the thesis's main engineering contribution: a compression-aware memory bus that sits between the data sources and the planner and compresses every fragment in transit, converting the token savings directly into lower inference cost. Its compression layer is governed by the measurements: a cliff-aware wrapper (CAAC) backs each fragment off to the most aggressive ratio that still keeps it on the safe side of the cliff, while a summary-level disclosure budget caps how much a downstream reader can recover from a compressed confidential fragment. The reference implementation is a policy-enforcing service with a tamper-evident audit log, planned for deployment in the production workflows of the industry partner, TalentAdore, where token cost dominates AI operational expenses.
 
 \end{thesisabstract}

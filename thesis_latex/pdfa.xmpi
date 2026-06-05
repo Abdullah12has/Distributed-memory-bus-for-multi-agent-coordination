@@ -1,0 +1,111 @@
+<?xpacket begin='' id='W5M0MpCehiHzreSzNTczkc9d' ?> 
+
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 4.0-c316 44.253921, Sun Oct 01 2006 17:14:39"> 
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"> 
+  <rdf:Description rdf:about="" 
+   xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" 
+   xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" 
+   xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#" 
+    > 
+   <pdfaExtension:schemas> 
+   <rdf:Bag> 
+     <rdf:li rdf:parseType="Resource"> 
+       <pdfaSchema:namespaceURI>http://ns.adobe.com/pdfx/1.3/</pdfaSchema:namespaceURI> 
+       <pdfaSchema:prefix>pdfx</pdfaSchema:prefix> 
+       <pdfaSchema:schema>PDF/X Schema</pdfaSchema:schema> 
+       <pdfaSchema:property><rdf:Seq> 
+          <rdf:li rdf:parseType="Resource"> 
+            <pdfaProperty:category>external</pdfaProperty:category> 
+            <pdfaProperty:description>URL to an online version or preprint</pdfaProperty:description> 
+            <pdfaProperty:name>AuthoritativeDomain</pdfaProperty:name> 
+            <pdfaProperty:valueType>Text</pdfaProperty:valueType> 
+          </rdf:li></rdf:Seq> 
+       </pdfaSchema:property> 
+   </rdf:li> 
+   <rdf:li rdf:parseType="Resource"> 
+      <pdfaSchema:namespaceURI>http://www.aiim.org/pdfua/ns/id/</pdfaSchema:namespaceURI> 
+      <pdfaSchema:prefix>pdfuaid</pdfaSchema:prefix> 
+      <pdfaSchema:schema>PDF/UA ID Schema</pdfaSchema:schema> 
+      <pdfaSchema:property><rdf:Seq> 
+         <rdf:li rdf:parseType="Resource"> 
+            <pdfaProperty:category>internal</pdfaProperty:category> 
+            <pdfaProperty:description>Part of PDF/UA standard</pdfaProperty:description> 
+            <pdfaProperty:name>part</pdfaProperty:name> 
+            <pdfaProperty:valueType>Integer</pdfaProperty:valueType> 
+         </rdf:li></rdf:Seq> 
+      </pdfaSchema:property> 
+   </rdf:li> 
+   <rdf:li rdf:parseType="Resource"> 
+      <pdfaSchema:schema>PRISM metadata</pdfaSchema:schema> 
+      <pdfaSchema:namespaceURI>http://prismstandard.org/namespaces/basic/2.2/</pdfaSchema:namespaceURI> 
+      <pdfaSchema:prefix>prism</pdfaSchema:prefix> 
+      <pdfaSchema:property><rdf:Seq> 
+        <rdf:li rdf:parseType="Resource">
+            <pdfaProperty:name>aggregationType</pdfaProperty:name>
+            <pdfaProperty:valueType>Text</pdfaProperty:valueType>
+            <pdfaProperty:category>external</pdfaProperty:category>
+            <pdfaProperty:description>The type of publication. If defined, must be one of book, catalog, feed, journal, magazine, manual, newsletter, pamphlet.</pdfaProperty:description>
+      </rdf:li> 
+   <rdf:li rdf:parseType="Resource">
+    <pdfaProperty:name>url</pdfaProperty:name>
+    <pdfaProperty:valueType>URL</pdfaProperty:valueType>
+    <pdfaProperty:category>external</pdfaProperty:category>
+    <pdfaProperty:description>URL for the article or unit of content</pdfaProperty:description>
+  </rdf:li> 
+      </rdf:Seq></pdfaSchema:property> 
+   </rdf:li> 
+   </rdf:Bag> 
+   </pdfaExtension:schemas> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/"> 
+   <pdf:Producer>pdfTeX</pdf:Producer> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"> 
+   <dc:format>application/pdf</dc:format> 
+   <dc:title><rdf:Alt><rdf:li xml:lang="x-default">The Coordination Cliff: How Context Compression Breaks Multi-Fragment LLM Workflows</rdf:li></rdf:Alt></dc:title>
+   <dc:creator><rdf:Seq><rdf:li>Syed Abdullah Hassan</rdf:li></rdf:Seq></dc:creator>
+   <dc:description><rdf:Alt><rdf:li xml:lang="x-default">Every token a multi-step LLM workflow reads costs energy, latency, and money, so context compression is the obvious lever. The prompt-compression literature is mature, but it evaluates compressors on single-fragment question answering, whereas production workflows must combine information spread across several fragments each compressed on its own, and whether preserving single-fragment quality also preserves that harder multi-fragment property had never been tested. It does not. On a new 150-instance benchmark spanning cross-document fact aggregation, constraint-satisfaction planning, and multi-step retrieval, single-fragment retention quality fails to predict multi-fragment coordination success for every training-free compressor tested, and the two measures even disagree on how to rank compressors, so the single-agent benchmarks that dominate the field mis-rank them for multi-fragment use. The failure is abrupt rather than gradual: a sharp coordination cliff at which success collapses once compression strips the task-critical tokens a planner must combine. A compounding-error model explains why the transition is sharp and recovers its position to first order, and the cliff is a property of the compressor and the task, not the planner, showing no detected shift within a calibrated regime from a small local model to a frontier model an order of magnitude larger, even across a change of architecture family. Turning these findings into a deployable system is the thesis's principal engineering contribution: a compression-aware memory bus that sits between the data sources and the planner and compresses every fragment in transit, converting token savings directly into lower inference cost. Its compression layer is governed by the measurements rather than by guesswork: a cliff-aware wrapper (CAAC) backs each fragment off to the most aggressive ratio that still keeps it on the safe side of the cliff, while a summary-level disclosure budget caps how much a downstream reader can recover from a compressed confidential fragment. The reference implementation is a policy-enforcing service with a tamper-evident audit log, slated for deployment in the production workflows of the industry partner, TalentAdore, where token cost dominates operating expense.</rdf:li></rdf:Alt></dc:description>
+   <dc:subject><rdf:Bag><rdf:li xml:lang="en">context compression</rdf:li>
+     <rdf:li>large language models</rdf:li>
+     <rdf:li>coordination cliff</rdf:li>
+     <rdf:li>multi-fragment workflows</rdf:li>
+     <rdf:li>memory bus</rdf:li>
+     <rdf:li>inference disclosure</rdf:li>
+     <rdf:li>agentic memory</rdf:li>
+     <rdf:li>retrieval-augmented generation</rdf:li>
+     <rdf:li xml:lang="fi"> kontekstin tiivistäminen</rdf:li>
+     <rdf:li>suuret kielimallit</rdf:li>
+     <rdf:li>koordinaatiojyrkänne</rdf:li>
+     <rdf:li>monifragmenttiset työnkulut</rdf:li>
+     <rdf:li>muistiväylä</rdf:li>
+     <rdf:li>päättelyilmaisu</rdf:li>
+     <rdf:li>agenttinen muisti</rdf:li>
+     <rdf:li>hakuparannettu generointi</rdf:li></rdf:Bag></dc:subject>
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:prism="http://prismstandard.org/namespaces/basic/2.2/"> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:pdfx="http://ns.adobe.com/pdfx/1.3/"> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"> 
+   <pdfaid:part>1</pdfaid:part> 
+   <pdfaid:conformance>B</pdfaid:conformance> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/"> 
+   <xmp:CreatorTool>LaTeX with hyperref</xmp:CreatorTool> 
+   <xmp:ModifyDate>2026-06-04T16:06:56+03:00</xmp:ModifyDate> 
+   <xmp:CreateDate>2026-06-04T16:06:56+03:00</xmp:CreateDate> 
+   <xmp:MetadataDate>2026-06-04T16:06:56+03:00</xmp:MetadataDate> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:xmpRights = "http://ns.adobe.com/xap/1.0/rights/"> 
+  </rdf:Description> 
+  <rdf:Description rdf:about="" xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"> 
+   <xmpMM:DocumentID>uuid:DF005B57-2A06-8753-7167-92D8CE935460</xmpMM:DocumentID> 
+   <xmpMM:InstanceID>uuid:6CFD6F6D-F911-0616-CD56-8534FA7B9418</xmpMM:InstanceID> 
+  </rdf:Description> 
+ </rdf:RDF> 
+</x:xmpmeta> 
+                                                                                                                                
+                                                                                                                                
+                                                                                                                                
+                                                                                                                                
+<?xpacket end='w'?> 

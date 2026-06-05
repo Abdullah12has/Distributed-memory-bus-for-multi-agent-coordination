@@ -1,59 +1,54 @@
 \section{Motivation: Every Token Has a Cost}
 \label{sec:motivation}
 
-Large language models pay for every token they read. The cost shows
-up in three places: the energy and water to read the prompt and
-generate the reply (the prefill and decoding passes); the latency the
-user waits through; and the dollars the operator pays per million
-tokens, through an API or amortised over on-premises hardware.
-Peer-reviewed measurements of this inference-side cost are recent but
-consistent. Luccioni \emph{et~al.}'s 2024 \emph{Power Hungry
-Processing} study reports per-inference Watt-hour numbers for a broad
-set of open models, about $0.1$~Watt-hours per inference for a
-6--7B-class open model~\cite{luccioni2024powerhungry}; Samsi
-\emph{et~al.}~\cite{samsi2023words} show the energy of LLM inference
-scales with the number of tokens processed; and Pope
-\emph{et~al.}~\cite{pope2023efficiently} quantify how serving cost
-grows with sequence length once the prefill dominates. Patterson
-\emph{et~al.}~\cite{patterson2021carbon} established the training-time
-carbon-and-cost accounting that these inference-time studies extend.
-When the workload is a multi-step agentic system that issues
-thousands of internal inference calls to answer one user request,
-those per-token costs compound.
+Large language models pay for every token they read. That cost shows up
+in the energy and water to read the prompt and generate
+the reply (the prefill and decoding passes); the latency the user waits
+through; and the cost the user pays, whether per million tokens
+through an API or amortised over on-premises hardware. All three scale
+with the number of tokens, and recent but consistent peer-reviewed work
+bears this out. Luccioni \emph{et~al.}'s 2024 \emph{Power Hungry
+Processing} study reports per-inference energy across a range of open
+models, about $0.1$~Watt-hours for a 6--7B-class
+model~\cite{luccioni2024powerhungry}; Samsi
+\emph{et~al.}~\cite{samsi2023words} show that inference energy scales
+with the number of tokens processed; and Pope
+\emph{et~al.}~\cite{pope2023efficiently} quantify how serving cost grows
+with sequence length once the prefill dominates. These inference-time
+studies extend the training-time carbon-and-cost accounting that
+Patterson \emph{et~al.}~\cite{patterson2021carbon} established. And when
+the workload is a multi-agent system that issues thousands of
+internal inference calls per user request, the token costs
+compound.
 
-A growing fraction of the tokens a deployed LLM reads do not change
+Yet a growing fraction of the tokens a deployed LLM reads do not change
 the answer. They are conversational filler (``Hello'', ``Thanks''),
-repeated system prompts that scaffold every call, restated history
-that re-anchors a long conversation, boilerplate disclaimers, and
-framing an attentive reader could skip. Because the measurements
-above tie cost directly to the number of tokens
+repeated system prompts that scaffold every call, restated history that
+re-anchors a long conversation, boilerplate disclaimers, and framing that could be skipped. Because cost is tied to the tokens
 processed~\cite{luccioni2024powerhungry, samsi2023words,
-pope2023efficiently}, each such token still turns into energy,
-latency, and operating expense whether or not it changes the answer.
-As a consistent industry anecdote, OpenAI's compute bill for
-processing user politeness alone was informally estimated at ``tens
-of millions of dollars'' a year in
-2025~\cite{altman2025pleasethankyou}; it is corroborating colour, not
-evidence.
+pope2023efficiently}, each such token still turns into energy, latency,
+and operating expense whether or not it has an impact on the outcome.
 
-Context compression is the natural lever. Per-token compute and cost
+As a consistent industry anecdote, OpenAI's compute bill for processing
+user politeness alone was informally estimated at ``tens of millions of
+dollars'' a year in 2025~\cite{altman2025pleasethankyou}.
+
+Smart context compression is the natural solution. Per-token compute and cost
 scale roughly linearly in sequence length once the prefill is past
 the GPU memory-bound regime, so halving the input context roughly
 halves the cost. The single-agent prompt-compression literature has
 matured fast over the past three
 years~\cite{jiang2023llmlingua, jiang2024longllmlingua, pan2024llmlingua2,
 mu2023gist, chevalier2023autocompressor, ge2024icae}. This thesis
-measures what that literature has left untested: whether compression
+measures what that literature has left unanswered: whether compression
 that preserves single-fragment quality (the single-agent
-question-answering metric it optimises) also preserves the harder
-property a planner needs, combining information spread across several
-fragments into one correct answer.
+question-answering metric it optimises) also preserves information spread across several fragments into one correct answer.
 
 \section{The Multi-Fragment Workflow}
 \label{sec:multi_fragment}
 
 This thesis studies the \emph{multi-fragment LLM workflow}: a task
-whose answer cannot be read out of any single fragment and instead
+whose answer cannot be read out of any single fragment but instead
 requires combining information across two or more fragments, each of
 which may be compressed on its own before the planner sees it. Three
 examples recur: cross-document fact aggregation (sum eight numbers
@@ -62,7 +57,7 @@ planning (assign $N$ sub-tasks to $K$ capacity-bounded workers from
 specifications spread across fragments), and multi-step retrieval
 (chain references through a sequence of documents to a leaf answer);
 the C1 benchmark of \charef{implementation} builds $50$ instances of
-each. This setting is not a corner case. The FCG group at the
+each.  The FCG group at the
 University of Oulu's flagship use case,
 \emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026},
 gathers reporting data across eight university systems via roughly
@@ -75,8 +70,7 @@ usage explains about $80\%$ of the performance variance they
 observe~\cite{anthropic2025multiagent}, and the companion
 context-management report describes an $84\%$ token reduction on a
 100-turn web-search evaluation~\cite{anthropic2025contextediting}.
-These are industry observations on industry workflows; the
-master's-scale problem is the controlled cross-compressor,
+These are industry observations on industry workflows; we reshaped the problem into a controlled cross-compressor,
 cross-task, cross-architecture measurement that turns that urgency
 into a technical question.
 
@@ -86,7 +80,7 @@ systems implies. The empirical evaluation uses one of two planners: a
 deterministic regex information-extraction solver, or a single LLM
 call with all (compressed) fragments visible. An AutoGen v0.4
 multi-round backend ships in the source tree
-(\texttt{src/m6/orchestrator/}~\cite{wu2023autogen}) but is not used
+~\cite{wu2023autogen} but is not used
 in any reported result. The reason is attribution: round-to-round LLM
 variance dominates the compression signal at the C1 ratios swept, so
 cleanly attributing a coordination drop to compression rather than to
@@ -98,15 +92,14 @@ calibrated in \charef{implementation}~Section~\ref{sec:scope}.
 
 \paragraph{Operational definition of ``coordination success.''}
 Because the title and the coinage \emph{coordination cliff} invite a
-multi-agent reading the experiments do not test, the term is fixed
-here and used uniformly thereafter.
-\textbf{Coordination success is the binary indicator that the
+multi-agent reading that the experiments do not test, the term is fixed
+here. \textbf{Coordination success is the binary indicator that the
 planner recovers the correct answer to a multi-fragment task whose
-answer cannot be read out of any single fragment alone}: a
-measurement of \emph{multi-fragment solvability under compression},
-not of multi-round agent negotiation, message-passing efficiency, or
-role allocation under disagreement. Every later use of
-``coordination'' refers to this quantity.
+solution cannot be read out of any single fragment alone}: a
+measurement of \emph{multi-fragment solvability under compression}, not
+of multi-round agent negotiation, message-passing efficiency, or role
+allocation under disagreement. Every later use of ``coordination''
+refers to this quantity.
 
 \section{Problem Statement}
 \label{sec:problem}
@@ -186,8 +179,7 @@ covers four training-free compressors (LLMLingua-2~\cite{pan2024llmlingua2},
 a Phi-3-Mini extractive span selector, an instruction-aware filter,
 and a truncation baseline) at ten ratios across three families and
 three local architecture families (Qwen-2.5-1.5B, Phi-3-Mini-3.8B,
-Llama-3.1-8B), with a frontier consistency arm (Qwen-2.5-72B
-well-identified, DeepSeek~V4~Pro weakly). The
+Llama-3.1-8B), with a frontier consistency arm (Qwen-2.5-72B, DeepSeek~V4~Pro). The
 \emph{compounding-error model} derives the cliff's threshold
 structure from per-round \textbf{critical-token-recall} against a
 per-family threshold $\theta_q$, recovering its position only to
@@ -196,14 +188,12 @@ first order: a mechanism, not a tight predictor.
 \textbf{Corollary~2 (Information-Density Scaling)}, sharpened from
 H5 and H6, capture the no-shift and shape-scaling results, the
 latter via an AUC-based per-task $\theta_\text{info}$ (distinct from
-$\theta_q$) validated on HotpotQA and MultiHop-RAG; an out-of-regime
-GPT-oss~120B diagnostic marks extended-reasoning planners as a
-structurally distinct case.
+$\theta_q$) validated on HotpotQA and MultiHop-RAG.
 
 \paragraph{C3 (secondary): a catalogue of three
 retrieval-augmented-generation pipeline placements.}
 Three placements (compress-first, retrieve-first, joint
-relevance-conditional routing) are compared under matched storage-
+relevance-conditional routing) are compared under matched storage
 and accuracy-bounded regimes. The pre-specified sign-flip is
 \emph{not} observed; the narrowed finding is that compress-first
 beats retrieve-first on the single stack tested, not reproducing the
@@ -232,31 +222,26 @@ reader can recover a protected fact from a compressed
 content is the disclosure metric and the CAAC construction; the
 service operationalises them. Single-host throughput is benchmarked
 (Section~\ref{sec:bus_bench}); distributed scaling is follow-on work.
-The implementation is slated for deployment in the production
+The implementation is scheduled for deployment in the production
 workflows of the industry partner, TalentAdore, whose operating
-expense is dominated by token cost.
+expense is dominated by token cost AI operations.
 
 \subsection{Reading guide and contribution hierarchy}
 \label{sec:reading_guide}
 
-Table~\ref{tab:contribution_map} is the one-page map of the whole
+Table~\ref{tab:contribution_map} is the map of the whole
 thesis: it ties each research question to the artefact that answers
-it, the falsifiable hypotheses that operationalise it, and the
-one-line verdict, so that a reader can locate any result before
-reading the chapter that derives it.
+it.
 
 \begin{table}[htbp]
 \centering
-\caption{Contribution map. The four research questions, the artefact
-(C1--C4) that answers each, the falsifiable hypotheses that
-operationalise it, and the one-line verdict; all hypotheses are
-reported in \charef{experiments}. Throughout, \emph{coordination}
-means multi-fragment solvability under compression
-(Section~\ref{sec:multi_fragment}), \emph{not} multi-round agent
-negotiation.}
+\caption{Contribution map.}
 \label{tab:contribution_map}
 \small
-\begin{tabular}{>{\raggedright\arraybackslash}p{1.0cm}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{5.0cm}}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{1.2cm}
+                              >{\raggedright\arraybackslash}p{3.2cm}
+                              >{\raggedright\arraybackslash}p{1.6cm}
+                              >{\raggedright\arraybackslash}X}
 \hline
 RQ / C & Plain-English question & Hyp. & Verdict (one line) \\
 \hline
@@ -265,7 +250,7 @@ RQ2\newline C2 & Is there a sharp failure point as compression rises, and what f
 RQ3\newline C3 & Where should compression sit relative to retrieval? & H3 & Compress-first dominates on the tested stack; the sign-flip is \emph{not} observed (\emph{secondary}; Appendix~\ref{appendix:rag}). \\
 RQ4\newline C4 & Can the cliff findings drive a deployable memory bus that compresses safely and cheaply? & H4, CAAC & The bus compresses to the cliff-safe ratio (CAAC) and caps protected-fact disclosure (\textsc{supported}, $3/4$ compressors; destruction-driven). \\
 \hline
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 The four contributions are not equally weighted: \textbf{H1} is the
@@ -274,9 +259,7 @@ compounding-error model (C2) is the mechanism behind it; C1 is the
 enabling instrument; and the RAG catalogue (C3), the
 inference-disclosure metric and memory bus (C4), and CAAC are
 deliberately secondary, each operationalising the central finding in
-one deployment setting. A reader pressed for time should treat
-\charef{experiments} Sections~\ref{sec:h1}--\ref{sec:cem} and
-Section~\ref{sec:corollary1} as the core.
+one deployment setting.
 
 \section{Thesis Outline}
 \label{sec:outline}
@@ -305,9 +288,9 @@ and Corollary~2 (the cliff shape scales with information density).
 constructive realisation of the model, and gives the limitations,
 significance, and future work.
 
+
 All artefacts (manuscript source, code, configuration files,
 results CSVs, and the \texttt{docker-compose.yml} that brings the
 memory-bus service up locally) are in the reference repository at
 \url{https://github.com/Abdullah12has/Distributed-memory-bus-for-multi-agent-coordination}.
-Appendix~\ref{appendix} describes the reproducibility package and
-the one-command reproduction recipe.
+Appendix~\ref{appendix} describes the reproducibility package and the reproduction.

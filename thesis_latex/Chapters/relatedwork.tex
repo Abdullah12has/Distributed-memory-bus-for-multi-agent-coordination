@@ -13,7 +13,7 @@ consolidated gap statement is Section~\ref{sec:rw_gap}.
 \section{The Transformer Architecture and the Cost of Context}
 \label{sec:rw_transformer}
 
-The large language models this thesis builds on are all
+The large language models this thesis builds on are developed on top of
 transformers~\cite{vaswani2017attention}. The transformer's defining
 mechanism, \emph{self-attention}, computes $N^2$ pairwise
 compatibility scores
@@ -26,12 +26,12 @@ $P$, context length $N$) halves when the context halves: the lever
 context compression operates on.
 
 Scaling laws~\cite{kaplan2020scalinglaws, hoffmann2022chinchilla}
-gave the field a recipe to spend \emph{training} compute productively
-but no corresponding recipe for \emph{inference} compute, which is
+gave the field instructions to spend \emph{training} compute productively
+but no corresponding way for \emph{inference} compute, which is
 paid per query for the model's deployment lifetime and dominates
 training cost at production scale. Context compression is to
 inference cost what scaling laws are to training cost: a structural
-lever that converts a linear cost into a constant one.
+system that converts a linear cost into a constant one.
 
 \section{The Scaling Era of LLMs}
 \label{sec:rw_scaling}
@@ -43,10 +43,10 @@ deployed model size, each step raising per-query cost and the demand
 for context-engineering that controls how much input the model
 reads. The two-to-three-order gap between frontier-cloud and
 on-premises per-token cost is what makes compression an operational
-concern. Context windows grew in parallel (2K to multi-million
+concern. Context windows also grew in parallel (2K to multi-million
 tokens), but a model's effective use of them lags the nominal
 size (the ``lost in the middle'' effect~\cite{liu2024lostinmiddle,
-hsieh2024ruler}), so tokens the model will not use well are pure
+hsieh2024ruler}), so tokens the model does not use are pure
 cost. The model-scale trend is exactly what Corollary~1 of
 \charef{experiments} tests: whether the cliff position depends on
 where on the scale curve the planner sits.
@@ -79,7 +79,7 @@ same lever applies, and the politeness tokens (``Hello'', ``Thanks'',
 restated history) that opened \charef{introduction} convert directly
 to kilowatt-hours regardless of whether they change the
 answer~\cite{altman2025pleasethankyou}. The TalentAdore production
-accounts confirm this pricing.
+accounts confirm this.
 
 \paragraph{Multi-agent multiplier.}
 Anthropic's multi-agent report~\cite{anthropic2025multiagent}
@@ -110,7 +110,7 @@ thesis addresses.
 
 \subsection{Token-level pruning (the LLMLingua family)}
 
-The first context-compression technique to be widely adopted was
+The first context-compression technique widely adopted is
 LLMLingua~\cite{jiang2023llmlingua}: a small autoregressive language
 model scores tokens by their per-step perplexity contribution and
 drops those whose removal least disturbs the conditional distribution. LongLLMLingua
@@ -261,9 +261,7 @@ agentic-memory service.
 implicit deployment optimisation; none measures the
 \emph{multi-fragment} coordination-quality cost of compression
 structurally. This thesis fills that gap (the cliff sweep and the
-disclosure measurement); the orthogonal multi-round-agent gap is
-left to the AutoGen backend in \texttt{src/m6/orchestrator/} as
-future work.
+disclosure measurement). However, the orthogonal multi-round-agent setting is left as future work.
 
 \section{Retrieval-Augmented Generation and Long-Context Benchmarks}
 \label{sec:rw_rag}
@@ -297,7 +295,7 @@ boundaries. RULER~\cite{hsieh2024ruler} extends the
 needle-in-a-haystack methodology to a broader set of long-context
 tasks. LongBench~\cite{bai2024longbench} is the standard
 multi-task benchmark. None of these benchmarks measures the
-multi-fragment-coordination task structure of this thesis;
+multi-fragment-coordination task structure presented in this thesis;
 they measure single-agent long-context comprehension. They are
 complementary to the cliff measurement rather than competitive
 with it: long-context benchmarks measure the capacity of the
@@ -376,8 +374,7 @@ SecurityLingua-style input filtering with C4-style summary-level
 disclosure auditing) but they measure different sides of the
 compression-versus-privacy interaction.
 
-\emph{What is missing.} No published work, to the author's
-knowledge, measures \emph{summary-level} inference disclosure: the
+\emph{What is missing.} No published work measures \emph{summary-level} inference disclosure: the
 rate at which a reader recovers a protected fact from a compressed
 summary of content it has never seen.
 SecurityLingua~\cite{li2025securitylingua} measures the dual
@@ -415,7 +412,7 @@ The thesis sits at the intersection of three threads: the
 long-context benchmark suite and the LLMLingua line of work (which
 measure orthogonal single-agent properties) and Anthropic's
 multi-agent report~\cite{anthropic2025multiagent} (an industry
-observation, not a controlled measurement), and contributes the
+observation), and contributes the
 controlled cross-compressor multi-fragment evaluation none of them
 provides: it measures compression's effect on \emph{multi-fragment}
 task success, where LLMLingua-2~\cite{pan2024llmlingua2} measures
