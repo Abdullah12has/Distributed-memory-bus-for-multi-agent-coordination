@@ -1,20 +1,9 @@
-This chapter surveys the prior work the four contributions build on,
-in seven strands: the transformer architecture and the per-token
-cost compression targets (Section~\ref{sec:rw_transformer}); the
-scaling-law trajectory (Section~\ref{sec:rw_scaling}); the published
-energy and economic measurements of inference at scale
-(Section~\ref{sec:rw_cost}); the training-free compression literature
-(Section~\ref{sec:rw_compression}); multi-agent systems and agentic
-memory (Section~\ref{sec:rw_multiagent}); retrieval-augmented
-generation and long-context benchmarks (Section~\ref{sec:rw_rag});
-and privacy-aware retrieval (Section~\ref{sec:rw_privacy}). The
-consolidated gap statement is Section~\ref{sec:rw_gap}.
+The four contributions build on seven bodies of prior work. Section~\ref{sec:rw_gap} consolidates the gap each contribution fills.
 
 \section{The Transformer Architecture and the Cost of Context}
 \label{sec:rw_transformer}
 
-The large language models this thesis builds on are developed on top of
-transformers~\cite{vaswani2017attention}. The transformer's defining
+The large language models this thesis builds on are transformer-based~\cite{vaswani2017attention}. The transformer's defining
 mechanism, \emph{self-attention}, computes $N^2$ pairwise
 compatibility scores
 for a sequence of length $N$, so prefill compute scales as
@@ -26,22 +15,20 @@ $P$, context length $N$) halves when the context halves: the lever
 context compression operates on.
 
 Scaling laws~\cite{kaplan2020scalinglaws, hoffmann2022chinchilla}
-gave the field instructions to spend \emph{training} compute productively
-but no corresponding way for \emph{inference} compute, which is
-paid per query for the model's deployment lifetime and dominates
-training cost at production scale. Context compression is to
+told practitioners how to spend \emph{training} compute productively
+but said nothing about \emph{inference} cost, which is paid per
+query for the model's deployment lifetime and dominates training
+cost at production scale. Context compression is to
 inference cost what scaling laws are to training cost: a structural
 system that converts a linear cost into a constant one.
 
 \section{The Scaling Era of LLMs}
 \label{sec:rw_scaling}
 
-The trajectory from GPT-2 (1.5B, 2019) to GPT-3 (175B) to the
-2025--2026 frontier (Llama-3, Qwen-2.5, DeepSeek V3/V4, Claude
-Sonnet 4.x, GPT-oss) marks four orders of magnitude of growth in
-deployed model size, each step raising per-query cost and the demand
-for context-engineering that controls how much input the model
-reads. The two-to-three-order gap between frontier-cloud and
+Deployed model size grew four orders of magnitude from GPT-2
+(1.5B, 2019) to the 2025--2026 frontier (Llama-3, Qwen-2.5,
+DeepSeek V3/V4, Claude Sonnet 4.x, GPT-oss), each step raising
+per-query cost and the demand for context-engineering. The two-to-three-order gap between frontier-cloud and
 on-premises per-token cost is what makes compression an operational
 concern. Context windows also grew in parallel (2K to multi-million
 tokens), but a model's effective use of them lags the nominal
@@ -93,7 +80,7 @@ is missing, and what \charef{experiments} supplies, is the
 structural answer to \emph{how aggressively compression can be
 applied before coordination breaks}.
 
-\section{Context Compression: the Breakthrough Works}
+\section{Training-Free Context Compression}
 \label{sec:rw_compression}
 
 The training-free context-compression literature has matured in
@@ -101,12 +88,9 @@ the past three years into four recognisable families, surveyed
 comprehensively by Li \emph{et~al.}~\cite{li2025promptsurvey}; the
 most aggressive recent variants push compression to the extreme of
 a single-token document representation
-(xRAG~\cite{cheng2024xrag}). This
-subsection surveys the four families, with a comparison table at the end
-that maps the families against the design dimensions that matter
-for multi-fragment evaluation. Each family closes with a
-``what is missing in prior work'' line that the rest of the
-thesis addresses.
+(xRAG~\cite{cheng2024xrag}). The four families and the design
+dimensions that matter for multi-fragment evaluation are in
+Table~\ref{tab:rw_comparison} at the end of this section.
 
 \subsection{Token-level pruning (the LLMLingua family)}
 
@@ -127,10 +111,10 @@ within $2$~pp and HotpotQA F1 within $3$~pp of reported
 numbers~\cite{kocisky2018narrativeqa, yang2018hotpotqa} as the
 calibration target.
 
-\emph{What is missing.} All three LLMLingua papers report
+All three LLMLingua papers report
 single-agent QA-F1 retention; none measures whether the surviving
 content lets a planner combine information across multiple compressed
-fragments. H1 of \charef{experiments} measures exactly that.
+fragments. H1 of \charef{experiments} addresses that directly.
 
 \subsection{Selective and instruction-aware compression}
 
@@ -149,10 +133,10 @@ stop-word and short-token trim, with no LM in the loop. This gives a
 deterministic, training-free, low-cost baseline that the more
 sophisticated compressors must beat.
 
-\emph{What is missing.} This literature's task-awareness is
+This literature's task-awareness is
 question-conditioned, but in a multi-fragment workflow the
 fragment-level task is to preserve information a yet-unknown planner
-will combine with other fragments, the gap the instruction-aware
+will combine with other fragments, which is the gap the instruction-aware
 filter and the multi-fragment evaluation address.
 
 \subsection{Learned compression (parameter-cost compressors)}
@@ -174,12 +158,12 @@ a faster cross-attention variant. Rae
 Compressive Transformer architecture, which is the closest
 single-context analogue of the cliff bound this thesis derives.
 
-\emph{What is missing.} Learned compression requires training,
+Learned compression requires training,
 introducing a training-budget asymmetry that muddies
 cross-compressor comparison. This thesis stays training-free so the
 cliff comparison turns on the algorithm rather than the training
 budget; re-evaluating learned compressors under the same methodology
-is named as follow-on work.
+is follow-on work.
 
 \subsection{Extractive small-LLM span selection}
 
@@ -192,7 +176,7 @@ compressed output is by construction a subset of the source
 tokens; this is one of the reasons it appears in this thesis as
 a compressor option.
 
-\emph{What is missing.} Published guidance on enforcing the
+Published guidance on enforcing the
 extractive constraint reliably is thin; small LLMs insert
 function-word filler even when told not to. This thesis's Phi-3-Mini
 extractive compressor ships a verifier with a $15\%$ novel-token
@@ -228,7 +212,7 @@ Truncation (prefix-keep) & yes & no & no & yes (baseline) \\
 \section{Multi-Agent LLM Systems and Agentic Memory}
 \label{sec:rw_multiagent}
 
-The multi-agent LLM-systems literature has grown rapidly since
+The multi-agent LLM-systems literature expanded quickly after
 2023. The most-cited frameworks are
 AutoGen~\cite{wu2023autogen} (an open-source framework for
 multi-agent conversation; originally appeared at the ICLR 2024
@@ -257,17 +241,17 @@ single-agent long-horizon memory rather than multi-agent shared
 state. Mem0~\cite{chhikara2025mem0} is a production-oriented
 agentic-memory service.
 
-\emph{What is missing.} These frameworks treat compression as an
+These frameworks treat compression as an
 implicit deployment optimisation; none measures the
 \emph{multi-fragment} coordination-quality cost of compression
-structurally. This thesis fills that gap (the cliff sweep and the
-disclosure measurement). However, the orthogonal multi-round-agent setting is left as future work.
+structurally. The cliff sweep and the disclosure measurement fill
+that gap; the orthogonal multi-round-agent setting is left as future work.
 
 \section{Retrieval-Augmented Generation and Long-Context Benchmarks}
 \label{sec:rw_rag}
 
 Retrieval-augmented generation as a paradigm dates to Lewis
-\emph{et~al.}~\cite{lewis2020rag}. The landmark works since
+\emph{et~al.}~\cite{lewis2020rag}. The notable later works
 include RAPTOR~\cite{sarthi2024raptor} (recursive abstractive
 processing for tree-organised retrieval, ICLR 2024),
 GraphRAG~\cite{edge2024graphrag} (NeurIPS 2024),
@@ -317,7 +301,7 @@ information density $\theta_\text{info}$ differs, but the
 cliff structure (existence, sharpness as a function of
 $\theta_\text{info}$) transfers.
 
-\emph{What is missing.} RAG benchmarks measure retrieval quality
+RAG benchmarks measure retrieval quality
 and long-context benchmarks measure model capacity; neither captures
 the multi-fragment compression-quality effect the cliff measurement
 isolates. The H3 catalogue fills the
@@ -350,11 +334,9 @@ policy layer of \charef{implementation} operationalises
 the resulting disclosure budget as a deployment-time enforcement
 mechanism.
 
-The CFedRAG framework~\cite{addison2024cfedrag} is a related
-piece of work on coordination of federated retrieval-augmented
-generation; it addresses the retrieval-index-level privacy
-question rather than the compressor-level disclosure question
-that this thesis takes up.
+CFedRAG~\cite{addison2024cfedrag} addresses coordination of federated
+retrieval-augmented generation at the retrieval-index-level rather than
+the compressor-level disclosure question that this thesis takes up.
 
 The closest published prior work that connects compression
 directly to privacy is
@@ -374,19 +356,16 @@ SecurityLingua-style input filtering with C4-style summary-level
 disclosure auditing) but they measure different sides of the
 compression-versus-privacy interaction.
 
-\emph{What is missing.} No published work measures \emph{summary-level} inference disclosure: the
+No published work measures \emph{summary-level} inference disclosure: the
 rate at which a reader recovers a protected fact from a compressed
 summary of content it has never seen.
 SecurityLingua~\cite{li2025securitylingua} measures the dual
 (input-side defense); the privacy-aware-retrieval line protects the
-index, not the summary. This thesis fills that gap, and the policy
+index, not the summary. This thesis closes that gap, and the policy
 layer converts the disclosure rate into a deployment budget.
 
 \section{The Gap This Thesis Closes}
 \label{sec:rw_gap}
-
-Four sentences, each one mapping to one of the four contributions
-of \charef{introduction}.
 
 There is no shared multi-fragment coordination benchmark
 probing the cliff in a controlled, reproducible setup. C1 is the
@@ -399,14 +378,13 @@ cross-architecture frontier validation are the bound.
 
 There is no honest catalogue of RAG-plus-compression pipeline
 placement under matched cost regimes, with the cost model
-explicit in EUR per workflow. The C3 catalogue is the
-catalogue, and its honest finding is that the assumed
-sign-flip does not appear.
+explicit in EUR per workflow. C3 is that catalogue, and its
+honest finding is that the assumed sign-flip does not appear.
 
 There is no published academic measurement of inference
 disclosure through the compressor at the summary level. The H4
 measurement, integrated with the memory bus's policy layer, is
-the measurement.
+the contribution.
 
 The thesis sits at the intersection of three threads: the
 long-context benchmark suite and the LLMLingua line of work (which

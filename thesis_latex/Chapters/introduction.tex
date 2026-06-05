@@ -29,11 +29,11 @@ processed~\cite{luccioni2024powerhungry, samsi2023words,
 pope2023efficiently}, each such token still turns into energy, latency,
 and operating expense whether or not it has an impact on the outcome.
 
-As a consistent industry anecdote, OpenAI's compute bill for processing
-user politeness alone was informally estimated at ``tens of millions of
-dollars'' a year in 2025~\cite{altman2025pleasethankyou}.
+Sam Altman informally estimated OpenAI's compute bill for processing
+user politeness tokens alone at ``tens of millions of dollars'' a
+year in 2025~\cite{altman2025pleasethankyou}.
 
-Smart context compression is the natural solution. Per-token compute and cost
+Context compression is the direct lever. Per-token compute and cost
 scale roughly linearly in sequence length once the prefill is past
 the GPU memory-bound regime, so halving the input context roughly
 halves the cost. The single-agent prompt-compression literature has
@@ -58,7 +58,7 @@ specifications spread across fragments), and multi-step retrieval
 (chain references through a sequence of documents to a leaf answer);
 the C1 benchmark of \charef{implementation} builds $50$ instances of
 each.  The FCG group at the
-University of Oulu's flagship use case,
+University of Oulu's main use case,
 \emph{Vignette~3.7 -- Period-end project reporting}~\cite{fcgusecase2026},
 gathers reporting data across eight university systems via roughly
 eight specialised agents; the internal FCG analysis estimates an
@@ -81,10 +81,10 @@ deterministic regex information-extraction solver, or a single LLM
 call with all (compressed) fragments visible. An AutoGen v0.4
 multi-round backend ships in the source tree
 ~\cite{wu2023autogen} but is not used
-in any reported result. The reason is attribution: round-to-round LLM
+in any reported result: round-to-round LLM
 variance dominates the compression signal at the C1 ratios swept, so
-cleanly attributing a coordination drop to compression rather than to
-agent variance requires isolating the compressor on the critical
+attributing a coordination drop to compression rather than agent
+variance requires isolating the compressor on the critical
 path, which a single-LLM-call or deterministic planner does. The
 memory bus is \emph{designed for} multi-agent integration; the
 experimental scope is multi-fragment task solvability, restated and
@@ -110,15 +110,11 @@ planner scales, and when and how can a memory-bus service
 exploit that understanding to compress safely, predictably, and
 privately?}
 
-The question subdivides into four sub-questions, one per
-contribution (C1--C4), each answered end-to-end by an artefact
-and operationalised by one or more of the falsifiable hypotheses
-(H1--H6) that structure \charef{experiments}.
+The four contributions (C1--C4) each address one sub-question,
+operationalised by the hypotheses (H1--H6) in \charef{experiments}.
 
 \subsection{Research questions and their mapping to hypotheses}
 \label{sec:rq_mapping}
-
-The four research questions and their hypothesis mappings are:
 
 \begin{description}\setlength\itemsep{2pt}
 \item[RQ1 (metric).] Does a coordination-quality metric on a
@@ -143,7 +139,7 @@ memory-bus integration of \charef{experiments}).
 \label{sec:contributions}
 
 \paragraph{Headline.}
-The thesis's single most-citable result is the H1 finding (the
+The single most-citable result is H1 (the
 methodological backbone of C2): on the multi-fragment benchmark
 shipped as C1, the change in single-fragment source-retention F1
 under compression does not positively predict the change in
@@ -151,8 +147,7 @@ multi-fragment coordination success for \emph{any} of the four
 compressors tested. The single-agent benchmarks that dominate the
 prompt-compression literature (LLMLingua-2, LongLLMLingua, LongBench,
 RULER) therefore systematically mis-rank compressors for
-multi-fragment deployment. The thesis turns that finding into its
-principal engineering deliverable: a \emph{compression-aware memory bus} (C4)
+multi-fragment deployment. That finding drives the principal engineering deliverable: a \emph{compression-aware memory bus} (C4)
 whose compression layer is tuned by the cliff measurements rather
 than by guesswork, built to cut inference cost in production.
 
@@ -224,7 +219,7 @@ service operationalises them. Single-host throughput is benchmarked
 (Section~\ref{sec:bus_bench}); distributed scaling is follow-on work.
 The implementation is scheduled for deployment in the production
 workflows of the industry partner, TalentAdore, whose operating
-expense is dominated by token cost AI operations.
+expense is dominated by token costs.
 
 \subsection{Reading guide and contribution hierarchy}
 \label{sec:reading_guide}
@@ -302,7 +297,7 @@ Appendix~\ref{appendix} describes the reproducibility package and the reproducti
 Claude Sonnet, Opus (Anthropic) and ChatGPT 5.5 (OpenAI) were used as coding assistants
 throughout the implementation work for suggesting implementations, debugging
 error messages, and code review. The author read, tested, and
-modified if needed before adding to the codebase. Experimental designs, evaluation
+modified each suggestion before adding it to the codebase. Experimental designs, evaluation
 metrics, and result interpretations were not delegated to these tools.
 
 \paragraph{Writing assistance.}

@@ -1,12 +1,3 @@
-This chapter draws together the empirical work of
-\charef{experiments} and the system design of
-\charef{implementation}: what the findings say jointly,
-what CAAC adds as a constructive realisation of the
-compounding-error bound, where the work is limited, what its
-significance is to practitioners and to the field, how it
-relates to industry observations on multi-agent token economics,
-and where the most natural follow-on studies sit.
-
 \section{Synthesis}
 \label{sec:synthesis}
 
@@ -37,18 +28,9 @@ The compounding-error model is a \emph{first-order}
 position estimate (median $\sim 35\%$ relative error) and an
 \emph{explanation} of why the cliff is sharp; the threshold
 mechanism it posits is independently confirmed on the dense family
-by the direct A3 probe (Section~\ref{sec:a3_probe}). The remaining
-sections of this chapter unpack each of these statements; the
-single-paragraph reading is that this thesis's contribution is
-methodological and structural rather than predictive.
+by the direct A3 probe (Section~\ref{sec:a3_probe}). The contribution is methodological and structural rather than predictive.
 
-The five quantitative results (H1, the cliff and its model,
-Corollary~1's no-shift, H4's destruction-driven disclosure
-reduction, and Corollary~2's density scaling) are detailed in
-\charef{experiments} and summarised above; the synthesis that
-matters for a practitioner is the following.
-
-Taken together: the cliff is real, sharp, first-order predictable
+The cliff is real, sharp, first-order predictable
 in position, stable across the planners we could test inside a
 regime, and a (blunt) privacy lever. A practitioner who needs to
 deploy compression on a multi-fragment workflow can measure
@@ -77,9 +59,7 @@ guarantee, so it cannot strict-dominate the fixed-ratio compressor
 that makes the opposite trade. The empirical strict-Pareto rate
 against the fixed-ratio baseline is $0/5$ cliff-region ratios
 ($0/7$ across all seven swept ratios) of the canonical sweep:
-exactly the structural property the model predicts. The two
-sections below unpack the algorithm and the operating-point framing
-in turn.
+exactly the structural property the model predicts.
 
 \subsection{Algorithm}
 \label{sec:caac_algo}
@@ -124,9 +104,9 @@ target, but CAAC trades ratio for a recall guarantee: at high targets
 where the fixed compressor cliffs to zero coordination, CAAC backs
 off to $\sim3\times$ while the fixed compressor delivers $\sim12\times$
 at zero coordination, so the $0/7$ strict-Pareto rate is exactly what
-the trade implies. The substantive framing is the operating-point
-one: CAAC's ratio is \emph{determined by the compounding-error
-bound}, not by tuning: $\theta_q$ is a measurement and the binary
+the trade implies. CAAC is better understood as operating-point selection:
+its ratio is \emph{determined by the compounding-error bound},
+not by tuning: $\theta_q$ is a measurement and the binary
 search makes the operating ratio a predictable function of the inner
 $q(r)$ curve, producing one safe-side operating point per family. The
 two compressors thus populate complementary regions of the
@@ -184,10 +164,9 @@ that this thesis defers as future work.
 
 \subsection{What CAAC contributes to the thesis}
 
-CAAC shows that the compounding-error model can be put to work, not
-only used to predict. The algorithm is short and training-free, adds
-no inference dependencies, and bounds its own behaviour by a single
-measurement. It sits in \charef{summary} rather than among the
+CAAC is the compounding-error model in practice: a short,
+training-free wrapper that bounds its operating point by a single
+$\theta_q$ measurement. It sits in \charef{summary} rather than among the
 headline contributions of \charef{introduction} because the model is
 the substantive contribution and CAAC is its constructive
 realisation. The design choice it enables, though, is a concrete one:
@@ -198,9 +177,6 @@ turns the cliff measurement into something a system can be built on.
 
 \section{Limitations}
 \label{sec:limitations}
-
-The limitations are catalogued explicitly so that a reader can
-calibrate the scope of the findings.
 
 \paragraph{No multi-round agent coordination.}
 The evaluation uses a deterministic regex solver (H1, H2) or a single
@@ -231,8 +207,8 @@ enable a family-b validation this thesis cannot produce.
 \paragraph{Phi-3-Mini extractive ceiling.}
 The extractive compressor saturates at $\approx2.5\times$ achieved
 compression regardless of target, so it cannot participate in
-high-ratio comparisons; all evaluation reports achieved alongside
-target ratio so the saturation is visible.
+high-ratio comparisons; every evaluation reports the achieved ratio
+alongside the target so the saturation is visible.
 
 \paragraph{Extended-reasoning regime is out of scope.}
 The calibrated regime excludes planners that recover sub-threshold
@@ -312,8 +288,7 @@ unbiased reader (future work) would disentangle.
 \subsection{For Industry}
 \label{sec:significance_partners}
 
-The work was scoped against two industrial settings, each with an
-actionable takeaway. \textbf{TalentAdore}, whose token-dominated
+Two industrial settings frame the work, each with a concrete recommendation. \textbf{TalentAdore}, whose token-dominated
 pricing calibrates the EUR cost model, gains four things: (1) a
 procurement guardrail: compressors must \emph{not} be chosen on the
 single-agent QA-F1 numbers the literature reports, which do not
@@ -326,7 +301,7 @@ metric plus policy layer as a deployment-time governance budget for
 floor. The second setting, a multi-agent memory deployment, gains a
 runnable reference artefact: the three-layer bus extends a prior
 shared-memory baseline, ships as a single container image, and
-targets a multi-agent roadmap. A representative flagship use case
+targets a multi-agent roadmap. A representative use case
 (reporting aggregated across roughly eight institutional systems,
 with an internal-estimate payload reduction of around $80\%$) is
 exactly the multi-fragment workflow this thesis characterises: the
@@ -377,7 +352,7 @@ with task structure.
 \section{Future Work}
 \label{sec:future}
 
-The most natural follow-on studies, in order of expected impact.
+The follow-on studies below are roughly ordered by expected impact.
 
 \paragraph{Extended-reasoning regime.}
 Characterise the cliff for planners that recover from sub-threshold
@@ -425,18 +400,11 @@ disclosure-reduction conclusion is robust to reader bias).
 
 \section{Closing}
 
-The five empirical findings, the compounding-error model that
-ties them together, the memory-bus reference implementation
-that operationalises the privacy lever, and the CAAC algorithm
-that operationalises the cliff bound, jointly constitute the
-thesis's contribution: a structural characterisation of context
-compression in multi-fragment LLM workflows, measured across
-compressors, families, and benchmarks (with planner-scale and
-architecture invariance reported as no-shift-detected rather than
-established) supported by a first-order position model, a
-deployment artefact, and a reproducibility package. The single deliverable
-sentence is the thesis's refrain: every token that
-does not change the answer is waste, and what this thesis
-contributes is a way of knowing which tokens those are, when
-removing them is safe, and what the cost is when removing them
-is not.
+The empirical findings, the compounding-error model, the memory-bus artefact,
+and CAAC together constitute the thesis: a structural characterisation of
+context compression in multi-fragment LLM workflows, with planner-scale and
+architecture invariance reported as no-shift-detected rather than proven, backed
+by a first-order position model, a runnable service, and a reproducibility
+package. In one sentence: every token that does not change the answer is waste,
+and what this thesis contributes is a way of knowing which tokens those are,
+when removing them is safe, and what the cost is when removing them is not.
