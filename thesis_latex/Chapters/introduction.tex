@@ -294,3 +294,39 @@ results CSVs, and the \texttt{docker-compose.yml} that brings the
 memory-bus service up locally) are in the reference repository at
 \url{https://github.com/Abdullah12has/Distributed-memory-bus-for-multi-agent-coordination}.
 Appendix~\ref{appendix} describes the reproducibility package and the reproduction.
+
+\section{Use of Artificial Intelligence Tools}
+\label{sec:ai_use}
+
+\paragraph{Code assistance.}
+Claude Sonnet, Opus (Anthropic) and ChatGPT 5.5 (OpenAI) were used as coding assistants
+throughout the implementation work for suggesting implementations, debugging
+error messages, and code review. The author read, tested, and
+modified if needed before adding to the codebase. Experimental designs, evaluation
+metrics, and result interpretations were not delegated to these tools.
+
+\paragraph{Writing assistance.}
+The author used AI language models as a proofreader: grammar checking,
+sentence rephrasing, and \LaTeX\ formatting. All arguments, hypotheses,
+findings, and conclusions are the author's own; no passage was generated
+in full by an AI tool without the author's proofreading.
+
+\paragraph{Literature search.}
+AI tools were consulted during the literature survey to suggest candidate
+papers and to surface connections across adjacent fields, including prompt
+compression, multi-agent memory, and retrieval-augmented generation. Every
+source cited was individually located and read by the author. The citation
+list reflects the author's judgement on relevance, not an AI tool's.
+
+\paragraph{Experimental reasoning.}
+AI tools were used on occasion as a sounding board: for example, to check
+whether a proposed statistical test suited the data, or to trace
+interactions in a multi-component pipeline. All hypothesis formulations,
+metric definitions, and result interpretations were designed by the author. 
+
+\paragraph{Transparency note.}
+This thesis studies context compressors and LLM planners belonging to the
+same model class as the assistance tools above. The roles do not overlap.
+Claude and ChatGPT appear in no experimental result; they were used only
+for coding and writing assistance. The models accessed via the Featherless API and run locally are the experimental
+planners; they were not used for assistance.
