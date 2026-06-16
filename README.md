@@ -1,4 +1,4 @@
-# m6-thesis — Distributed Memory Bus for Multi-Agent Campus Systems
+# thesis — Distributed Memory Bus for Multi-Agent Campus Systems
 
 > *Context Compression, Coordination Quality, and Policy-Aware Sharing.*
 > Master's thesis (M6) at the University of Oulu · Faculty of ITEE · CSE Research Unit, **Future Computing Group**.
