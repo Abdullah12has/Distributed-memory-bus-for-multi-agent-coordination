@@ -1,9 +1,0 @@
-4.45 count: 0
-78pct count: 0
-2.15 count: 6
-13.8 count: 9
--0.818 count: 1
-old -0.679 count: 0
-old +0.466 count: 0
-wc: 1228
-M-lines: 0

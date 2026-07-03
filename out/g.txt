@@ -1,8 +1,0 @@
-16:This thesis studies that question on *multi-fragment LLM workflows*. The empirical eval
-18:Six hypotheses are tested across tens of thousands of evaluation cells (approximately $
-137:**C2 — Empirical characterisation of the coordination cliff and a compounding-error 
-620:This corollary is the reframing of the original H5 hypothesis, which predicted strict 
-638:The Qwen-2.5-72B sweep returns $\tau^{*} = 2.68$ (bootstrap CI $[1.92, 7.23]$). The ca
-642:The DeepSeek V4 Pro sweep returns a $\tau^{*}$ point estimate of 2.15 with a bootstrap
-818:The cliff position shows **no detected shift** across the three local architecture fam
-941:**Frontier equivalence testing and bootstrap retention.** The frontier arm currently r

@@ -1,5 +1,0 @@
-7.3
-DeepSeek V4 Pro (point estimate $78\%$ from the reference but with a CI wide enough to contain it — corroborating but underpowered)
-7.3
-point estimate is $\tau^{*}=4.
-78

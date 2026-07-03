@@ -1,8 +1,0 @@
-18:Six hypotheses are tested across tens of thousands of evaluation cells (approximately $52\,000$ â
-497:The table below reports the workload-level Spearman correlation between the change in token-over
-503:| Instruction-aware filter | $-0.818$ ($150$) | $[-0.852, -0.760]$ | $-0.593$ ($1350$) |
-504:| LLMLingua-2 | $+0.026$ ($150$) | $[-0.135, +0.180]$ | $+0.381$ ($1350$) |
-506:| Truncation (baseline) | $+0.051$ ($150$) | $[-0.092, +0.198]$ | $+0.384$ ($1350$) |
-509:The contrast between the two $\rho$ columns is itself a finding: pooling the nine ratios per wor
-524:The H1 finding is a methodological claim, not just an empirical one. The LongLLMLingua and LLMLi
-816:Single-agent question-answering accuracy and multi-fragment coordination success disagree â€” ac

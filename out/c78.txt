@@ -1,7 +1,0 @@
-726:| Truncation (most destructive) | 0.50 | 0.78 | 0.54 | $+0.286$ ($
-727:| Instruction-aware filter | 0.50 | 0.78 | 0.58 | $+0.286$ ($p_\te
-728:| LLMLingua-2 | 0.50 | 0.78 | 0.59 | $+0.286$ ($p_\text{Holm}=8\ti
-729:| Phi-3-Mini extractive (most preserving) | 0.50 | 0.78 | 0.78 | $
-750:The Llama-3.1-8B reader exhibits a strong YES-bias: when the groun
-818:The cliff position shows **no detected shift** across the three lo
-941:**Frontier equivalence testing and bootstrap retention.** The fron

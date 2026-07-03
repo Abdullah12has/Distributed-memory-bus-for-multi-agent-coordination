@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenv / secrets
+.venv/
+venv/
+env/
+.env
+.deepeval/
+
+# OS / editor
+.DS_Store
+.claude/
+
+# Generated data & outputs (keep the dirs via .gitkeep)
+checkpoints/*
+!checkpoints/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/hf-cache/*
+!data/hf-cache/.gitkeep
+results/*
+!results/.gitkeep
+traces/*
+!traces/.gitkeep
+
+# Scratch / misc
+out/
+Untitled
+thesis_latex.zip
+
+# LaTeX build artifacts
+*.fdb_latexmk
+*.fls
+*.blg
+*.run.xml
+thesis_latex/out/

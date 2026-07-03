@@ -1,1 +1,0 @@
-phi3-extractive: rho=0.315 CI=[0.177,0.442] n=150

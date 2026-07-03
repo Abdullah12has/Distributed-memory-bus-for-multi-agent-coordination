@@ -1,1 +1,0 @@
-storage_bounded    P2: f1=0.3635 eur=2.818e-05 recall=0.6250 n=150
